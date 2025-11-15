@@ -1,0 +1,324 @@
+openapi: 3.0.3
+info:
+  title: Sorftime 数据智能控制台 API
+  version: 0.1.0
+  description: >
+    导入、查询、问答与导出接口，所有响应/错误信息需使用中文字段。
+servers:
+  - url: https://api.askjeff.local/v1
+paths:
+  /imports:
+    post:
+      summary: 创建导入批次
+      tags: [imports]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, importStrategy]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                importStrategy:
+                  type: string
+                  enum: [overwrite, append, update-only]
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatch'
+  /imports:
+    get:
+      summary: 批次列表
+      tags: [imports]
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, running, succeeded, failed]
+        - in: query
+          name: asin
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+          default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+          default: 20
+      responses:
+        '200':
+          description: 批次数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImportBatch'
+                  total:
+                    type: integer
+  /imports/{batchId}:
+    get:
+      summary: 批次详情与失败行
+      tags: [imports]
+      parameters:
+        - in: path
+          name: batchId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 批次详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batch:
+                    $ref: '#/components/schemas/ImportBatch'
+                  failedRows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FailedRow'
+  /products:
+    get:
+      summary: 产品列表查询
+      tags: [products]
+      parameters:
+        - in: query
+          name: batchId
+          schema:
+            type: string
+        - in: query
+          name: asin
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [valid, warning, error]
+      responses:
+        '200':
+          description: 产品记录
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductRecord'
+                  total:
+                    type: integer
+  /chat/query:
+    post:
+      summary: 自然语言数据洞察
+      tags: [chat]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                contextBatches:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: 答案
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatAnswer'
+  /exports:
+    post:
+      summary: 创建导出任务
+      tags: [exports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [exportType, filters, selectedFields, fileFormat]
+              properties:
+                exportType:
+                  type: string
+                  enum: [clean-products, failed-rows]
+                filters:
+                  type: object
+                selectedFields:
+                  type: array
+                  items:
+                    type: string
+                fileFormat:
+                  type: string
+                  enum: [csv, xlsx]
+      responses:
+        '202':
+          description: 已进入队列
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+  /exports/{jobId}:
+    get:
+      summary: 导出任务状态
+      tags: [exports]
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+  /exports/{jobId}/download:
+    get:
+      summary: 下载导出文件
+      tags: [exports]
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: 重定向至下载地址
+
+components:
+  schemas:
+    ImportBatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        importStrategy:
+          type: string
+        status:
+          type: string
+        totalRows:
+          type: integer
+        successRows:
+          type: integer
+        failedRows:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        failureSummary:
+          type: object
+    FailedRow:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+        asin:
+          type: string
+        reason:
+          type: string
+        rawValues:
+          type: object
+    ProductRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        batchId:
+          type: string
+        asin:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        salesRank:
+          type: integer
+        rating:
+          type: number
+        attributes:
+          type: object
+        validationStatus:
+          type: string
+    ChatAnswer:
+      type: object
+      properties:
+        answer:
+          type: string
+        references:
+          type: array
+          items:
+            type: object
+            properties:
+              batchId:
+                type: string
+              asin:
+                type: string
+              fields:
+                type: array
+                items:
+                  type: string
+        sessionId:
+          type: string
+    ExportJob:
+      type: object
+      properties:
+        id:
+          type: string
+        exportType:
+          type: string
+        status:
+          type: string
+        filters:
+          type: object
+        selectedFields:
+          type: array
+          items:
+            type: string
+        fileFormat:
+          type: string
+        fileUrl:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time

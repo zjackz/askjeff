@@ -1,0 +1,38 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sorftime
+      POSTGRES_PASSWORD: sorftime
+      POSTGRES_DB: sorftime
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+  backend:
+    image: python:3.12-slim
+    working_dir: /app
+    command: bash -c "pip install poetry && poetry install && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - ../../backend:/app
+      - ../../backend/storage:/app/storage
+    environment:
+      DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+  frontend:
+    image: node:20
+    working_dir: /app
+    command: bash -c "npm install -g pnpm && pnpm install && pnpm dev --host 0.0.0.0 --port 5173"
+    volumes:
+      - ../../frontend:/app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+volumes:
+  db-data:

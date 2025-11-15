@@ -1,0 +1,32 @@
+{
+  "name": "sorftime-admin-portal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint --ext .ts,.vue src",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "vue-router": "^4.3.0",
+    "pinia": "^2.1.7",
+    "axios": "^1.7.0",
+    "element-plus": "^2.6.0",
+    "echarts": "^5.5.0",
+    "@vueuse/core": "^10.7.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@vue/test-utils": "^2.4.5",
+    "vitest": "^1.6.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.1.0",
+    "vue-tsc": "^2.0.0",
+    "eslint": "^8.57.0",
+    "@vue/eslint-config-typescript": "^12.0.0",
+    "eslint-plugin-vue": "^9.20.0"
+  }
+}
