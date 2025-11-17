@@ -14,7 +14,7 @@
 - **语言/版本**：后端 Python 3.12 + FastAPI；前端 Vue 3 + TypeScript；构建工具 Vite 5。
 - **核心依赖**：FastAPI、Pydantic v2、SQLAlchemy 2.0、Alembic、HTTPX、FastAPI BackgroundTasks、Deepseek 官方 SDK；前端 Vue Element Admin、Pinia、Vue Router、Axios、ECharts。
 - **存储**：PostgreSQL 15（批次、产品、导出日志、QuerySession）、本地挂载目录 `storage/`（上传文件与导出结果）。
-- **测试策略**：Pytest + HTTPX（API/快照）、unittest.mock（Deepseek stub）、Playwright（前端端到端）、k6（导入/导出吞吐）、Contract Tests（OpenAPI）。
+- **测试策略**：Pytest + HTTPX（API/快照）、unittest.mock（Deepseek stub）、Playwright（前端端到端）、k6（导入/导出吞吐）、Contract Tests（OpenAPI）；所有测试统一使用 PostgreSQL `sorftime_dev`，禁止 SQLite，跑用例前需迁移到 `_dev` 库。
 - **性能验证**：导入 50MB/10 万行 ≤5 分钟（k6/pytest 基准，报告存 `scripts/perf/import-report.md`）；问答 P90 ≤10s（Deepseek 模拟及降级验证，报告存 `scripts/perf/chat-report.md`）；导出 50k+ 行 95% ≤2 分钟（k6，报告存 `scripts/perf/export-report.md`），验证结果需在 quickstart/验收中引用。
 - **部署/目标平台**：开发/测试统一使用 Docker Compose（frontend/backend/postgres）。生产为单机 Docker Compose + systemd watcher（或轻量容器主机），无需 K8s；CI 使用 GitHub Actions。
 - **性能&约束**：单批次文件≤50MB、10万行；导入 5 分钟内完成；问答 P95 ≤10s；导出 95% 在 2 分钟内完成；界面/文档中文呈现。

@@ -49,3 +49,23 @@ pytest && pnpm --prefix frontend test
 ```
 
 CI 会复用上述命令。若出现英文词条需在 PR 中注明原因或修复。
+
+## 7. 测试数据库（PostgreSQL）
+
+- 测试与本地验证统一使用 PostgreSQL `_dev` 库，禁止 SQLite。
+- 初始化（需容器已启动，默认凭证 sorftime/sorftime）：
+
+```bash
+psql "postgresql://sorftime:sorftime@localhost:5432/postgres" -tc "SELECT 1 FROM pg_database WHERE datname='sorftime_dev'" | grep -q 1 || \
+  psql "postgresql://sorftime:sorftime@localhost:5432/postgres" -c "CREATE DATABASE sorftime_dev OWNER sorftime"
+DATABASE_URL=postgresql+psycopg://sorftime:sorftime@localhost:5432/sorftime_dev poetry run alembic upgrade head
+```
+
+- 若宿主机未安装 psql，可使用容器执行（默认 compose 服务名为 db）：  
+  `docker exec docker-db-1 psql -U sorftime -d postgres -c "CREATE DATABASE sorftime_dev OWNER sorftime"`
+
+- 运行后端测试时指定：
+
+```bash
+TEST_DATABASE_URL=postgresql+psycopg://sorftime:sorftime@localhost:5432/sorftime_dev poetry run pytest
+```

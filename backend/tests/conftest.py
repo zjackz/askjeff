@@ -4,8 +4,9 @@ import os
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.deps import get_db
@@ -17,12 +18,26 @@ from app import models as _models  # noqa: F401
 
 
 def _build_testing_engine() -> tuple[sessionmaker[Session], Engine]:
-    """在单测中使用 sqlite，避免依赖外部 PostgreSQL。"""
-    tmp_dir = Path(__file__).resolve().parent / ".tmp"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    db_path = tmp_dir / "test.db"
+    """测试统一使用 PostgreSQL `_dev` 库，符合 Speckit 合约先行要求。"""
     os.environ.setdefault("STORAGE_DIR", str(Path("backend/storage")))
-    engine = create_engine(f"sqlite:///{db_path}", future=True)
+    url = os.environ.get(
+        "TEST_DATABASE_URL",
+        os.environ.get(
+            "DATABASE_URL",
+            "postgresql+psycopg://sorftime:sorftime@localhost:5432/sorftime_dev",
+        ),
+    )
+    db_url = make_url(url)
+
+    # 确保测试数据库存在（需要 sorftime 具备创建权限）
+    admin_url = db_url.set(database="postgres")
+    admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT", future=True)
+    with admin_engine.connect() as conn:
+        exists = conn.execute(text("SELECT 1 FROM pg_database WHERE datname=:db"), {"db": db_url.database}).scalar()
+        if not exists:
+            conn.execute(text(f"CREATE DATABASE {db_url.database} OWNER {db_url.username}"))
+
+    engine = create_engine(db_url, pool_pre_ping=True, future=True)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)

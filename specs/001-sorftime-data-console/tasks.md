@@ -28,6 +28,7 @@
 - [x] T007 [P] 建立全局审计日志表与写入工具（`backend/app/services/audit_service.py`）
 - [x] T008 [P] 在前端接入 Vue Element Admin 基础布局、登录占位页（`frontend/src/`）
 - [x] T009 [P] 设置后端与前端的中文文案/提示枚举，确保默认语言为中文
+- [x] T0DB 统一测试使用 PostgreSQL `sorftime_dev`，移除 SQLite 依赖，测试前自动迁移到 `_dev` 库
 - [ ] T0YC [P] 实现主题切换（亮/暗或品牌主题），提供配置说明与至少一条组件/截图验证（`frontend/src/styles/theme/`）
 - [ ] T0YD 基于角色的权限路由/菜单守卫，示例角色配置写入 quickstart（`frontend/src/router/`）
 - [ ] T0YE [P] Playwright/组件测试覆盖主题切换与权限守卫可用性（`frontend/tests/`）
