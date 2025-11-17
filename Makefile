@@ -66,6 +66,31 @@ tag-and-push:
 	@$(MAKE) tag VERSION=$(VERSION) MSG='$(MSG)'
 	@$(MAKE) release VERSION=$(VERSION)
 
+# 基于变更自动生成 CHANGELOG，并建议用于 Release 说明
+changelog:
+	@if [ -z "$(VERSION)" ]; then echo "[错误] 需要指定 VERSION，例如: make changelog VERSION=0.1.0"; exit 1; fi
+	@python3 scripts/generate_changelog.py --version $(VERSION)
+	@echo "CHANGELOG.md 已生成/更新。"
+
+# 一步完成：升级版本（patch|minor|major）、生成 changelog、打标并推送
+# 用法：make release-complete BUMP=patch  或  make release-complete VERSION=0.2.0
+release-complete:
+	@if [ -z "$(VERSION)" ] && [ -z "$(BUMP)" ]; then echo "[错误] 需要指定 VERSION 或 BUMP=[patch|minor|major]"; exit 1; fi
+	@if [ -n "$(BUMP)" ]; then python3 scripts/bump_version.py --type $(BUMP) --commit --tag; fi
+	@if [ -n "$(VERSION)" ]; then python3 scripts/bump_version.py --set $(VERSION) --commit --tag; fi
+	@python3 - <<'PY'
+import re,sys
+from pathlib import Path
+v = Path('VERSION').read_text().strip()
+if not re.match(r'^\d+\.\d+\.\d+$', v):
+    print('VERSION 文件格式不正确'); sys.exit(1)
+print(v)
+PY
+	@V=$$(cat VERSION); python3 scripts/generate_changelog.py --version $$V
+	@git add CHANGELOG.md && git commit -m "docs(changelog): update for v$$(cat VERSION)" || true
+	@git push origin HEAD
+	@$(MAKE) release VERSION=$$(cat VERSION)
+
 # 简易帮助
 help:
 	@echo "常用命令："
