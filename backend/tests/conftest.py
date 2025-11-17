@@ -60,7 +60,7 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
 def _reset_db() -> None:
-    """每个用例前后清空 sqlite，避免状态污染。"""
+    """每个用例前后清空 PostgreSQL `_dev`，避免状态污染。"""
     Base.metadata.drop_all(bind=TestingEngine)
     Base.metadata.create_all(bind=TestingEngine)
     yield
