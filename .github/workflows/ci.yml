@@ -4,37 +4,57 @@ on:
   push:
     branches: [ main, develop, "001-sorftime-data-console" ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, "001-sorftime-data-console" ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
+    name: 前后端 Lint + 测试
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Frontend
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-      - name: Install pnpm
-        run: npm install -g pnpm
-      - name: Frontend deps
+      - name: Enable corepack
+        run: corepack enable
+      - name: Frontend deps (frozen)
         working-directory: frontend
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
       - name: Frontend lint
         working-directory: frontend
-        run: pnpm lint || true
+        run: pnpm lint
+      - name: Frontend unit tests
+        working-directory: frontend
+        run: pnpm test -- --run
+
+      # Backend
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
       - name: Install Poetry
         run: pip install poetry
-      - name: Backend deps
+      - name: Backend deps (with dev)
         working-directory: backend
-        run: poetry install
+        env:
+          POETRY_VIRTUALENVS_IN_PROJECT: "true"
+        run: poetry install --no-interaction --no-ansi
+      - name: Ruff check
+        working-directory: backend
+        run: poetry run ruff check
       - name: Backend tests
         working-directory: backend
-        run: poetry run pytest || true
+        run: poetry run pytest -q
+
+      # Repo Chinese content check
       - name: 中文检查
-        run: python scripts/check_cn.py || true
+        run: python3 scripts/check_cn.py

@@ -1,0 +1,22 @@
+changelog:
+  categories:
+    - title: 🧩 新功能
+      labels:
+        - feat
+        - feature
+    - title: 🐛 修复
+      labels:
+        - fix
+        - bug
+    - title: ⚙️ 基础设施 / CI
+      labels:
+        - ci
+        - infra
+        - chore
+    - title: 🧪 测试
+      labels:
+        - test
+    - title: 📚 文档
+      labels:
+        - docs
+
