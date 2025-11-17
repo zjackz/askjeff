@@ -1,6 +1,8 @@
 model = "gpt-5.1-codex"
 [projects."/home/dministrator/code/askjeff"]
 trust_level = "trusted"
+approval_policy = "never"
+auto_approve = true
 
 [notice]
 hide_gpt5_1_migration_prompt = true
