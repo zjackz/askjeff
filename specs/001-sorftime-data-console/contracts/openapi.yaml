@@ -25,6 +25,20 @@ paths:
                 importStrategy:
                   type: string
                   enum: [overwrite, append, update-only]
+                sheetName:
+                  type: string
+                  default: 产品详情
+                  description: 仅处理指定 sheet，默认值“产品详情”，找不到则返回 400
+                onMissingRequired:
+                  type: string
+                  enum: [skip, abort]
+                  default: skip
+                  description: 必填字段缺失时跳过该行或中断整个导入
+                columnAliases:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  description: 列别名映射，覆盖默认映射（例：价格|售价 => price）
       responses:
         '201':
           description: 创建成功
@@ -221,26 +235,61 @@ components:
         id:
           type: string
           format: uuid
+          description: 导入批次唯一标识
         filename:
           type: string
+          description: 上传时的原始文件名
         importStrategy:
           type: string
+          description: 导入策略（overwrite/append/update-only）
+        sheetName:
+          type: string
+          description: 实际使用的 sheet 名称
         status:
           type: string
+          description: 当前批次状态（pending/running/succeeded/failed）
         totalRows:
           type: integer
+          description: 文件行数
         successRows:
           type: integer
+          description: 成功写入的行数
         failedRows:
           type: integer
+          description: 失败行数
         startedAt:
           type: string
           format: date-time
+          description: 开始时间
         finishedAt:
           type: string
           format: date-time
+          description: 完成时间
         failureSummary:
           type: object
+          description: 失败与告警汇总
+          properties:
+            columnsSeen:
+              type: array
+              items:
+                type: string
+              description: 本次导入实际出现的列
+            columnsMapped:
+              type: array
+              items:
+                type: string
+              description: 成功映射到标准字段的列
+            columnsUnmapped:
+              type: array
+              items:
+                type: string
+              description: 未映射列
+            warningsCount:
+              type: integer
+              description: 警告行数量（如类型转换失败）
+            failedRowsPath:
+              type: string
+              description: 失败行文件相对路径
     FailedRow:
       type: object
       properties:
@@ -273,10 +322,17 @@ components:
           type: integer
         rating:
           type: number
-        attributes:
-          type: object
         validationStatus:
           type: string
+          enum: [valid, warning, error]
+        validationMessages:
+          type: array
+          items:
+            type: string
+        rawPayload:
+          type: object
+        normalizedPayload:
+          type: object
     ChatAnswer:
       type: object
       properties:

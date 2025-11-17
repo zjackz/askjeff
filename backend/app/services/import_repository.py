@@ -17,6 +17,7 @@ class ImportRepository:
         filename: str,
         storage_path: str,
         import_strategy: str,
+        sheet_name: str | None = None,
         created_by: str | None = None,
     ) -> ImportBatch:
         batch = ImportBatch(
@@ -24,6 +25,7 @@ class ImportRepository:
             storage_path=storage_path,
             import_strategy=import_strategy,
             status="pending",
+            sheet_name=sheet_name,
             created_by=created_by,
             started_at=datetime.now(timezone.utc),
         )
@@ -42,12 +44,14 @@ class ImportRepository:
         success_rows: int,
         failed_rows: int,
         failure_summary: dict | None = None,
+        columns_seen: list[str] | None = None,
     ) -> ImportBatch:
         batch.status = status
         batch.total_rows = total_rows
         batch.success_rows = success_rows
         batch.failed_rows = failed_rows
         batch.failure_summary = failure_summary
+        batch.columns_seen = columns_seen
         batch.finished_at = datetime.now(timezone.utc)
         db.add(batch)
         db.commit()

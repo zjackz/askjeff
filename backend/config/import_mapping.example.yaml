@@ -1,0 +1,31 @@
+# Sorftime 导入列映射与校验示例配置
+sheet_name: "产品详情"  # 默认只解析该 sheet，可在请求中覆盖
+required_fields: ["asin", "title", "currency"]  # 最小必填
+on_missing_required: "skip"  # skip: 跳过缺失必填的行；abort: 中断导入
+
+# 列别名映射：原始列名 -> 标准字段
+column_aliases:
+  "价格": "price"
+  "售价": "price"
+  "Price": "price"
+  "币种": "currency"
+  "Currency": "currency"
+  "产品标题": "title"
+  "标题": "title"
+  "Title": "title"
+  "类目": "category"
+  "Category": "category"
+  "销量排名": "sales_rank"
+  "SalesRank": "sales_rank"
+  "评分": "rating"
+  "Rating": "rating"
+  "评论数": "reviews"
+  "Reviews": "reviews"
+
+# 单位与枚举归一化示例
+normalization:
+  price_scale: 2  # 价格保留小数位
+  currency_whitelist: ["USD", "EUR", "GBP", "JPY", "CNY"]  # 币种白名单
+  rating_scale: 2  # 评分小数位
+
+# 备注：未在映射表中的列会进入 raw_payload；转换失败记 warning，标准列置空。

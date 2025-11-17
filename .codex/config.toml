@@ -1,8 +1,15 @@
 model = "gpt-5.1-codex"
 [projects."/home/dministrator/code/askjeff"]
 trust_level = "trusted"
-approval_policy = "never"
+approval_policy = "on-request"
 auto_approve = true
+
+
+sandbox_mode    = "workspace-write"
+
 
 [notice]
 hide_gpt5_1_migration_prompt = true
+
+[sandbox_workspace_write]
+network_access = true

@@ -47,7 +47,19 @@ backend/migrations/versions/*.pyc
 logs/
 *.tmp
 
-
-
 # frontend
 .pnpm-store/
+
+# Codex CLI 日志
+.codex/log/
+.codex/sessions/
+
+# 本地虚拟环境
+backend/.venv-user/
+
+# 临时/附属文件（Excel 暂存、Windows ADS）
+~$*
+*Zone.Identifier
+backend/tests/data/*-sample.xlsx
+samples/*-sample.xlsx
+sql/

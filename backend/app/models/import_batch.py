@@ -28,8 +28,10 @@ class ImportBatch(Base):
     failed_rows: Mapped[int] = mapped_column(Integer, default=0)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    sheet_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
     failure_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    columns_seen: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     archived: Mapped[bool] = mapped_column(default=False)
 
     records: Mapped[List['ProductRecord']] = relationship('ProductRecord', back_populates='batch', cascade='all, delete-orphan')

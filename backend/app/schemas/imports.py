@@ -20,6 +20,9 @@ class ImportBatchOut(BaseModel):
     failed_rows: int = Field(..., alias="failedRows")
     started_at: datetime | None = Field(default=None, alias="startedAt")
     finished_at: datetime | None = Field(default=None, alias="finishedAt")
+    sheet_name: str | None = Field(default=None, alias="sheetName")
+    failure_summary: dict | None = Field(default=None, alias="failureSummary")
+    columns_seen: list[str] | None = Field(default=None, alias="columnsSeen")
 
     @field_serializer("import_strategy")
     def _serialize_strategy(self, value: str) -> str:

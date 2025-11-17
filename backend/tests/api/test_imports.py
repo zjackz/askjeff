@@ -29,7 +29,7 @@ def test_import_file_success() -> None:
 
 def test_import_file_with_failure_and_detail() -> None:
     # Python 的 bytes 字面量不支持非 ASCII 字符，这里改为字符串再以 UTF-8 编码
-    bad_content = "asin,title\n,缺少asin\nB003,正常行\n".encode("utf-8")
+    bad_content = "asin,title,currency\n,缺少asin,USD\nB003,正常行,USD\n".encode("utf-8")
     response = client.post(
         "/imports",
         files={"file": ("broken.csv", bad_content, "text/csv")},
@@ -42,7 +42,7 @@ def test_import_file_with_failure_and_detail() -> None:
     assert detail.status_code == 200
     detail_body = detail.json()
     assert detail_body["failedRows"][0]["rowNumber"] == 2
-    assert detail_body["failedRows"][0]["reason"] == "缺少 ASIN 或标题"
+    assert detail_body["failedRows"][0]["reason"] == "缺少必填字段: asin"
 
 
 def test_product_list_after_import() -> None:

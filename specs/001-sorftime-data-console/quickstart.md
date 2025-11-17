@@ -6,6 +6,7 @@
 
 - Python 3.12、Poetry 1.8、Node.js 20、pnpm 9、Docker Desktop / Colima
 - 复制 `.env.example` 至 `.env`，填入 PostgreSQL 连接、Deepseek API Key、应用密钥
+- 导入映射：如需自定义列别名/必填规则，将 `backend/config/import_mapping.example.yaml` 复制为同目录下的 `import_mapping.yaml` 后修改
 
 ## 2. 启动依赖
 
@@ -32,6 +33,14 @@ pnpm --prefix frontend dev
 1. **导入**：在“文件导入”上传 `samples/sorftime-demo.xlsx`，选择“追加”策略。观察界面实时状态，确认 5 分钟内批次状态为成功，同时 `backend/storage/imports/` 中生成原始文件与 `{batch_id}_failed.csv`（如有失败行）。
 2. **问答**：在“数据洞察”输入“最近两次导入销量最高的 5 个 ASIN”。验证页面展示 Deepseek 答案、引用批次/字段，且 `query_sessions` 表新增记录、`audit_logs` 写入 `chat.ask`。
 3. **导出**：筛选同一批次，导出 CSV。下载文件后确认列名中文且 `backend/storage/exports/` 中存在文件，`export_jobs` 状态=成功。
+
+### 导入字段规则提示
+
+- 默认仅解析 sheet “产品详情”，可在上传时选择其他 sheet；缺失则导入直接报错。
+- 最小必填：`asin`、`title`、`currency`。缺失时行标记 error，写入失败行文件，不入库。
+- 列别名示例：`价格|售价|Price -> price`，`币种|Currency -> currency`，`产品标题|Title -> title`，`类目|Category -> category`，`销量排名|SalesRank -> sales_rank`。未知列保留在 `raw_payload`。
+- 类型/枚举/单位转换：数值统一为两位小数；日期转 UTC；币种使用白名单，失败记 warning 并保留原值。
+- 失败行文件路径：`backend/storage/exports/failed/{batch_id}.csv`，包含行号、原因、原始行 JSON；列覆盖率与警告计数写在批次 `failure_summary`。
 
 ## 5. 观测与日志
 

@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from fastapi import UploadFile
+from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.import_batch import ProductRecord
 from app.services.audit_service import AuditService
+from app.services.import_config import ImportConfig, load_import_config
 from app.services.import_repository import ImportRepository
 
 STRATEGY_ALIASES = {
@@ -20,17 +24,39 @@ STRATEGY_ALIASES = {
     "update_only": "update_only",
 }
 
+STANDARD_FIELDS = {
+    "asin",
+    "title",
+    "category",
+    "price",
+    "currency",
+    "sales_rank",
+    "reviews",
+    "rating",
+}
+
 
 @dataclass
 class ParsedResult:
     records: list[ProductRecord]
     failures: list[dict]
+    warnings_count: int
+    columns_seen: list[str]
+    columns_mapped: list[str]
+    columns_unmapped: list[str]
+
+
+class ImportAbort(Exception):
+    """用于中断导入的异常。"""
 
 
 class ImportService:
     def __init__(self) -> None:
         self.import_dir = settings.storage_dir / "imports"
+        self.failed_dir = settings.storage_dir / "exports" / "failed"
         self.import_dir.mkdir(parents=True, exist_ok=True)
+        self.failed_dir.mkdir(parents=True, exist_ok=True)
+        self.base_config: ImportConfig = load_import_config()
 
     @staticmethod
     def normalize_strategy(strategy: str) -> str:
@@ -47,38 +73,67 @@ class ImportService:
         *,
         file: UploadFile,
         import_strategy: str,
+        sheet_name: str | None = None,
+        on_missing_required: str | None = None,
+        column_aliases: dict[str, str] | None = None,
         created_by: str | None = None,
     ):
         saved_path = self._save_file(file)
+        effective_config = self.base_config.merge_overrides(
+            sheet_name=sheet_name,
+            on_missing_required=on_missing_required,
+            column_aliases=column_aliases,
+        )
         batch = ImportRepository.create_batch(
             db,
             filename=file.filename,
             storage_path=str(saved_path),
             import_strategy=import_strategy,
+            sheet_name=effective_config.sheet_name,
             created_by=created_by,
         )
 
-        parsed = self._parse_file(saved_path, batch_id=batch.id)
-        if parsed.records:
-            ImportRepository.create_product_records(db, parsed.records)
         failure_file = None
-        if parsed.failures:
-            failure_file = self._write_failures(batch.id, parsed.failures)
-        status = "succeeded" if not parsed.failures else "failed"
-        ImportRepository.update_batch_stats(
-            db,
-            batch,
-            status=status,
-            total_rows=len(parsed.records) + len(parsed.failures),
-            success_rows=len(parsed.records),
-            failed_rows=len(parsed.failures),
-            failure_summary={
-                "items": parsed.failures,
-                "file": str(failure_file) if failure_file else None,
+        try:
+            parsed = self._parse_file(saved_path, batch_id=batch.id, config=effective_config)
+            if parsed.records:
+                ImportRepository.create_product_records(db, parsed.records)
+            if parsed.failures:
+                failure_file = self._write_failures(batch.id, parsed.failures)
+            status = "succeeded" if not parsed.failures else "failed"
+            failure_summary = {
+                "columns_seen": parsed.columns_seen,
+                "columns_mapped": parsed.columns_mapped,
+                "columns_unmapped": parsed.columns_unmapped,
+                "warnings_count": parsed.warnings_count,
+                "failed_rows_path": str(failure_file.relative_to(settings.storage_dir))
+                if failure_file
+                else None,
+                "items": parsed.failures if parsed.failures else None,
             }
-            if parsed.failures
-            else None,
-        )
+            ImportRepository.update_batch_stats(
+                db,
+                batch,
+                status=status,
+                total_rows=len(parsed.records) + len(parsed.failures),
+                success_rows=len(parsed.records),
+                failed_rows=len(parsed.failures),
+                failure_summary=failure_summary,
+                columns_seen=parsed.columns_seen,
+            )
+        except ImportAbort as exc:
+            ImportRepository.update_batch_stats(
+                db,
+                batch,
+                status="failed",
+                total_rows=0,
+                success_rows=0,
+                failed_rows=0,
+                failure_summary={"error": str(exc)},
+                columns_seen=[],
+            )
+            raise ValueError(str(exc))
+
         AuditService.log_action(
             db,
             action="import.create",
@@ -86,8 +141,9 @@ class ImportService:
             entity_id=batch.id,
             payload={
                 "filename": file.filename,
-                "status": status,
-                "failed_rows": len(parsed.failures),
+                "status": batch.status,
+                "failed_rows": batch.failed_rows,
+                "sheet_name": effective_config.sheet_name,
             },
         )
         return batch
@@ -100,45 +156,105 @@ class ImportService:
         file.file.seek(0)
         return target
 
-    def _parse_file(self, path: Path, *, batch_id: str) -> ParsedResult:
+    def _parse_file(self, path: Path, *, batch_id: str, config: ImportConfig) -> ParsedResult:
         records: list[ProductRecord] = []
         failures: list[dict] = []
-        with path.open("r", encoding="utf-8", newline="") as fh:
-            reader = csv.DictReader(fh)
-            for idx, row in enumerate(reader, start=2):
-                asin = row.get("asin") or row.get("ASIN")
-                title = row.get("title") or row.get("Title")
-                if not asin or not title:
-                    failures.append(
-                        {
-                            "rowNumber": idx,
-                            "asin": asin,
-                            "reason": "缺少 ASIN 或标题",
-                            "rawValues": row,
-                        }
-                    )
-                    continue
-                record = ProductRecord(
-                    batch_id=batch_id,
-                    asin=asin,
-                    title=title,
-                    category=row.get("category"),
-                    price=self._to_float(row.get("price")),
-                    currency=row.get("currency"),
-                    sales_rank=self._to_int(row.get("sales_rank")),
-                    reviews=self._to_int(row.get("reviews")),
-                    rating=self._to_float(row.get("rating")),
-                    raw_payload=row,
-                    normalized_payload=row,
+        warnings_count = 0
+
+        rows = self._read_rows(path, sheet_name=config.sheet_name)
+        if not rows:
+            raise ImportAbort("指定 sheet 为空或不存在数据")
+
+        headers = rows[0]
+        columns_seen = [str(h).strip() for h in headers if h is not None]
+        header_keyed = [h.strip() if isinstance(h, str) else str(h) for h in headers]
+        alias_map = {k.lower(): v for k, v in config.column_aliases.items()}
+
+        columns_mapped = set()
+        columns_unmapped = set()
+
+        for idx, raw_values in enumerate(rows[1:], start=2):
+            row_dict: dict[str, Any] = {header_keyed[i]: raw_values[i] for i in range(len(header_keyed))}
+            mapped_payload: dict[str, Any] = {}
+            normalized_payload: dict[str, Any] = {}
+            validation_messages: dict[str, str] = {}
+            validation_status = "valid"
+
+            for header, value in row_dict.items():
+                key_lower = header.lower()
+                std_field = alias_map.get(key_lower)
+                if std_field is None and key_lower in STANDARD_FIELDS:
+                    std_field = key_lower
+                if std_field:
+                    columns_mapped.add(std_field)
+                    mapped_payload[std_field] = value
+                    normalized_value, warn = self._normalize_value(std_field, value, config)
+                    if warn:
+                        validation_status = "warning"
+                        validation_messages[std_field] = warn
+                        warnings_count += 1
+                    normalized_payload[std_field] = normalized_value
+                else:
+                    columns_unmapped.add(header)
+
+            missing = [field for field in config.required_fields if not mapped_payload.get(field)]
+            if missing:
+                reason = f"缺少必填字段: {', '.join(missing)}"
+                failures.append(
+                    {
+                        "rowNumber": idx,
+                        "asin": mapped_payload.get("asin"),
+                        "reason": reason,
+                        "rawValues": row_dict,
+                    }
                 )
-                records.append(record)
-        return ParsedResult(records=records, failures=failures)
+                if config.on_missing_required == "abort":
+                    raise ImportAbort(reason)
+                continue
+
+            record = ProductRecord(
+                batch_id=batch_id,
+                asin=str(mapped_payload.get("asin")),
+                title=str(mapped_payload.get("title")),
+                category=mapped_payload.get("category"),
+                price=self._to_decimal(normalized_payload.get("price")),
+                currency=self._normalize_currency(mapped_payload.get("currency"), config),
+                sales_rank=self._to_int(normalized_payload.get("sales_rank")),
+                reviews=self._to_int(normalized_payload.get("reviews")),
+                rating=self._to_decimal(normalized_payload.get("rating"), scale=2),
+                raw_payload=row_dict,
+                normalized_payload=normalized_payload,
+                validation_status=validation_status,
+                validation_messages=validation_messages or None,
+            )
+            records.append(record)
+
+        return ParsedResult(
+            records=records,
+            failures=failures,
+            warnings_count=warnings_count,
+            columns_seen=list(columns_seen),
+            columns_mapped=sorted(columns_mapped),
+            columns_unmapped=sorted(columns_unmapped),
+        )
+
+    def _read_rows(self, path: Path, *, sheet_name: str) -> list[list[Any]]:
+        suffix = path.suffix.lower()
+        if suffix in {".xlsx", ".xlsm"}:
+            wb = load_workbook(filename=path, read_only=True, data_only=True)
+            if sheet_name not in wb.sheetnames:
+                raise ImportAbort(f"未找到指定 sheet: {sheet_name}")
+            ws = wb[sheet_name]
+            return [list(row) for row in ws.iter_rows(values_only=True)]
+        with path.open("r", encoding="utf-8", newline="") as fh:
+            reader = csv.reader(fh)
+            return [row for row in reader]
 
     def _write_failures(self, batch_id: str, failures: list[dict]) -> Path:
-        target = self.import_dir / f"{batch_id}_failed.csv"
+        target = self.failed_dir / f"{batch_id}_failed.csv"
         with target.open("w", encoding="utf-8", newline="") as fh:
             writer = csv.DictWriter(
-                fh, fieldnames=["rowNumber", "asin", "reason"], extrasaction="ignore"
+                fh, fieldnames=["rowNumber", "asin", "reason", "rawValues"], extrasaction="ignore"
             )
             writer.writeheader()
             for item in failures:
@@ -147,27 +263,62 @@ class ImportService:
                         "rowNumber": item.get("rowNumber"),
                         "asin": item.get("asin"),
                         "reason": item.get("reason"),
+                        "rawValues": item.get("rawValues"),
                     }
                 )
         return target
 
+    def _normalize_value(self, field: str, value: Any, config: ImportConfig) -> tuple[Any, str | None]:
+        """按字段归一化，返回 (值, 警告信息)。"""
+        if value is None or value == "":
+            return None, None
+        if field in {"price"}:
+            dec = self._to_decimal(value, scale=int(config.normalization.get("price_scale", 2)))
+            if dec is None:
+                return None, "价格解析失败"
+            return dec, None
+        if field in {"rating"}:
+            dec = self._to_decimal(value, scale=int(config.normalization.get("rating_scale", 2)))
+            if dec is None:
+                return None, "评分解析失败"
+            return dec, None
+        if field in {"sales_rank", "reviews"}:
+            iv = self._to_int(value)
+            if iv is None:
+                return None, f"{field} 解析失败"
+            return iv, None
+        return value, None
+
     @staticmethod
-    def _to_float(value: str | None) -> float | None:
+    def _to_decimal(value: Any, scale: int | None = None) -> Decimal | None:
         if value in (None, ""):
             return None
         try:
-            return float(value)
-        except ValueError:
+            dec = Decimal(str(value))
+            if scale is not None:
+                return dec.quantize(Decimal(10) ** -scale)
+            return dec
+        except (InvalidOperation, ValueError):
             return None
 
     @staticmethod
-    def _to_int(value: str | None) -> int | None:
+    def _to_int(value: Any) -> int | None:
         if value in (None, ""):
             return None
         try:
             return int(value)
-        except ValueError:
+        except (TypeError, ValueError):
             return None
+
+    @staticmethod
+    def _normalize_currency(value: Any, config: ImportConfig) -> str | None:
+        if value in (None, ""):
+            return None
+        curr = str(value).upper()
+        whitelist = config.normalization.get("currency_whitelist") or []
+        if whitelist and curr not in whitelist:
+            return None
+        return curr
 
 
 import_service = ImportService()
