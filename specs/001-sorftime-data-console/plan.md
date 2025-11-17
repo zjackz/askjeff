@@ -7,6 +7,7 @@
 
 - 目标：交付可导入 Sorftime 表格、集中管理批次、支持自然语言问答与可配置导出的运营后台，并输出推荐技术方案。
 - 方案：沿用用户指定栈（FastAPI + PostgreSQL + SQLAlchemy + Vue 3 + Vite + Vue Element Admin），去除所有非必要组件。导入/导出通过 FastAPI BackgroundTasks + streaming 实现，文件直接保存在本地挂载目录；问答直接调用 Deepseek API（无 LangChain）并记录引用字段；开发与运维均使用 Docker Compose，生产部署采用 systemd + docker compose（单机或虚拟机），以最少依赖实现需求。
+- 交付物：补充《技术选型建议》（`specs/001-sorftime-data-console/tech-selection.md`），涵盖 UI 组件/状态管理/表格图表/后端栈/部署方式及理由，并在 quickstart 提供查阅路径。
 
 ## 技术背景
 
@@ -14,6 +15,7 @@
 - **核心依赖**：FastAPI、Pydantic v2、SQLAlchemy 2.0、Alembic、HTTPX、FastAPI BackgroundTasks、Deepseek 官方 SDK；前端 Vue Element Admin、Pinia、Vue Router、Axios、ECharts。
 - **存储**：PostgreSQL 15（批次、产品、导出日志、QuerySession）、本地挂载目录 `storage/`（上传文件与导出结果）。
 - **测试策略**：Pytest + HTTPX（API/快照）、unittest.mock（Deepseek stub）、Playwright（前端端到端）、k6（导入/导出吞吐）、Contract Tests（OpenAPI）。
+- **性能验证**：导入 50MB/10 万行 ≤5 分钟（k6/pytest 基准，报告存 `scripts/perf/import-report.md`）；问答 P90 ≤10s（Deepseek 模拟及降级验证，报告存 `scripts/perf/chat-report.md`）；导出 50k+ 行 95% ≤2 分钟（k6，报告存 `scripts/perf/export-report.md`），验证结果需在 quickstart/验收中引用。
 - **部署/目标平台**：开发/测试统一使用 Docker Compose（frontend/backend/postgres）。生产为单机 Docker Compose + systemd watcher（或轻量容器主机），无需 K8s；CI 使用 GitHub Actions。
 - **性能&约束**：单批次文件≤50MB、10万行；导入 5 分钟内完成；问答 P95 ≤10s；导出 95% 在 2 分钟内完成；界面/文档中文呈现。
 
@@ -63,6 +65,10 @@ infra/
 ```
 
 **结构决策**：仅保留满足需求的最小目录，前后端分离但共享接口契约；后台任务使用 FastAPI BackgroundTasks，无需独立 worker；infra 只包含 Compose 与部署脚本，方便 Dev/Ops。
+
+### 前端基础设施
+
+- 提供主题切换（亮/暗或品牌方案）与基于角色的权限路由/菜单守卫，默认使用中文语言包；文档需说明配置方法与默认示例。
 
 ## 复杂度追踪（仅在违反宪章时填写）
 

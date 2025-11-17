@@ -28,6 +28,9 @@
 - [x] T007 [P] 建立全局审计日志表与写入工具（`backend/app/services/audit_service.py`）
 - [x] T008 [P] 在前端接入 Vue Element Admin 基础布局、登录占位页（`frontend/src/`）
 - [x] T009 [P] 设置后端与前端的中文文案/提示枚举，确保默认语言为中文
+- [ ] T0YC [P] 实现主题切换（亮/暗或品牌主题），提供配置说明与至少一条组件/截图验证（`frontend/src/styles/theme/`）
+- [ ] T0YD 基于角色的权限路由/菜单守卫，示例角色配置写入 quickstart（`frontend/src/router/`）
+- [ ] T0YE [P] Playwright/组件测试覆盖主题切换与权限守卫可用性（`frontend/tests/`）
 
 ## 阶段 3：User Story 1 - Sorftime 批次导入 (Priority: P1) 🎯
 
@@ -38,6 +41,7 @@
 
 - [x] T010 [US1] 编写导入接口 Pytest + HTTPX 用例（`backend/tests/api/test_imports.py`），覆盖成功/失败行
 - [x] T011 [P][US1] 编写 Playwright 脚本验证上传流程（`frontend/tests/e2e/import.spec.ts`）
+- [ ] T0XZ [US1] 导入性能基准：50MB/10 万行 k6/pytest，记录耗时/失败率，输出 `scripts/perf/import-report.md`
 
 ### Implementation
 
@@ -61,6 +65,7 @@
 
 - [x] T019 [US2] 为问答 API 编写 Pytest 用例（含 Deepseek mock），校验成功与失败路径（`backend/tests/api/test_chat.py`）
 - [x] T020 [P][US2] 前端编写组件单测/快照（`frontend/tests/components/chat.spec.ts`）
+- [ ] T0YA [US2] 问答性能与降级验证：P90 ≤10s，Deepseek 失败时降级路径可用，输出 `scripts/perf/chat-report.md`
 
 ### Implementation
 
@@ -83,6 +88,7 @@
 
 - [x] T027 [US3] 为导出 API 编写 Pytest（成功/失败/重试）（`backend/tests/api/test_exports.py`）
 - [x] T028 [P][US3] 前端编写导出流程 e2e 测试（`frontend/tests/e2e/export.spec.ts`）
+- [ ] T0YB [US3] 导出性能与分段测试：50k+ 行 95% ≤2 分钟，支持失败重试，输出 `scripts/perf/export-report.md`
 
 ### Implementation
 
@@ -95,6 +101,8 @@
 
 - [x] T033 [US3] 记录导出日志到 `audit_logs` 并提供失败行下载链接
 - [x] T034 [US3] 更新 quickstart 的导出与日志核查步骤（`specs/001-sorftime-data-console/quickstart.md`）
+- [ ] T0XX [P][US3] 撰写《技术选型建议》文档（UI 组件、状态管理、表格/图表、后端栈、部署方式与理由），存放 `specs/001-sorftime-data-console/tech-selection.md`
+- [ ] T0XY [US3] 审阅技术选型文档并在 quickstart 增加查阅步骤，确认文档存在且理由完整
 
 ## 阶段 N：收尾与跨故事事项
 
