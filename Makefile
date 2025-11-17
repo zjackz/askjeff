@@ -3,7 +3,7 @@
 
 COMPOSE := docker compose -f infra/docker/compose.yml
 
-.PHONY: up down restart logs ps backend-logs frontend-logs db-logs rebuild shell-backend shell-frontend test-backend lint-frontend
+.PHONY: up down restart logs ps backend-logs frontend-logs db-logs rebuild shell-backend shell-frontend test-backend lint-frontend help tag release tag-and-push
 
 up:
 	$(COMPOSE) up -d --build
@@ -47,3 +47,36 @@ test-backend:
 lint-frontend:
 	$(COMPOSE) exec frontend pnpm lint
 
+# ========== 发布相关 ==========
+# 生成标签：make tag VERSION=0.1.0 MSG="容器优先改造"
+tag:
+	@if [ -z "$(VERSION)" ]; then echo "[错误] 需要指定 VERSION，例如: make tag VERSION=0.1.0"; exit 1; fi
+	@git tag v$(VERSION) -m "${MSG:-Release v$(VERSION)}"
+	@echo "已创建标签 v$(VERSION)，可执行: make release VERSION=$(VERSION)"
+
+# 推送标签到远端并触发 GitHub Release
+release:
+	@if [ -z "$(VERSION)" ]; then echo "[错误] 需要指定 VERSION，例如: make release VERSION=0.1.0"; exit 1; fi
+	@git push origin v$(VERSION)
+	@echo "已推送标签 v$(VERSION)。稍后在 GitHub Releases 自动生成发布说明。"
+
+# 一步完成：打标签 + 推送
+tag-and-push:
+	@if [ -z "$(VERSION)" ]; then echo "[错误] 需要指定 VERSION，例如: make tag-and-push VERSION=0.1.0"; exit 1; fi
+	@$(MAKE) tag VERSION=$(VERSION) MSG='$(MSG)'
+	@$(MAKE) release VERSION=$(VERSION)
+
+# 简易帮助
+help:
+	@echo "常用命令："
+	@echo "  make up                # 启动全部容器（构建+就绪）"
+	@echo "  make down              # 停止并清理容器与卷"
+	@echo "  make ps                # 查看服务状态"
+	@echo "  make backend-logs      # 查看后端日志"
+	@echo "  make frontend-logs     # 查看前端日志"
+	@echo "  make test-backend      # 后端 ruff + pytest"
+	@echo "  make lint-frontend     # 前端 ESLint"
+	@echo "  make rebuild           # 重新构建镜像"
+	@echo "  make tag VERSION=0.1.0 MSG=...        # 创建发布标签"
+	@echo "  make release VERSION=0.1.0            # 推送标签触发 Release"
+	@echo "  make tag-and-push VERSION=0.1.0 MSG=...  # 一步完成"
