@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Sequence
 
 from sqlalchemy import func, select
@@ -25,7 +25,7 @@ class ImportRepository:
             import_strategy=import_strategy,
             status="pending",
             created_by=created_by,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         db.add(batch)
         db.commit()
@@ -48,7 +48,7 @@ class ImportRepository:
         batch.success_rows = success_rows
         batch.failed_rows = failed_rows
         batch.failure_summary = failure_summary
-        batch.finished_at = datetime.utcnow()
+        batch.finished_at = datetime.now(timezone.utc)
         db.add(batch)
         db.commit()
         db.refresh(batch)
