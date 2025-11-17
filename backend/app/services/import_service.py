@@ -13,6 +13,13 @@ from app.models.import_batch import ProductRecord
 from app.services.audit_service import AuditService
 from app.services.import_repository import ImportRepository
 
+STRATEGY_ALIASES = {
+    "overwrite": "overwrite",
+    "append": "append",
+    "update-only": "update_only",
+    "update_only": "update_only",
+}
+
 
 @dataclass
 class ParsedResult:
@@ -24,6 +31,15 @@ class ImportService:
     def __init__(self) -> None:
         self.import_dir = settings.storage_dir / "imports"
         self.import_dir.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def normalize_strategy(strategy: str) -> str:
+        """将契约中的导入策略转换为内部枚举值。"""
+        key = strategy.strip().lower()
+        normalized = STRATEGY_ALIASES.get(key)
+        if not normalized:
+            raise ValueError("不支持的导入策略")
+        return normalized
 
     def handle_upload(
         self,
@@ -93,7 +109,14 @@ class ImportService:
                 asin = row.get("asin") or row.get("ASIN")
                 title = row.get("title") or row.get("Title")
                 if not asin or not title:
-                    failures.append({"row": idx, "reason": "缺少 ASIN 或标题"})
+                    failures.append(
+                        {
+                            "rowNumber": idx,
+                            "asin": asin,
+                            "reason": "缺少 ASIN 或标题",
+                            "rawValues": row,
+                        }
+                    )
                     continue
                 record = ProductRecord(
                     batch_id=batch_id,
@@ -114,10 +137,18 @@ class ImportService:
     def _write_failures(self, batch_id: str, failures: list[dict]) -> Path:
         target = self.import_dir / f"{batch_id}_failed.csv"
         with target.open("w", encoding="utf-8", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=["row", "reason"])
+            writer = csv.DictWriter(
+                fh, fieldnames=["rowNumber", "asin", "reason"], extrasaction="ignore"
+            )
             writer.writeheader()
             for item in failures:
-                writer.writerow(item)
+                writer.writerow(
+                    {
+                        "rowNumber": item.get("rowNumber"),
+                        "asin": item.get("asin"),
+                        "reason": item.get("reason"),
+                    }
+                )
         return target
 
     @staticmethod

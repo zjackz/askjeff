@@ -1,4 +1,5 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -22,6 +23,11 @@ const routes: RouteRecordRaw[] = [
         path: '/import',
         component: () => import('../views/import/index.vue'),
         meta: { title: '文件导入' }
+      },
+      {
+        path: '/chat',
+        component: () => import('../views/chat/index.vue'),
+        meta: { title: '数据洞察' }
       },
       {
         path: '/export',

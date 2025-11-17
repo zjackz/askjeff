@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from unittest.mock import patch
-
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -13,7 +11,7 @@ class FakeChatService:
     def ask(self, *_, **__):  # type: ignore[override]
         return {
             "answer": "测试回答",
-            "references": {"batches": []},
+            "references": [],
             "session_id": "fake",
         }
 
@@ -27,3 +25,5 @@ def test_chat_query(monkeypatch):
     assert response.status_code == 200
     data = response.json()
     assert data["answer"] == "测试回答"
+    assert data["sessionId"] == "fake"
+    assert isinstance(data.get("references"), list)

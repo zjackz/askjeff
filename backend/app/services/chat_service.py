@@ -24,13 +24,14 @@ class ChatService:
     ) -> dict[str, Any]:
         summary = self._collect_summary(db, context_batches)
         result = self.client.summarize(question, summary)
+        references = self._build_references(summary)
 
         session = QuerySession(
             question=question,
             intent="batch-analysis",
             sql_template=summary.get("sql"),
             answer=result["answer"],
-            references={"batches": summary.get("batch_ids", [])},
+            references=references,
             deepseek_trace=result.get("trace"),
             status="succeeded",
             asked_by=asked_by,
@@ -49,7 +50,7 @@ class ChatService:
 
         return {
             "answer": session.answer,
-            "references": session.references,
+            "references": references,
             "session_id": session.id,
         }
 
@@ -82,6 +83,21 @@ class ChatService:
             "sql": "SELECT COUNT(*) FROM import_batches",
         }
         return summary
+
+    @staticmethod
+    def _build_references(summary: dict[str, Any]) -> list[dict[str, Any]]:
+        refs = [
+            {"batchId": bid, "asin": None, "fields": []} for bid in summary.get("batch_ids", []) or []
+        ]
+        if not refs and summary.get("batch_summary", {}).get("latest_batch_id"):
+            refs.append(
+                {
+                    "batchId": summary["batch_summary"]["latest_batch_id"],
+                    "asin": None,
+                    "fields": [],
+                }
+            )
+        return refs
 
 
 chat_service = ChatService()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -14,26 +14,43 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 
 @router.post("", response_model=ImportBatchOut, status_code=201)
 async def create_import(
-    file: UploadFile,
+    file: UploadFile | None = File(default=None),
     importStrategy: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    if importStrategy not in {"overwrite", "append", "update_only"}:
-        raise AppError("不支持的导入策略")
+    try:
+        normalized_strategy = import_service.normalize_strategy(importStrategy)
+    except ValueError as exc:
+        raise AppError(str(exc))
+    if file is None:
+        # 测试期望缺少文件时返回 400，而不是 422
+        raise AppError("缺少导入文件")
     if file.filename is None:
         raise AppError("文件名不能为空")
     batch = import_service.handle_upload(
         db,
         file=file,
-        import_strategy=importStrategy,
+        import_strategy=normalized_strategy,
     )
     return batch
 
 
 @router.get("", response_model=ImportListResponse)
-async def list_imports(status: str | None = None, db: Session = Depends(get_db)):
-    batches = ImportRepository.list_batches(db, status=status)
-    return {"items": batches}
+async def list_imports(
+    status: str | None = Query(default=None),
+    asin: str | None = Query(default=None),
+    page: int = Query(default=1, alias="page", ge=1),
+    page_size: int = Query(default=20, alias="pageSize", ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    items, total = ImportRepository.list_batches_with_filters(
+        db,
+        status=status,
+        asin=asin,
+        page=page,
+        page_size=page_size,
+    )
+    return {"items": items, "total": total}
 
 
 @router.get("/{batch_id}", response_model=ImportDetailResponse)
@@ -41,4 +58,5 @@ async def get_import_detail(batch_id: str, db: Session = Depends(get_db)):
     batch = ImportRepository.get_batch(db, batch_id)
     if not batch:
         raise HTTPException(status_code=404, detail="批次不存在")
-    return {"batch": batch, "failure_summary": batch.failure_summary}
+    failure_items = batch.failure_summary.get("items", []) if batch.failure_summary else []
+    return {"batch": batch, "failed_rows": failure_items}

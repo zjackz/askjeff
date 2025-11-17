@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Sequence
-from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import ExportJob, ImportBatch, ProductRecord
+from app.models import ExportJob, ProductRecord
 from app.services.audit_service import AuditService
 
 
@@ -25,6 +25,26 @@ class ExportService:
         self.export_dir = settings.storage_dir / "exports"
         self.export_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def normalize_export_type(export_type: str) -> str:
+        mapping = {
+            "clean-products": "clean_products",
+            "clean_products": "clean_products",
+            "failed-rows": "failed_rows",
+            "failed_rows": "failed_rows",
+        }
+        normalized = mapping.get(export_type)
+        if not normalized:
+            raise ValueError("不支持的导出类型")
+        return normalized
+
+    @staticmethod
+    def normalize_file_format(file_format: str) -> str:
+        fmt = (file_format or "csv").lower()
+        if fmt not in {"csv", "xlsx"}:
+            raise ValueError("不支持的导出文件格式")
+        return fmt
+
     def create_job(
         self,
         db: Session,
@@ -35,12 +55,15 @@ class ExportService:
         file_format: str,
         triggered_by: str | None = None,
     ) -> ExportJob:
+        normalized_type = self.normalize_export_type(export_type)
+        normalized_format = self.normalize_file_format(file_format)
         job = ExportJob(
-            export_type=export_type,
+            export_type=normalized_type,
             filters=filters,
             selected_fields=selected_fields,
-            file_format=file_format,
+            file_format=normalized_format,
             status="running",
+            started_at=datetime.utcnow(),
             triggered_by=triggered_by,
         )
         db.add(job)
@@ -51,11 +74,12 @@ class ExportService:
             result = self._generate_file(db, job)
             job.file_path = str(result.file_path)
             job.status = "succeeded"
-            job.finished_at = job.finished_at or result.file_path.stat().st_mtime
+            job.finished_at = datetime.utcnow()
             job.error_message = None
         except Exception as exc:  # noqa: BLE001
             job.status = "failed"
             job.error_message = str(exc)
+            job.finished_at = datetime.utcnow()
         finally:
             db.add(job)
             db.commit()

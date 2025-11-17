@@ -37,6 +37,8 @@ venv/
 
 # Generated storage directories
 backend/storage/
+# 容器映射产生的本地目录（避免误提交）
+backend/backend/
 
 # Alembic
 backend/migrations/versions/*.pyc
@@ -44,3 +46,8 @@ backend/migrations/versions/*.pyc
 # Logs & reports
 logs/
 *.tmp
+
+
+
+# frontend
+.pnpm-store/

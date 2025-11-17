@@ -1,3 +1,3 @@
-from . import imports, chat, exports
+from . import imports, chat, exports, products
 
-__all__ = ["imports", "chat", "exports"]
+__all__ = ["imports", "chat", "exports", "products"]

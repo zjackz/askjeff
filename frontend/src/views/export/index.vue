@@ -50,7 +50,13 @@ const form = reactive({
   filters: { batch_id: '' },
   selectedFields: ['asin', 'title']
 })
-const jobs = ref<any[]>([])
+// 简化的导出任务行类型（仅用于前端展示）
+interface ExportJobRow {
+  id: string
+  status: string
+  file_path?: string | null
+}
+const jobs = ref<ExportJobRow[]>([])
 const submitting = ref(false)
 const message = ref('')
 

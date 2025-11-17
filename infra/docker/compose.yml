@@ -1,4 +1,3 @@
-version: '3.9'
 services:
   db:
     image: postgres:15
@@ -11,28 +10,87 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sorftime -d sorftime"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   backend:
     image: python:3.12-slim
     working_dir: /app
-    command: bash -c "pip install poetry && poetry install && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command:
+      - bash
+      - -lc
+      - |
+        set -e
+        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+        pip install --no-cache-dir poetry poetry-plugin-export
+        # 使用 Poetry 导出锁定依赖，再用 pip 安装（走镜像源更稳）
+        poetry export --without-hashes -f requirements.txt -o /tmp/requirements.txt
+        for i in 1 2 3 4 5; do pip install --no-cache-dir -r /tmp/requirements.txt && break || echo "pip install retry $$i" && sleep 3; done
+        # 等待数据库可用
+        python - <<'PY'
+        import os, time
+        from sqlalchemy import create_engine, text
+        url = os.environ.get('DATABASE_URL')
+        for i in range(60):
+            try:
+                engine = create_engine(url, future=True)
+                with engine.connect() as conn:
+                    conn.execute(text('SELECT 1'))
+                print('Database is ready')
+                break
+            except Exception as e:  # noqa: BLE001
+                print('Waiting for database...', e)
+                time.sleep(2)
+        PY
+        alembic upgrade head
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - ../../backend:/app
-      - ../../backend/storage:/app/storage
+      - backend-venv:/app/.venv
+      - backend-storage:/app/storage
     environment:
       DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime
+      STORAGE_DIR: /app/storage
+      PYTHONPATH: /app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport sys,urllib.request\ntry:\n urllib.request.urlopen('http://localhost:8000/health', timeout=2)\n sys.exit(0)\nexcept Exception:\n sys.exit(1)\nPY\n"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
   frontend:
     image: node:20
     working_dir: /app
-    command: bash -c "npm install -g pnpm && pnpm install && pnpm dev --host 0.0.0.0 --port 5173"
+    environment:
+      CI: "true"
+    command: >
+      bash -c "npm config set registry https://registry.npmmirror.com && corepack enable && pnpm config set registry https://registry.npmmirror.com && pnpm install --no-frozen-lockfile && pnpm dev --host 0.0.0.0 --port 5173"
     volumes:
       - ../../frontend:/app
+      - frontend-node-modules:/app/node_modules
+      - pnpm-store:/root/.local/share/pnpm/store/v10
     ports:
       - "5173:5173"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\" "]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
 volumes:
   db-data:
+  backend-venv:
+  backend-storage:
+  frontend-node-modules:
+  pnpm-store:

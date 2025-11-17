@@ -40,7 +40,15 @@ import axios from 'axios'
 const strategy = ref('append')
 const submitting = ref(false)
 const message = ref('')
-const batches = ref<any[]>([])
+// 批次列表行（按当前表格列字段）
+interface BatchRow {
+  id: string
+  filename: string
+  status: string
+  success_rows?: number
+  failed_rows?: number
+}
+const batches = ref<BatchRow[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const submit = async () => {

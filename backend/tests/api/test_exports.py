@@ -30,11 +30,14 @@ def test_create_export(monkeypatch):
     response = client.post(
         "/exports",
         json={
-            "exportType": "clean_products",
+            "exportType": "clean-products",
             "filters": {"batch_id": "b1"},
             "selectedFields": ["asin"],
             "fileFormat": "csv",
         },
     )
     assert response.status_code == 202
-    assert response.json()["id"] == "job123"
+    payload = response.json()
+    assert payload["id"] == "job123"
+    assert payload["exportType"] == "clean-products"
+    assert payload["fileUrl"] == "/exports/job123/download"
