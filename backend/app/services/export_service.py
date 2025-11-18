@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import ExportJob, ProductRecord
 from app.services.audit_service import AuditService
+from app.services.log_service import LogService
 
 
 @dataclass
@@ -76,10 +77,35 @@ class ExportService:
             job.status = "succeeded"
             job.finished_at = datetime.utcnow()
             job.error_message = None
+            LogService.log(
+                db,
+                level="info",
+                category="export",
+                message=f"导出完成，任务 {job.id}",
+                context={
+                    "export_type": job.export_type,
+                    "file_format": job.file_format,
+                    "rows": result.rows,
+                    "file_path": job.file_path,
+                },
+                trace_id=job.id,
+            )
         except Exception as exc:  # noqa: BLE001
             job.status = "failed"
             job.error_message = str(exc)
             job.finished_at = datetime.utcnow()
+            LogService.log(
+                db,
+                level="error",
+                category="export",
+                message=f"导出失败，任务 {job.id}",
+                context={
+                    "export_type": job.export_type,
+                    "file_format": job.file_format,
+                    "error": str(exc),
+                },
+                trace_id=job.id,
+            )
         finally:
             db.add(job)
             db.commit()

@@ -16,6 +16,7 @@ from app.models.import_batch import ProductRecord
 from app.services.audit_service import AuditService
 from app.services.import_config import ImportConfig, load_import_config
 from app.services.import_repository import ImportRepository
+from app.services.log_service import LogService
 
 STRATEGY_ALIASES = {
     "overwrite": "overwrite",
@@ -121,6 +122,21 @@ class ImportService:
                 failure_summary=failure_summary,
                 columns_seen=parsed.columns_seen,
             )
+            LogService.log(
+                db,
+                level="info",
+                category="import",
+                message=f"导入完成，批次 {batch.id}，状态 {status}",
+                context={
+                    "filename": file.filename,
+                    "status": status,
+                    "total": len(parsed.records) + len(parsed.failures),
+                    "success": len(parsed.records),
+                    "failed": len(parsed.failures),
+                    "sheet": effective_config.sheet_name,
+                },
+                trace_id=batch.id,
+            )
         except ImportAbort as exc:
             ImportRepository.update_batch_stats(
                 db,
@@ -131,6 +147,14 @@ class ImportService:
                 failed_rows=0,
                 failure_summary={"error": str(exc)},
                 columns_seen=[],
+            )
+            LogService.log(
+                db,
+                level="error",
+                category="import",
+                message=f"导入失败，批次 {batch.id}",
+                context={"error": str(exc), "filename": file.filename},
+                trace_id=batch.id,
             )
             raise ValueError(str(exc))
 
@@ -183,6 +207,8 @@ class ImportService:
 
         for idx, raw_values in enumerate(data_rows, start=header_idx + 2):
             row_dict: dict[str, Any] = {header_keyed[i]: raw_values[i] for i in range(len(header_keyed))}
+            if all(value in (None, "") for value in row_dict.values()):
+                continue
             mapped_payload: dict[str, Any] = {}
             normalized_payload: dict[str, Any] = {}
             validation_messages: dict[str, str] = {}

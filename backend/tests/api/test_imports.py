@@ -55,7 +55,7 @@ def test_product_list_after_import() -> None:
         )
     batch_id = response.json()["id"]
 
-    products = client.get("/products", params={"batchId": batch_id})
+    products = client.get("/products", params={"batchId": batch_id, "pageSize": 200})
     assert products.status_code == 200
     body = products.json()
     assert body["total"] == 100

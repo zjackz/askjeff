@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import ImportBatch, ProductRecord, QuerySession
 from app.services.audit_service import AuditService
 from app.services.deepseek_client import DeepseekClient
+from app.services.log_service import LogService
 
 
 class ChatService:
@@ -46,6 +47,14 @@ class ChatService:
             actor_id=asked_by,
             entity_id=session.id,
             payload={"question": question, "references": session.references},
+        )
+        LogService.log(
+            db,
+            level="info",
+            category="chat",
+            message="问答完成",
+            context={"question": question, "session_id": session.id},
+            trace_id=session.id,
         )
 
         return {

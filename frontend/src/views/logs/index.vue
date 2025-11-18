@@ -1,6 +1,7 @@
 <template>
   <div class="logs-page">
     <el-card class="filters">
+      <h2>日志中心</h2>
       <div class="filter-row">
         <el-select v-model="level" placeholder="级别" clearable style="width: 140px">
           <el-option label="全部" value="" />
@@ -78,6 +79,7 @@ interface AnalysisResult {
   usedAi: boolean
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 const logs = ref<LogRow[]>([])
 const total = ref(0)
 const page = ref(1)
@@ -92,7 +94,7 @@ const analysis = ref<AnalysisResult>({ summary: '', probableCauses: [], suggesti
 const fetchLogs = async () => {
   loading.value = true
   try {
-    const { data } = await axios.get('http://localhost:8000/logs', {
+    const { data } = await axios.get(`${API_BASE}/logs`, {
       params: {
         level: level.value || undefined,
         category: category.value || undefined,
@@ -114,7 +116,7 @@ const analyzeLogs = async () => {
   analyzing.value = true
   try {
     const ids = logs.value.map((item) => item.id)
-    const { data } = await axios.post('http://localhost:8000/logs/analyze', {
+    const { data } = await axios.post(`${API_BASE}/logs/analyze`, {
       logIds: ids
     })
     analysis.value = data

@@ -64,3 +64,4 @@ sql/
 samples/*-sample.xlsx
 frontend/playwright-report/
 frontend/test-results/
+frontend/tests/e2e/screenshots/
