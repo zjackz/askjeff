@@ -43,8 +43,8 @@ backend/backend/
 # Alembic
 backend/migrations/versions/*.pyc
 
-# Logs & reports
-logs/
+# Logs & reports（仅忽略根目录日志）
+/logs/
 *.tmp
 
 # frontend
@@ -60,6 +60,7 @@ backend/.venv-user/
 # 临时/附属文件（Excel 暂存、Windows ADS）
 ~$*
 *Zone.Identifier
-backend/tests/data/*-sample.xlsx
-samples/*-sample.xlsx
 sql/
+samples/*-sample.xlsx
+frontend/playwright-report/
+frontend/test-results/

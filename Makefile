@@ -1,9 +1,14 @@
+#!/usr/bin/make -f
 # 统一开发命令（容器优先）
 # 使用方法：在仓库根目录执行 make <目标>
+# 环境切换：COMPOSE_ENV=test|dev，默认 dev
 
-COMPOSE := docker compose -f infra/docker/compose.yml
+COMPOSE_ENV ?= dev
+PROJECT ?= askjeff-$(COMPOSE_ENV)
+COMPOSE_FILE := infra/docker/compose.$(COMPOSE_ENV).yml
+COMPOSE := docker compose -p $(PROJECT) -f $(COMPOSE_FILE)
 
-.PHONY: up down restart logs ps backend-logs frontend-logs db-logs rebuild shell-backend shell-frontend test-backend lint-frontend help tag release tag-and-push
+.PHONY: up down restart logs ps backend-logs frontend-logs db-logs rebuild shell-backend shell-frontend test-backend test-frontend test-frontend-e2e test-frontend-all speckit-check help tag release tag-and-push
 
 up:
 	$(COMPOSE) up -d --build
@@ -47,6 +52,22 @@ test-backend:
 lint-frontend:
 	$(COMPOSE) exec frontend pnpm lint
 
+# 前端单测（Vitest，容器内）
+test-frontend:
+	$(COMPOSE) exec frontend bash -lc "cd /app && pnpm test"
+
+# 前端 E2E（Playwright，容器内；依赖 backend 已启动）
+test-frontend-e2e:
+	$(COMPOSE) exec frontend bash -lc "cd /app && BASE_URL=http://localhost:5174 pnpm exec playwright test --reporter=html"
+
+# 综合前端测试（先跑 Vitest 再跑 Playwright）
+test-frontend-all:
+	$(COMPOSE) exec frontend bash -lc "cd /app && pnpm test && BASE_URL=http://localhost:5174 pnpm exec playwright test --reporter=html"
+
+# speckit 轻量校验
+speckit-check:
+	bash scripts/check_speckit.sh
+
 # ========== 发布相关 ==========
 # 生成标签：make tag VERSION=0.1.0 MSG="容器优先改造"
 tag:
@@ -79,13 +100,13 @@ release-complete:
 	@if [ -n "$(BUMP)" ]; then python3 scripts/bump_version.py --type $(BUMP) --commit --tag; fi
 	@if [ -n "$(VERSION)" ]; then python3 scripts/bump_version.py --set $(VERSION) --commit --tag; fi
 	@python3 - <<'PY'
-import re,sys
-from pathlib import Path
-v = Path('VERSION').read_text().strip()
-if not re.match(r'^\d+\.\d+\.\d+$', v):
-    print('VERSION 文件格式不正确'); sys.exit(1)
-print(v)
-PY
+	import re,sys
+	from pathlib import Path
+	v = Path('VERSION').read_text().strip()
+	if not re.match(r'^\d+\.\d+\.\d+$', v):
+	    print('VERSION 文件格式不正确'); sys.exit(1)
+	print(v)
+	PY
 	@V=$$(cat VERSION); python3 scripts/generate_changelog.py --version $$V
 	@git add CHANGELOG.md && git commit -m "docs(changelog): update for v$$(cat VERSION)" || true
 	@git push origin HEAD
@@ -94,8 +115,8 @@ PY
 # 简易帮助
 help:
 	@echo "常用命令："
-	@echo "  make up                # 启动全部容器（构建+就绪）"
-	@echo "  make down              # 停止并清理容器与卷"
+	@echo "  make up                # 启动全部容器（默认 test 环境，可 COMPOSE_ENV=dev）"
+	@echo "  make down              # 停止并清理容器与卷（当前环境）"
 	@echo "  make ps                # 查看服务状态"
 	@echo "  make backend-logs      # 查看后端日志"
 	@echo "  make frontend-logs     # 查看前端日志"

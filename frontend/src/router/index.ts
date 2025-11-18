@@ -33,6 +33,11 @@ const routes: RouteRecordRaw[] = [
         path: '/export',
         component: () => import('../views/export/index.vue'),
         meta: { title: '数据导出' }
+      },
+      {
+        path: '/logs',
+        component: () => import('../views/logs/index.vue'),
+        meta: { title: '日志中心' }
       }
     ]
   }

@@ -1,3 +1,11 @@
+# <!--
+# Sync Report:
+# - Version: 1.1.1 → 1.2.0 (新增原则，扩展交付约束)
+# - Principles: 新增「容器优先与环境一致性」
+# - Updated Templates: plan-template ✅, quickstart ✅
+# - Deferred: 无
+# -->
+
 # AskJeff 宪章
 
 ## Core Principles（核心原则）
@@ -20,6 +28,9 @@
 ### VI. 全中文交付
 代码、注释、Commit、文档及 UI/日志对外文案统一使用中文，可保留必要术语但需附中文解释；合入前必须完成本地化校对。
 
+### VII. 容器优先与环境一致性
+所有服务、测试与前端构建必须通过 Docker Compose 运行；默认使用 dev 环境（端口 8001/5174，数据库 `sorftime_dev`），测试环境仅在 `COMPOSE_ENV=test make up` 下启用（端口 8000/5173，数据库 `sorftime_test`）。禁止直接在宿主机运行后端/前端服务或跳过 Compose 覆盖的 env 配置。前端 E2E 依赖 Playwright 官方镜像，需在容器内执行。
+
 ## Delivery Artifacts（交付产物）
 
 - `spec.md`：至少 3 个可独立上线的用户故事，引用原始需求并列出量化成功指标。
@@ -28,6 +39,7 @@
 - `tasks.md`：以用户故事为单位列出实现、验证、可观测性任务，指出阻塞项。
 - `/speckit.checklist` 生成的清单需声明对应原则。
 - 所有代码、注释、quickstart、runbook、导出文案等面向团队的文本必须为中文版本。
+- 前端 E2E 报告：`frontend/playwright-report/` 需作为交付证据保留。
 
 ## Delivery Workflow（交付流程）
 
@@ -46,4 +58,4 @@
 - 临时豁免仅生效一个发布周期，且要在受影响文件中注明责任人。
 - 代码评审必须同时检查中文交付要求，重复违规需重新培训或拒绝合并。
 
-**Version**: 1.1.1 | **Ratified**: 2025-11-15 | **Last Amended**: 2025-11-15
+**Version**: 1.2.0 | **Ratified**: 2025-11-15 | **Last Amended**: 2025-11-18

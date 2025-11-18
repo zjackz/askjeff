@@ -165,7 +165,15 @@ class ImportService:
         if not rows:
             raise ImportAbort("指定 sheet 为空或不存在数据")
 
-        headers = rows[0]
+        # 部分 Excel 首行会放置备注/提示，此时第二行才是真正表头
+        header_idx = 0
+        if len(rows) > 1:
+            non_empty = sum(1 for cell in rows[0] if cell not in (None, ""))
+            if non_empty < 2:
+                header_idx = 1
+        headers = rows[header_idx]
+        data_rows = rows[header_idx + 1 :]
+
         columns_seen = [str(h).strip() for h in headers if h is not None]
         header_keyed = [h.strip() if isinstance(h, str) else str(h) for h in headers]
         alias_map = {k.lower(): v for k, v in config.column_aliases.items()}
@@ -173,7 +181,7 @@ class ImportService:
         columns_mapped = set()
         columns_unmapped = set()
 
-        for idx, raw_values in enumerate(rows[1:], start=2):
+        for idx, raw_values in enumerate(data_rows, start=header_idx + 2):
             row_dict: dict[str, Any] = {header_keyed[i]: raw_values[i] for i in range(len(header_keyed))}
             mapped_payload: dict[str, Any] = {}
             normalized_payload: dict[str, Any] = {}
@@ -193,9 +201,15 @@ class ImportService:
                         validation_status = "warning"
                         validation_messages[std_field] = warn
                         warnings_count += 1
-                    normalized_payload[std_field] = normalized_value
+                    normalized_payload[std_field] = self._to_jsonable(normalized_value)
                 else:
                     columns_unmapped.add(header)
+
+            default_curr = config.normalization.get("default_currency")
+            if "currency" not in mapped_payload and default_curr:
+                mapped_payload["currency"] = default_curr
+                normalized_payload["currency"] = default_curr
+                columns_mapped.add("currency")
 
             missing = [field for field in config.required_fields if not mapped_payload.get(field)]
             if missing:
@@ -319,6 +333,13 @@ class ImportService:
         if whitelist and curr not in whitelist:
             return None
         return curr
+
+    @staticmethod
+    def _to_jsonable(value: Any) -> Any:
+        """将 Decimal 等不可 JSON 序列化的对象转换为基础类型。"""
+        if isinstance(value, Decimal):
+            return float(value)
+        return value
 
 
 import_service = ImportService()

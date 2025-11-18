@@ -11,7 +11,8 @@
 ## 2. 启动依赖
 
 ```bash
-docker compose -f infra/docker/compose.yml up -d
+make up            # 默认 dev 环境（8001/5174，数据库 sorftime_dev）
+# 如需测试环境：COMPOSE_ENV=test make up  (# 8000/5173，数据库 sorftime_test)
 poetry install
 pnpm install --prefix frontend
 ```
@@ -47,6 +48,12 @@ pnpm --prefix frontend dev
 - 运行 `python scripts/tail_logs_cn.py`，实时查看中文日志输出。
 - 执行 `python scripts/report_metrics.py --days 1`，生成导入耗时、问答延迟、导出成功率报表（CSV）。
 - 查询 PostgreSQL `audit_logs` 表，确保包含导入/问答/导出动作。
+- 日志中心：前端菜单“日志中心”可按级别/分类/关键字查看系统日志，支持一键 AI 诊断。
+- 后端日志 API：
+  - `GET /logs`：分页筛选 level/category/keyword/time。
+  - `GET /logs/{id}`：日志详情。
+  - `POST /logs/analyze`：对指定 logIds 或筛选结果做启发式/AI 诊断。
+- 迁移：新增 `system_logs` 表，需执行 `poetry run alembic upgrade head`（或容器内同名命令）后方可使用。
 
 ## 6. 中文合规自检
 
@@ -55,6 +62,8 @@ pnpm --prefix frontend lint
 poetry run ruff check
 python scripts/check_cn.py
 pytest && pnpm --prefix frontend test
+# 前端 E2E（容器内，报告在 frontend/playwright-report）
+make test-frontend-e2e
 ```
 
 CI 会复用上述命令。若出现英文词条需在 PR 中注明原因或修复。

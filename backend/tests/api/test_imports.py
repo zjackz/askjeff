@@ -12,18 +12,18 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
 def test_import_file_success() -> None:
-    sample_file = DATA_DIR / "sorftime-demo.csv"
+    sample_file = DATA_DIR / "吸尘器-sample.xlsx"
     with sample_file.open("rb") as f:
         response = client.post(
             "/imports",
-            files={"file": (sample_file.name, f, "text/csv")},
+            files={"file": (sample_file.name, f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
             data={"importStrategy": "append"},
         )
     assert response.status_code == 201
     body = response.json()
     assert body["status"] == "succeeded"
     assert body["importStrategy"] == "append"
-    assert body["totalRows"] == 2
+    assert body["totalRows"] == 100
     assert body["failedRows"] == 0
 
 
@@ -46,11 +46,11 @@ def test_import_file_with_failure_and_detail() -> None:
 
 
 def test_product_list_after_import() -> None:
-    sample_file = DATA_DIR / "sorftime-demo.csv"
+    sample_file = DATA_DIR / "吸尘器-sample.xlsx"
     with sample_file.open("rb") as f:
         response = client.post(
             "/imports",
-            files={"file": (sample_file.name, f, "text/csv")},
+            files={"file": (sample_file.name, f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
             data={"importStrategy": "append"},
         )
     batch_id = response.json()["id"]
@@ -58,8 +58,8 @@ def test_product_list_after_import() -> None:
     products = client.get("/products", params={"batchId": batch_id})
     assert products.status_code == 200
     body = products.json()
-    assert body["total"] == 2
-    assert {item["asin"] for item in body["items"]} == {"B001", "B002"}
+    assert body["total"] == 100
+    assert len(body["items"]) == 100
 
 
 def test_import_file_validation_error() -> None:
