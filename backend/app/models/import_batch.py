@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.utils.time import utc_now
 
 IMPORT_STATUS = ('pending', 'running', 'succeeded', 'failed')
 IMPORT_STRATEGIES = ('overwrite', 'append', 'update_only')
@@ -54,6 +55,6 @@ class ProductRecord(Base):
     normalized_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     validation_status: Mapped[str] = mapped_column(Enum(*VALIDATION_STATUS, name='validation_status'), default='valid')
     validation_messages: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    ingested_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    ingested_at: Mapped[datetime] = mapped_column(default=utc_now)
 
     batch: Mapped[ImportBatch] = relationship('ImportBatch', back_populates='records')

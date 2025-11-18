@@ -13,6 +13,9 @@ from app.config import settings
 from app.models import ExportJob, ProductRecord
 from app.services.audit_service import AuditService
 from app.services.log_service import LogService
+from app.utils.time import utc_now
+ 
+ALLOWED_EXPORT_FIELDS = {"asin", "title", "price", "batch_id", "validation_status", "currency"}
 
 
 @dataclass
@@ -46,6 +49,13 @@ class ExportService:
             raise ValueError("不支持的导出文件格式")
         return fmt
 
+    @staticmethod
+    def _validate_fields(selected_fields: list[str]) -> list[str]:
+        fields = [f for f in selected_fields if f in ALLOWED_EXPORT_FIELDS]
+        if not fields:
+            raise ValueError("请选择至少一个允许导出的字段")
+        return fields
+
     def create_job(
         self,
         db: Session,
@@ -61,10 +71,10 @@ class ExportService:
         job = ExportJob(
             export_type=normalized_type,
             filters=filters,
-            selected_fields=selected_fields,
+            selected_fields=self._validate_fields(selected_fields),
             file_format=normalized_format,
             status="running",
-            started_at=datetime.now(timezone.utc),
+            started_at=utc_now(),
             triggered_by=triggered_by,
         )
         db.add(job)
@@ -75,7 +85,7 @@ class ExportService:
             result = self._generate_file(db, job)
             job.file_path = str(result.file_path)
             job.status = "succeeded"
-            job.finished_at = datetime.now(timezone.utc)
+            job.finished_at = utc_now()
             job.error_message = None
             LogService.log(
                 db,
@@ -93,7 +103,7 @@ class ExportService:
         except Exception as exc:  # noqa: BLE001
             job.status = "failed"
             job.error_message = str(exc)
-            job.finished_at = datetime.now(timezone.utc)
+            job.finished_at = utc_now()
             LogService.log(
                 db,
                 level="error",

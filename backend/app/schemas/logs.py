@@ -5,6 +5,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+LOG_LEVELS = {"debug", "info", "warning", "error"}
+LOG_CATEGORIES = {"api_request", "api_error", "import", "export", "chat", "system"}
+
 
 class SystemLogOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

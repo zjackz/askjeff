@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
+from app.utils.time import utc_now
 
 SESSION_STATUS = ("succeeded", "failed")
 
@@ -25,4 +26,4 @@ class QuerySession(Base):
     status: Mapped[str] = mapped_column(String(32), default="succeeded")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     asked_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
-    asked_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    asked_at: Mapped[datetime] = mapped_column(default=utc_now)

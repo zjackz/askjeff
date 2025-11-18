@@ -32,5 +32,11 @@
     "vitest": "^1.6.0",
     "vue-tsc": "^2.0.0",
     "sass-embedded": "^1.77.8"
+  },
+  "pnpm": {
+    "test-patterns": [
+      "tests/unit/**/*.{test,spec}.{c,m}{js,ts,jsx,tsx}",
+      "!tests/e2e/**"
+    ]
   }
 }

@@ -37,6 +37,8 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
 const strategy = ref('append')
 const submitting = ref(false)
 const message = ref('')
@@ -62,11 +64,12 @@ const submit = async () => {
   form.append('importStrategy', strategy.value)
   submitting.value = true
   try {
-    await axios.post('http://localhost:8000/imports', form)
+    await axios.post(`${API_BASE}/imports`, form)
     message.value = '导入任务已提交'
     await fetchBatches()
   } catch (err) {
-    message.value = '导入失败，请查看日志'
+    const detail = (err as any)?.response?.data?.detail
+    message.value = detail ? `导入失败：${detail}` : '导入失败，请查看日志'
     console.error(err)
   } finally {
     submitting.value = false
@@ -75,7 +78,7 @@ const submit = async () => {
 
 const fetchBatches = async () => {
   try {
-    const { data } = await axios.get('http://localhost:8000/imports')
+    const { data } = await axios.get(`${API_BASE}/imports`)
     batches.value = data.items || []
   } catch (err) {
     console.error(err)

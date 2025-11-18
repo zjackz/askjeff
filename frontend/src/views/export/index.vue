@@ -45,6 +45,8 @@
 import { reactive, ref, onMounted } from 'vue'
 import axios from 'axios'
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
 const form = reactive({
   exportType: 'clean_products',
   filters: { batch_id: '' },
@@ -63,7 +65,7 @@ const message = ref('')
 const submit = async () => {
   submitting.value = true
   try {
-    await axios.post('http://localhost:8000/exports', {
+    await axios.post(`${API_BASE}/exports`, {
       exportType: form.exportType,
       filters: { batch_id: form.filters.batch_id || undefined },
       selectedFields: form.selectedFields,
@@ -72,7 +74,8 @@ const submit = async () => {
     message.value = '导出任务已创建'
     await fetchJobs()
   } catch (err) {
-    message.value = '导出失败'
+    const detail = (err as any)?.response?.data?.detail
+    message.value = detail ? `导出失败：${detail}` : '导出失败'
     console.error(err)
   } finally {
     submitting.value = false
@@ -84,7 +87,7 @@ const fetchJobs = async () => {
 }
 
 const download = async (jobId: string) => {
-  window.open(`http://localhost:8000/exports/${jobId}/download`, '_blank')
+  window.open(`${API_BASE}/exports/${jobId}/download`, '_blank')
 }
 
 onMounted(() => {
