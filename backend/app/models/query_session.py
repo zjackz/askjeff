@@ -25,4 +25,4 @@ class QuerySession(Base):
     status: Mapped[str] = mapped_column(String(32), default="succeeded")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     asked_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
-    asked_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    asked_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))

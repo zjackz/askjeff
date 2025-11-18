@@ -54,6 +54,6 @@ class ProductRecord(Base):
     normalized_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     validation_status: Mapped[str] = mapped_column(Enum(*VALIDATION_STATUS, name='validation_status'), default='valid')
     validation_messages: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    ingested_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    ingested_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
     batch: Mapped[ImportBatch] = relationship('ImportBatch', back_populates='records')

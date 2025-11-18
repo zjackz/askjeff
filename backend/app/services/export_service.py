@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -64,7 +64,7 @@ class ExportService:
             selected_fields=selected_fields,
             file_format=normalized_format,
             status="running",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             triggered_by=triggered_by,
         )
         db.add(job)
@@ -75,7 +75,7 @@ class ExportService:
             result = self._generate_file(db, job)
             job.file_path = str(result.file_path)
             job.status = "succeeded"
-            job.finished_at = datetime.utcnow()
+            job.finished_at = datetime.now(timezone.utc)
             job.error_message = None
             LogService.log(
                 db,
@@ -93,7 +93,7 @@ class ExportService:
         except Exception as exc:  # noqa: BLE001
             job.status = "failed"
             job.error_message = str(exc)
-            job.finished_at = datetime.utcnow()
+            job.finished_at = datetime.now(timezone.utc)
             LogService.log(
                 db,
                 level="error",

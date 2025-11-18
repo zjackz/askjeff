@@ -19,4 +19,4 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(128), nullable=False)
     entity_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
