@@ -29,6 +29,7 @@
 - [x] T008 [P] 在前端接入 Vue Element Admin 基础布局、登录占位页（`frontend/src/`）
 - [x] T009 [P] 设置后端与前端的中文文案/提示枚举，确保默认语言为中文
 - [x] T0DB 统一测试使用 PostgreSQL `sorftime_dev`，移除 SQLite 依赖，测试前自动迁移到 `_dev` 库
+- [ ] T0CZ 容器化执行校验：CI 与本地命令均通过 Docker Compose 运行 lint/pytest/Playwright，记录示例命令（`infra/docker/compose.yml`）
 - [ ] T0YC [P] 实现主题切换（亮/暗或品牌主题），提供配置说明与至少一条组件/截图验证（`frontend/src/styles/theme/`）
 - [ ] T0YD 基于角色的权限路由/菜单守卫，示例角色配置写入 quickstart（`frontend/src/router/`）
 - [ ] T0YE [P] Playwright/组件测试覆盖主题切换与权限守卫可用性（`frontend/tests/`）
@@ -90,6 +91,7 @@
 - [x] T027 [US3] 为导出 API 编写 Pytest（成功/失败/重试）（`backend/tests/api/test_exports.py`）
 - [x] T028 [P][US3] 前端编写导出流程 e2e 测试（`frontend/tests/e2e/export.spec.ts`）
 - [ ] T0YB [US3] 导出性能与分段测试：50k+ 行 95% ≤2 分钟，支持失败重试，输出 `scripts/perf/export-report.md`
+- [ ] T0EX 分段导出与超时提示验证：50k+ 行分段处理与前端超时/提示用例
 
 ### Implementation
 
@@ -97,6 +99,7 @@
 - [x] T030 [US3] 在 FastAPI 中实现创建导出/查询状态/下载接口（`backend/app/api/routes/exports.py`）
 - [x] T031 [US3] 前端实现导出配置表单与任务列表（`frontend/src/views/export/index.vue`）
 - [x] T032 [US3] 生成 CSV/XLSX 并保存在 `backend/storage/exports/`，失败时支持重试
+- [ ] T0DD 批次重复 ASIN 去重/覆盖策略实现与验证（含重复导入用例）
 
 ### Observability / Docs
 
@@ -104,6 +107,7 @@
 - [x] T034 [US3] 更新 quickstart 的导出与日志核查步骤（`specs/001-sorftime-data-console/quickstart.md`）
 - [ ] T0XX [P][US3] 撰写《技术选型建议》文档（UI 组件、状态管理、表格/图表、后端栈、部署方式与理由），存放 `specs/001-sorftime-data-console/tech-selection.md`
 - [ ] T0XY [US3] 审阅技术选型文档并在 quickstart 增加查阅步骤，确认文档存在且理由完整
+- [ ] T0TS 技术栈确认记录：与用户确认前端栈（Vue Element Admin vs React/AntD）结论，写入 plan/spec 的决策说明
 
 ## 阶段 N：收尾与跨故事事项
 
@@ -111,6 +115,11 @@
 - [x] T036 [P] 在 README 或运维手册中记录 Docker Compose + systemd 部署方式
 - [x] T037 完成文档/界面中文审查，运行 `scripts/check_cn.py` 并修复所有警告
 - [x] T038 [P] Playwright 全流程脚本：导入 → 问答 → 导出，提供演示截图
+- [ ] T0SC 设计并执行满意度调研：问卷/样本≥10，计算得分并落盘（quickstart 增加执行方法）
+- [ ] T0SD 汇总满意度结果与改进项：若满意度 <80% 提出行动计划
+- [ ] T0DG Deepseek 降级 e2e 测试：API 失败时提供结构化筛选提示
+- [ ] T0EM Sorftime 字段变更提示与映射用例（上传提示/下载模板，含测试）
+- [ ] T0AR 批次/日志误删的审计或恢复策略与验证（软删或审计线索）
 
 ## Dependencies & Execution Order
 

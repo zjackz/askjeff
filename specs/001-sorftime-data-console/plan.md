@@ -8,16 +8,22 @@
 - 目标：交付可导入 Sorftime 表格、集中管理批次、支持自然语言问答与可配置导出的运营后台，并输出推荐技术方案。
 - 方案：沿用用户指定栈（FastAPI + PostgreSQL + SQLAlchemy + Vue 3 + Vite + Vue Element Admin），去除所有非必要组件。导入/导出通过 FastAPI BackgroundTasks + streaming 实现，文件直接保存在本地挂载目录；问答直接调用 Deepseek API（无 LangChain）并记录引用字段；开发与运维均使用 Docker Compose，生产部署采用 systemd + docker compose（单机或虚拟机），以最少依赖实现需求。
 - 交付物：补充《技术选型建议》（`specs/001-sorftime-data-console/tech-selection.md`），涵盖 UI 组件/状态管理/表格图表/后端栈/部署方式及理由，并在 quickstart 提供查阅路径。
+- 技术栈取舍：用户原偏好 React/Ant Design，现选择 Vue 3 + Vue Element Admin 的理由是复用现有 Vue 组件与模板、团队已有经验，可缩短交付周期；若用户要求 React 版需追加评估与确认。
 
 ## 技术背景
 
 - **语言/版本**：后端 Python 3.12 + FastAPI；前端 Vue 3 + TypeScript；构建工具 Vite 5。
 - **核心依赖**：FastAPI、Pydantic v2、SQLAlchemy 2.0、Alembic、HTTPX、FastAPI BackgroundTasks、Deepseek 官方 SDK；前端 Vue Element Admin、Pinia、Vue Router、Axios、ECharts。
 - **存储**：PostgreSQL 15（批次、产品、导出日志、QuerySession）、本地挂载目录 `storage/`（上传文件与导出结果）。
-- **测试策略**：Pytest + HTTPX（API/快照）、unittest.mock（Deepseek stub）、Playwright（前端端到端）、k6（导入/导出吞吐）、Contract Tests（OpenAPI）；所有测试统一使用 PostgreSQL `sorftime_dev`，禁止 SQLite，跑用例前需迁移到 `_dev` 库。
+- **测试策略**：Pytest + HTTPX（API/快照）、unittest.mock（Deepseek stub）、Playwright（前端端到端）、k6（导入/导出吞吐）、Contract Tests（OpenAPI）；所有测试统一使用 PostgreSQL `sorftime_dev`，禁止 SQLite，跑用例前需迁移到 `_dev` 库。新增用户满意度验收：设计并执行满意度问卷（样本≥10），计算得分，SC-004 门槛为满意度≥80%，低于门槛需提出改进项。
 - **性能验证**：导入 50MB/10 万行 ≤5 分钟（k6/pytest 基准，报告存 `scripts/perf/import-report.md`）；问答 P90 ≤10s（Deepseek 模拟及降级验证，报告存 `scripts/perf/chat-report.md`）；导出 50k+ 行 95% ≤2 分钟（k6，报告存 `scripts/perf/export-report.md`），验证结果需在 quickstart/验收中引用。
 - **部署/目标平台**：开发/测试统一使用 Docker Compose（frontend/backend/postgres）。生产为单机 Docker Compose + systemd watcher（或轻量容器主机），无需 K8s；CI 使用 GitHub Actions。
 - **性能&约束**：单批次文件≤50MB、10万行；导入 5 分钟内完成；问答 P95 ≤10s；导出 95% 在 2 分钟内完成；界面/文档中文呈现。
+
+## 容器执行约束
+- 所有 lint/测试/脚本默认在 Docker Compose 容器内执行，禁止直接在宿主机运行后端/前端服务或跳过 Compose 注入的 env。
+- 开发默认 dev 环境（端口 8001/5174，数据库 `sorftime_dev`），测试在 `COMPOSE_ENV=test make up` 下启用（端口 8000/5173，数据库 `sorftime_test`）。
+- CI 通过 `docker compose -f infra/docker/compose.yml run --rm backend pytest`、`... run --rm frontend pnpm lint`、`... run --rm frontend pnpm exec playwright test` 等方式执行，quickstart 提供本地等价命令。
 
 ## 宪章核对（必须全部满足）
 
