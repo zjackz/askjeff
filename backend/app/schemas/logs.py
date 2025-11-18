@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 LOG_LEVELS = {"debug", "info", "warning", "error"}
-LOG_CATEGORIES = {"api_request", "api_error", "import", "export", "chat", "system"}
+LOG_CATEGORIES = {"api_request", "api_error", "import", "export", "chat", "system", "frontend"}
 
 
 class SystemLogOut(BaseModel):
@@ -19,6 +19,10 @@ class SystemLogOut(BaseModel):
     message: str
     context: dict[str, Any] | None = None
     trace_id: str | None = Field(default=None, alias="traceId")
+    status: str = "new"
+    resolved_by: str | None = Field(default=None, alias="resolvedBy")
+    resolved_at: datetime | None = Field(default=None, alias="resolvedAt")
+    resolution_note: str | None = Field(default=None, alias="resolutionNote")
 
 
 class LogListResponse(BaseModel):
@@ -26,6 +30,16 @@ class LogListResponse(BaseModel):
 
     items: list[SystemLogOut]
     total: int
+
+
+class LogIngestRequest(BaseModel):
+    """客户端提交错误/事件日志。"""
+
+    level: str = Field(default="error")
+    category: str = Field(default="frontend")
+    message: str
+    context: dict[str, Any] | None = None
+    trace_id: str | None = Field(default=None, alias="traceId")
 
 
 class LogAnalyzeRequest(BaseModel):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
@@ -19,8 +20,11 @@ class ProductOut(BaseModel):
     currency: str | None = None
     sales_rank: int | None = Field(default=None, alias="salesRank")
     rating: float | None = None
+    reviews: int | None = None
+    ingested_at: datetime = Field(..., alias="ingestedAt")
     normalized_payload: dict[str, Any] | None = Field(default=None, alias="attributes")
     validation_status: str = Field(..., alias="validationStatus")
+    validation_messages: dict[str, Any] | None = Field(default=None, alias="validationMessages")
 
     @field_serializer("price", "rating")
     def _serialize_decimal(self, value: float | None) -> float | None:

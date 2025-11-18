@@ -29,7 +29,7 @@
 代码、注释、Commit、文档及 UI/日志对外文案统一使用中文，可保留必要术语但需附中文解释；合入前必须完成本地化校对。
 
 ### VII. 容器优先与环境一致性
-所有服务、测试与前端构建必须通过 Docker Compose 运行；默认使用 dev 环境（端口 8001/5174，数据库 `sorftime_dev`），测试环境仅在 `COMPOSE_ENV=test make up` 下启用（端口 8000/5173，数据库 `sorftime_test`）。禁止直接在宿主机运行后端/前端服务或跳过 Compose 覆盖的 env 配置。前端 E2E 依赖 Playwright 官方镜像，需在容器内执行。
+所有服务、测试与前端构建必须通过 Docker Compose 运行；默认使用 dev 环境（端口 8001/5174，数据库 `sorftime_dev`），测试环境仅在 `COMPOSE_ENV=test make up` 下启用（端口 8000/5173，数据库 `sorftime_test`）。禁止直接在宿主机运行后端/前端服务或跳过 Compose 覆盖的 env 配置。前端 E2E 依赖 Playwright 官方镜像，需在容器内执行。**默认所有 lint/测试/脚本命令均在对应 Compose 容器内执行，若需宿主机执行必须在文档中记录理由与批准人。**
 
 ## Delivery Artifacts（交付产物）
 

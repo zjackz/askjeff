@@ -6,11 +6,39 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.schemas.logs import LogAnalyzeRequest, LogAnalyzeResult, LogListResponse, SystemLogOut, LOG_LEVELS, LOG_CATEGORIES
+from app.schemas.logs import (
+    LogAnalyzeRequest,
+    LogAnalyzeResult,
+    LogIngestRequest,
+    LogListResponse,
+    SystemLogOut,
+    LOG_LEVELS,
+    LOG_CATEGORIES,
+)
 from app.services.log_analyzer import LogAnalyzer
 from app.services.log_service import LogService
 
 router = APIRouter(prefix="/logs", tags=["logs"])
+
+
+@router.post("/ingest", response_model=SystemLogOut, status_code=201)
+async def ingest_log(payload: LogIngestRequest, db: Session = Depends(get_db)):
+    level = payload.level.lower()
+    category = payload.category
+    if level not in LOG_LEVELS:
+        raise HTTPException(status_code=400, detail="level 参数不合法")
+    if category not in LOG_CATEGORIES:
+        raise HTTPException(status_code=400, detail="category 参数不合法")
+    entry = LogService.log(
+        db,
+        level=level,
+        category=category,
+        message=payload.message,
+        context=payload.context,
+        trace_id=payload.trace_id,
+        status="new",
+    )
+    return entry
 
 
 @router.get("", response_model=LogListResponse)

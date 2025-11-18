@@ -6,8 +6,8 @@ Create Date: 2025-11-17
 """
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0005"
 down_revision = "0004"
@@ -16,10 +16,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("import_batches", sa.Column("sheet_name", sa.Text(), nullable=True))
-    op.add_column("import_batches", sa.Column("columns_seen", sa.JSON(), nullable=True))
+    op.execute(sa.text("ALTER TABLE import_batches ADD COLUMN IF NOT EXISTS sheet_name TEXT"))
+    op.execute(sa.text("ALTER TABLE import_batches ADD COLUMN IF NOT EXISTS columns_seen JSON"))
 
 
 def downgrade() -> None:
-    op.drop_column("import_batches", "columns_seen")
-    op.drop_column("import_batches", "sheet_name")
+    op.execute(sa.text("ALTER TABLE import_batches DROP COLUMN IF EXISTS columns_seen"))
+    op.execute(sa.text("ALTER TABLE import_batches DROP COLUMN IF EXISTS sheet_name"))

@@ -111,6 +111,10 @@ class ImportRepository:
         batch_id: str | None = None,
         asin: str | None = None,
         status: str | None = None,
+        updated_from: datetime | None = None,
+        updated_to: datetime | None = None,
+        sort_by: str | None = None,
+        sort_order: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[Sequence[ProductRecord], int]:
@@ -120,12 +124,51 @@ class ImportRepository:
             stmt = stmt.where(ProductRecord.batch_id == batch_id)
             count_stmt = count_stmt.where(ProductRecord.batch_id == batch_id)
         if asin:
-            stmt = stmt.where(ProductRecord.asin == asin)
-            count_stmt = count_stmt.where(ProductRecord.asin == asin)
+            like_pattern = f"%{asin}%"
+            stmt = stmt.where(
+                ProductRecord.asin.ilike(like_pattern) | ProductRecord.title.ilike(like_pattern)
+            )
+            count_stmt = count_stmt.where(
+                ProductRecord.asin.ilike(like_pattern) | ProductRecord.title.ilike(like_pattern)
+            )
         if status:
-            stmt = stmt.where(ProductRecord.validation_status == status)
-            count_stmt = count_stmt.where(ProductRecord.validation_status == status)
-        stmt = stmt.order_by(ProductRecord.ingested_at.desc())
+            normalized = status.lower()
+            status_map = {
+                "success": "valid",
+                "succeeded": "valid",
+                "failed": "error",
+                "error": "error",
+                "pending": "warning",
+                "warning": "warning",
+            }
+            resolved = status_map.get(normalized, normalized)
+            stmt = stmt.where(ProductRecord.validation_status == resolved)
+            count_stmt = count_stmt.where(ProductRecord.validation_status == resolved)
+        if updated_from:
+            stmt = stmt.where(ProductRecord.ingested_at >= updated_from)
+            count_stmt = count_stmt.where(ProductRecord.ingested_at >= updated_from)
+        if updated_to:
+            stmt = stmt.where(ProductRecord.ingested_at <= updated_to)
+            count_stmt = count_stmt.where(ProductRecord.ingested_at <= updated_to)
+        order_field = ProductRecord.ingested_at
+        sort_map = {
+            "ingested_at": ProductRecord.ingested_at,
+            "status": ProductRecord.validation_status,
+            "validation_status": ProductRecord.validation_status,
+            "asin": ProductRecord.asin,
+            "batch_id": ProductRecord.batch_id,
+            "price": ProductRecord.price,
+            "rating": ProductRecord.rating,
+            "sales_rank": ProductRecord.sales_rank,
+        }
+        if sort_by:
+            resolved_field = sort_map.get(sort_by)
+            if resolved_field is not None:
+                order_field = resolved_field
+        if sort_order and sort_order.lower() == "asc":
+            stmt = stmt.order_by(order_field.asc().nullslast())
+        else:
+            stmt = stmt.order_by(order_field.desc().nullslast())
         total = db.scalar(count_stmt) or 0
         items = (
             db.execute(stmt.offset((page - 1) * page_size).limit(page_size))

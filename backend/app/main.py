@@ -60,6 +60,7 @@ async def request_logging(request: Request, call_next):
                     "client": request.client.host if request.client else None,
                 },
                 trace_id=trace_id,
+                status="info",
             )
         response.headers["X-Trace-Id"] = trace_id
         return response
@@ -77,5 +78,6 @@ async def request_logging(request: Request, call_next):
                     "duration_ms": duration,
                 },
                 trace_id=trace_id,
+                status="new",
             )
         raise

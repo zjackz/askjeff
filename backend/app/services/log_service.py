@@ -26,10 +26,12 @@ class LogService:
         message: str,
         context: dict[str, Any] | None = None,
         trace_id: str | None = None,
+        status: str = "new",
     ) -> SystemLog:
         lvl = level.lower()
         if lvl not in LOG_LEVELS:
             raise ValueError("日志级别不合法")
+        normalized_status = status if status else "new"
         cleaned_context = LogService._sanitize(context or {})
         entry = SystemLog(
             id=str(uuid4()),
@@ -39,6 +41,7 @@ class LogService:
             message=message,
             context=cleaned_context or None,
             trace_id=trace_id,
+            status=normalized_status,
             created_at=datetime.now(timezone.utc),
         )
         db.add(entry)
@@ -95,6 +98,26 @@ class LogService:
     def fetch_by_ids(db: Session, ids: Iterable[str]) -> list[SystemLog]:
         stmt = select(SystemLog).where(SystemLog.id.in_(list(ids))).order_by(desc(SystemLog.timestamp))
         return db.execute(stmt).scalars().all()
+
+    @staticmethod
+    def mark_resolved(
+        db: Session,
+        log_id: str,
+        *,
+        resolved_by: str,
+        resolution_note: str | None = None,
+    ) -> SystemLog | None:
+        log = LogService.get_log(db, log_id)
+        if not log:
+            return None
+        log.status = "resolved"
+        log.resolved_by = resolved_by
+        log.resolution_note = resolution_note
+        log.resolved_at = datetime.now(timezone.utc)
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        return log
 
     @staticmethod
     def _sanitize(context: dict[str, Any]) -> dict[str, Any]:

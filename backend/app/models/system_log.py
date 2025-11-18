@@ -23,4 +23,8 @@ class SystemLog(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
     context: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     trace_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="new")
+    resolved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
