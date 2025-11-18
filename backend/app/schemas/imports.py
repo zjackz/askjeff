@@ -24,6 +24,10 @@ class ImportBatchOut(BaseModel):
     failure_summary: dict | None = Field(default=None, alias="failureSummary")
     columns_seen: list[str] | None = Field(default=None, alias="columnsSeen")
 
+    @field_serializer("id")
+    def _serialize_id(self, value: str) -> str:
+        return str(value)
+
     @field_serializer("import_strategy")
     def _serialize_strategy(self, value: str) -> str:
         return value.replace("_", "-")
