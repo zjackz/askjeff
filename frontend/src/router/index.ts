@@ -38,6 +38,11 @@ const routes: RouteRecordRaw[] = [
         path: '/logs',
         component: () => import('../views/logs/index.vue'),
         meta: { title: '日志中心' }
+      },
+      {
+        path: '/extraction',
+        component: () => import('../views/extraction/index.vue'),
+        meta: { title: '特征提取' }
       }
     ]
   }

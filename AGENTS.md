@@ -55,21 +55,30 @@ askjeff/
 │   └── package.json
 │
 ├── backend/               # FastAPI 后端
-│   ├── app/              # 应用入口
-│   ├── models/           # SQLAlchemy 数据模型
-│   ├── schemas/          # Pydantic 数据验证
-│   ├── services/         # 业务逻辑层
-│   ├── tasks/            # BackgroundTasks 封装
+│   ├── app/
+│   │   ├── main.py       # FastAPI 应用入口
+│   │   ├── config.py     # 配置管理
+│   │   ├── db.py         # 数据库连接
+│   │   ├── models/       # SQLAlchemy 数据模型
+│   │   ├── schemas/      # Pydantic 数据验证
+│   │   ├── services/     # 业务逻辑层
+│   │   ├── api/
+│   │   │   ├── deps.py   # 依赖注入
+│   │   │   └── routes/   # API 路由
+│   │   └── utils/        # 工具函数
+│   ├── tests/            # 测试文件
 │   ├── migrations/       # Alembic 数据库迁移
 │   └── storage/          # 文件存储（导入/导出）
 │
 ├── infra/
 │   └── docker/           # Docker Compose 配置
 │
-├── specs/                # 需求规格文档（spec-kit）
-│   ├── README.md         # 需求索引
-│   ├── 001-*/            # 需求 001
-│   └── 002-*/            # 需求 002
+├── specs/                # 需求规格文档
+│   ├── README.md         # 需求索引与工作流程
+│   ├── BACKLOG.md        # 需求池
+│   ├── 001-sorftime-data-console/
+│   ├── 002-insight-product-list/
+│   └── 003-product-feature-extraction/
 │
 ├── .agent/
 │   └── workflows/        # 工作流程定义
@@ -89,13 +98,15 @@ askjeff/
 # 1. 在 AI 助手中运行
 /new-requirement
 
-# 2. 按提示使用 spec-kit 命令
-/speckit.specify [需求描述]
-/speckit.plan [技术方案]
-/speckit.tasks
-/speckit.implement
+# 2. AI 会自动：
+#    - 将需求文档迁移到 specs/00X-feature-name/
+#    - 创建 spec.md, plan.md, tasks.md
+#    - 更新 specs/README.md 注册新需求
 
-# 3. 提交到 main 分支
+# 3. 开始实施
+#    AI 会按照 tasks.md 逐步实现功能
+
+# 4. 提交到 main 分支
 git add .
 git commit -m "feat(00X): 功能描述"
 git push origin main
@@ -108,6 +119,53 @@ git push origin main
 - **主分支**: `main` - 所有开发直接在此进行
 - **临时分支**: 仅在大型重构或实验性功能时创建，完成后立即合并删除
 - **备份分支**: `backup/*` - 保留历史快照
+
+### 验证与推送流程
+
+完成功能开发后，必须执行以下验证和推送流程：
+
+#### 1. 代码验证
+
+```bash
+# 前端验证
+pnpm --prefix frontend lint
+
+# 后端验证（在 Docker 中）
+docker exec askjeff-dev-backend-1 poetry run pytest tests/
+docker exec askjeff-dev-backend-1 poetry run ruff check
+
+# 或本地验证
+cd backend && poetry run pytest tests/ && poetry run ruff check
+```
+
+#### 2. Git 推送流程
+
+```bash
+# 拉取最新代码
+git pull
+
+# 添加所有修改
+git add .
+
+# 提交修改（使用规范的提交信息）
+git commit -m "feat(003): 添加 LLM 产品特征提取功能"
+# 或
+git commit -m "fix(002): 修复导入编码问题"
+# 或
+git commit -m "docs: 更新 AGENTS.md 开发规范"
+
+# 推送到远程
+git push
+```
+
+#### 3. 提交信息规范
+
+- `feat(编号): 描述` - 新功能
+- `fix(编号): 描述` - Bug 修复
+- `docs: 描述` - 文档更新
+- `test: 描述` - 测试相关
+- `refactor: 描述` - 代码重构
+- `chore: 描述` - 构建/工具变更
 
 ---
 
@@ -138,14 +196,17 @@ make down
 # 前端 Lint
 pnpm --prefix frontend lint
 
-# 后端静态检查 + 单元测试
-poetry run ruff check && pytest
+# 后端测试（Docker 环境）
+docker exec askjeff-dev-backend-1 poetry run pytest tests/
+
+# 后端测试（本地环境）
+cd backend && poetry run pytest tests/
+
+# 后端静态检查
+cd backend && poetry run ruff check
 
 # 全仓中文合规检查
 python scripts/check_cn.py
-
-# 后端完整测试
-make test-backend
 ```
 
 ### 指标与监控
@@ -197,13 +258,27 @@ python scripts/report_metrics.py --days 7
 ## 测试策略
 
 ### 后端测试
-- 单元测试：使用 pytest
-- API 测试：使用 FastAPI TestClient
-- 数据库测试：使用测试数据库
+- **单元测试**: 使用 pytest
+- **API 测试**: 使用 FastAPI TestClient
+- **集成测试**: Mock 外部服务（如 DeepSeek API）
+- **数据库测试**: 使用测试数据库（Docker 环境自动配置）
+- **运行环境**: 推荐在 Docker 容器中运行测试以确保环境一致性
+
+```bash
+# 在 Docker 中运行所有测试
+docker exec askjeff-dev-backend-1 poetry run pytest tests/
+
+# 运行特定测试文件
+docker exec askjeff-dev-backend-1 poetry run pytest tests/api/test_extraction.py
+
+# 查看测试覆盖率
+docker exec askjeff-dev-backend-1 poetry run pytest --cov=app tests/
+```
 
 ### 前端测试
 - ESLint 静态检查
 - 中文合规检查
+- 类型检查（TypeScript）
 
 ---
 

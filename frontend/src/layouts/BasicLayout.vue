@@ -7,6 +7,7 @@
         <el-menu-item index="/import">文件导入</el-menu-item>
         <el-menu-item index="/chat">数据洞察</el-menu-item>
         <el-menu-item index="/export">数据导出</el-menu-item>
+        <el-menu-item index="/extraction">特征提取</el-menu-item>
         <el-menu-item index="/logs">日志中心</el-menu-item>
       </el-menu>
     </el-aside>

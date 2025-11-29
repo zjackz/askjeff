@@ -11,6 +11,7 @@ from app.api.routes import (
     exports as exports_router,
     products as products_router,
     logs as logs_router,
+    extraction as extraction_router,
 )
 from app.db import SessionLocal
 from app.services.log_service import LogService
@@ -31,6 +32,7 @@ app.include_router(chat_router.router)
 app.include_router(exports_router.router)
 app.include_router(products_router.router)
 app.include_router(logs_router.router)
+app.include_router(extraction_router.router)
 
 
 @app.get("/health")
