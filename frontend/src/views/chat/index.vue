@@ -142,58 +142,92 @@
 
     <div class="chat-fab">
       <el-button type="primary" circle size="large" @click="openChat">
-        Chat
+        <el-icon><ChatDotRound /></el-icon>
       </el-button>
     </div>
 
-    <el-dialog
+    <el-drawer
       v-model="chatVisible"
-      title="悬浮 Chat 洞察"
-      width="480px"
+      title="智能数据洞察"
+      size="500px"
       :modal="false"
-      :append-to-body="true"
       :lock-scroll="false"
-      :close-on-click-modal="false"
-      class="chat-dialog"
+      class="chat-drawer"
     >
-      <el-input
-        v-model="question"
-        type="textarea"
-        :rows="3"
-        placeholder="例如：最近两次导入中销量排名前十的 ASIN"
-      />
-      <div class="chat-actions">
-        <el-button @click="chatVisible = false">关闭</el-button>
-        <el-button type="primary" :loading="chatLoading" @click="sendQuestion">发送</el-button>
+      <div class="chat-container">
+        <div class="chat-history" ref="chatHistoryRef">
+          <div v-if="messages.length === 0" class="chat-empty">
+            <p>👋 你好！我是你的数据助手。</p>
+            <p>你可以问我关于当前数据的任何问题，例如：</p>
+            <ul>
+              <li>"销量前 10 的产品有哪些？"</li>
+              <li>"最近一次导入的批次 ID 是多少？"</li>
+              <li>"分析一下价格分布情况"</li>
+            </ul>
+          </div>
+          
+          <div 
+            v-for="(msg, index) in messages" 
+            :key="index" 
+            class="chat-message"
+            :class="msg.role"
+          >
+            <div class="message-avatar">
+              <el-avatar :size="32" :icon="msg.role === 'user' ? UserFilled : Service" :class="msg.role" />
+            </div>
+            <div class="message-content">
+              <div class="message-bubble">
+                {{ msg.content }}
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="chatLoading" class="chat-message assistant">
+             <div class="message-avatar">
+              <el-avatar :size="32" :icon="Service" class="assistant" />
+            </div>
+            <div class="message-content">
+              <div class="message-bubble typing">
+                <span>.</span><span>.</span><span>.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-area">
+          <el-input
+            v-model="question"
+            type="textarea"
+            :rows="3"
+            placeholder="输入问题，按 Enter 发送..."
+            @keydown.enter.prevent="handleEnter"
+            :disabled="chatLoading"
+          />
+          <div class="chat-actions">
+            <el-button type="primary" :loading="chatLoading" @click="sendQuestion" :disabled="!question.trim()">
+              发送
+            </el-button>
+          </div>
+        </div>
       </div>
-      <el-alert
-        v-if="chatError"
-        type="error"
-        :closable="false"
-        show-icon
-        :description="chatError"
-      />
-      <div v-if="answer" class="chat-answer">
-        <h4>回答</h4>
-        <p>{{ answer }}</p>
-      </div>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, watch } from 'vue'
+import { reactive, ref, onMounted, watch, nextTick } from 'vue'
 import { isAxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
+import { ChatDotRound, UserFilled, Service } from '@element-plus/icons-vue'
 import { http, API_BASE } from '@/utils/http'
 import type { ProductItem, ProductQueryParams, ChatResponse } from './types'
 
 const FILTER_STORAGE_KEY = 'insight_filters'
 
-// 从 localStorage 加载筛选条件
+// 从 sessionStorage 加载筛选条件
 const loadFiltersFromStorage = () => {
   try {
-    const stored = localStorage.getItem(FILTER_STORAGE_KEY)
+    const stored = sessionStorage.getItem(FILTER_STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
       return {
@@ -213,10 +247,10 @@ const loadFiltersFromStorage = () => {
   return null
 }
 
-// 保存筛选条件到 localStorage
+// 保存筛选条件到 sessionStorage
 const saveFiltersToStorage = (filters: typeof filters) => {
   try {
-    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+    sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
       batchId: filters.batchId,
       asin: filters.asin,
       status: filters.status,
@@ -256,9 +290,14 @@ const selectedProduct = ref<ProductItem | null>(null)
 
 const chatVisible = ref(false)
 const question = ref('')
-const answer = ref('')
 const chatLoading = ref(false)
-const chatError = ref('')
+const chatHistoryRef = ref<HTMLElement | null>(null)
+
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+const messages = ref<ChatMessage[]>([])
 
 const exportLoading = ref(false)
 
@@ -416,30 +455,43 @@ const formatStatusCell = (_: unknown, __: unknown, cell: unknown) =>
 
 const openChat = () => {
   chatVisible.value = true
-  chatError.value = ''
   trackEvent('chat_open')
+  scrollToBottom()
+}
+
+const scrollToBottom = async () => {
+  await nextTick()
+  if (chatHistoryRef.value) {
+    chatHistoryRef.value.scrollTop = chatHistoryRef.value.scrollHeight
+  }
+}
+
+const handleEnter = (e: KeyboardEvent) => {
+  if (!e.shiftKey) {
+    sendQuestion()
+  }
 }
 
 const sendQuestion = async () => {
-  if (!question.value.trim()) {
-    chatError.value = '请输入问题后再发送'
-    return
-  }
+  const content = question.value.trim()
+  if (!content) return
+  
+  messages.value.push({ role: 'user', content })
+  question.value = ''
   chatLoading.value = true
-  chatError.value = ''
+  scrollToBottom()
+
   try {
     const { data } = await http.post<ChatResponse>(`${API_BASE}/chat/query`, {
-      question: question.value
+      question: content
     })
-    answer.value = data.answer
+    messages.value.push({ role: 'assistant', content: data.answer })
     trackEvent('chat_success')
-  } catch (err: unknown) {
-    const detail = extractErrorMessage(err)
-    chatError.value = (detail && String(detail)) || '暂时无法获取回答，请稍后重试'
-    trackEvent('chat_failed', { error: chatError.value })
-    console.error(err)
+  } catch (err) {
+    // 全局错误处理已接管
   } finally {
     chatLoading.value = false
+    scrollToBottom()
   }
 }
 
@@ -451,22 +503,37 @@ const exportCurrentFilters = async () => {
   
   try {
     const params = buildQueryParams()
-    const { data } = await http.post(`${API_BASE}/exports`, {
+    // 构造导出请求
+    const payload = {
+      exportType: 'clean-products',
+      selectedFields: ['asin', 'title', 'price', 'batch_id', 'validation_status'],
       filters: {
-        batchId: params.batchId,
+        batch_id: params.batchId, // 注意后端字段名差异
         asin: params.asin,
-        status: params.status,
+        validation_status: params.status, // 注意后端字段名差异
         updated_from: params.updated_from,
         updated_to: params.updated_to
       },
-      page: params.page,
-      pageSize: params.pageSize,
-      sortBy: params.sortBy,
-      sortOrder: params.sortOrder
-    })
+      fileFormat: 'csv'
+    }
+
+    const { data } = await http.post(`${API_BASE}/exports`, payload)
     
-    ElMessage.success(`导出任务已创建，任务 ID: ${data.jobId || '未知'}`)
-    trackEvent('export_success', { jobId: data.jobId })
+    if (data.status === 'succeeded' && data.fileUrl) {
+      // 触发下载
+      const downloadUrl = `${API_BASE}${data.fileUrl}`
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.setAttribute('download', `export-${data.id}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      ElMessage.success('导出成功，正在下载...')
+      trackEvent('export_success', { jobId: data.id })
+    } else {
+      ElMessage.warning(`导出任务状态: ${data.status}，请稍后查看`)
+    }
   } catch (err: unknown) {
     const detail = extractErrorMessage(err)
     const errorMsg = (detail && String(detail)) || '导出失败，请稍后重试'
@@ -531,7 +598,73 @@ onMounted(() => {
   bottom: 24px;
   z-index: 20;
 }
-.chat-dialog :deep(.el-dialog__body) {
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: #f5f7fa;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.chat-empty {
+  text-align: center;
+  color: #909399;
+  margin-top: 40px;
+}
+.chat-empty ul {
+  text-align: left;
+  display: inline-block;
+  margin-top: 10px;
+}
+.chat-message {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.chat-message.user {
+  flex-direction: row-reverse;
+}
+.message-avatar .el-avatar {
+  background-color: #409eff;
+}
+.message-avatar .el-avatar.user {
+  background-color: #67c23a;
+}
+.message-content {
+  max-width: 80%;
+}
+.message-bubble {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.chat-message.user .message-bubble {
+  background-color: #95d475;
+  color: #303133;
+}
+.typing span {
+  display: inline-block;
+  animation: dot-blink 1.4s infinite both;
+  margin: 0 2px;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-blink {
+  0% { opacity: 0.2; }
+  20% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+.chat-input-area {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -539,11 +672,5 @@ onMounted(() => {
 .chat-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-}
-.chat-answer {
-  background: #f5f7fa;
-  padding: 12px;
-  border-radius: 6px;
 }
 </style>

@@ -283,12 +283,29 @@ class ImportService:
         if suffix in {".xlsx", ".xlsm"}:
             wb = load_workbook(filename=path, read_only=True, data_only=True)
             if sheet_name not in wb.sheetnames:
-                raise ImportAbort(f"未找到指定 sheet: {sheet_name}")
-            ws = wb[sheet_name]
+                # Fallback: if only one sheet, use it
+                if len(wb.sheetnames) == 1:
+                    ws = wb[wb.sheetnames[0]]
+                else:
+                    raise ImportAbort(f"未找到指定 sheet: {sheet_name}，可用 sheet: {', '.join(wb.sheetnames)}")
+            else:
+                ws = wb[sheet_name]
             return [list(row) for row in ws.iter_rows(values_only=True)]
-        with path.open("r", encoding="utf-8", newline="") as fh:
-            reader = csv.reader(fh)
-            return [row for row in reader]
+        
+        # CSV encoding detection
+        encodings = ["utf-8", "gb18030"]  # gb18030 covers gbk and gb2312
+        for enc in encodings:
+            try:
+                with path.open("r", encoding=enc, newline="") as fh:
+                    reader = csv.reader(fh)
+                    rows = [row for row in reader]
+                return rows
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                raise ImportAbort(f"读取 CSV 失败: {e}")
+        
+        raise ImportAbort("无法识别文件编码，请使用 UTF-8 或 GBK/GB18030 编码")
 
     def _write_failures(self, batch_id: str, failures: list[dict]) -> Path:
         target = self.failed_dir / f"{batch_id}_failed.csv"

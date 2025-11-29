@@ -46,7 +46,7 @@ shell-frontend:
 
 # 运行后端静态检查与单测（容器内执行）
 test-backend:
-	$(COMPOSE) exec backend poetry run ruff check && poetry run pytest -q
+	$(COMPOSE) exec backend bash -c "poetry run ruff check app tests && poetry run pytest -q"
 
 # 前端 Lint（容器内执行）
 lint-frontend:

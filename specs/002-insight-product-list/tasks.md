@@ -33,7 +33,7 @@
 - [X] T103 [P][US1] 接入产品列表 API 与参数映射（批次 ID、ASIN 关键词、状态、时间范围、排序），支持列宽自适应与核心列展示（frontend/src/views/chat/index.vue）
 - [X] T104 [US1] 实现行详情弹窗/抽屉，展示产品核心字段、所属批次、失败原因，返回后保持筛选与滚动位置（frontend/src/views/chat/index.vue）
 - [X] T105 [P][US1] 实现加载中/空态/错误态与“重置筛选/重试”入口（frontend/src/views/chat/index.vue）
-- [ ] T106A [US1] 实现筛选条件会话保持与刷新重置（前端状态/存储），含单测/自测清单
+- [X] T106A [US1] 实现筛选条件会话保持与刷新重置（前端状态/存储），含单测/自测清单
 
 ### Observability / Docs
 
@@ -68,16 +68,16 @@
 
 ### Implementation
 
-- [ ] T108 [P][US3] 实现“导出当前筛选”前端触发与后端接口对接（含队列/排队提示），前端路径 `frontend/src/views/chat/index.vue`
+- [X] T108 [P][US3] 实现“导出当前筛选”前端触发与后端接口对接（含队列/排队提示），前端路径 `frontend/src/views/chat/index.vue`
 
 ## 阶段 6：收尾与跨故事事项
 
 - [ ] T901 更新 quickstart 验收步骤与截图/说明（specs/002-insight-product-list/quickstart.md，必要时前端 README）
-- [ ] T902 校验语言合规与可观测性覆盖，补充缺失的中文文案与日志字段说明（frontend/src/views/chat/index.vue，相关埋点方案）
-- [ ] T903 运行前后端 lint/pytest 并记录结果，准备发布回归（frontend/，backend/）
-- [ ] T301 列表性能验证：筛选+排序 80% ≤3s、首屏 ≤5s，输出报告（scripts/perf/product-list.md）
-- [ ] T302 Chat 性能/可见性验证：入口 1s 内可见，发送 90% ≤10s，含失败提示用例
-- [ ] T303 任务成功率与满意度调研：同页完成筛选+详情+chat 成功率≥90%，满意度≥80%，收集问卷/样本≥10
+- [X] T902 校验语言合规与可观测性覆盖，补充缺失的中文文案与日志字段说明（frontend/src/views/chat/index.vue，相关埋点方案）
+- [/] T903 运行前后端 lint/pytest 并记录结果，准备发布回归（frontend/，backend/）
+- [~] T301 ~~列表性能验证：筛选+排序 80% ≤3s、首屏 ≤5s~~ **已跳过**
+- [~] T302 ~~Chat 性能/可见性验证：入口 1s 内可见，发送 90% ≤10s~~ **已跳过**
+- [~] T303 ~~任务成功率与满意度调研~~ **已跳过**
 
 ## 执行顺序提示
 

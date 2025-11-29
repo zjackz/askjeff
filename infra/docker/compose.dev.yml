@@ -53,6 +53,7 @@ services:
       DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime_dev
       STORAGE_DIR: /app/storage
       PYTHONPATH: /app
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
     depends_on:
       db:
         condition: service_healthy

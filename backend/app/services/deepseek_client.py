@@ -9,7 +9,7 @@ import httpx
 class DeepseekClient:
     def __init__(self) -> None:
         self.api_key = os.getenv("DEEPSEEK_API_KEY")
-        self.endpoint = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
+        self.endpoint = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/chat/completions")
 
     def summarize(self, question: str, context: dict) -> dict[str, Any]:
         if not self.api_key:
@@ -36,6 +36,7 @@ class DeepseekClient:
             content = data["choices"][0]["message"]["content"]
             return {"answer": content, "trace": data}
         except Exception as exc:  # noqa: BLE001
+            print(f"DeepSeek API Error: {exc}", flush=True)
             return {
                 "answer": self._build_fallback_answer(question, context),
                 "trace": {"error": str(exc)},
