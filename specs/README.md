@@ -1,0 +1,96 @@
+# 需求管理索引
+
+本目录管理所有功能需求的规格说明文档。每个需求按编号组织，所有开发工作在 `main` 分支进行。
+
+## 需求列表
+
+| 编号 | 需求名称 | 状态 | 创建日期 | 完成日期 |
+|------|---------|------|----------|----------|
+| 001 | Sorftime 数据智能控制台 | ✅ 已完成 | 2025-11-15 | 2025-11-29 |
+| 002 | Insight 产品列表功能 | ✅ 已完成 | 2025-11-20 | 2025-11-29 |
+
+## 状态说明
+
+- 📝 **规划中** - 正在编写 spec.md
+- 🔨 **开发中** - 正在实施
+- ✅ **已完成** - 已合并到 main
+- ⏸️ **暂停** - 暂时搁置
+- ❌ **已取消** - 不再实施
+
+## 目录结构
+
+每个需求目录包含以下文件：
+
+```
+specs/
+├── README.md              # 本文件：需求索引
+├── 001-sorftime-data-console/
+│   ├── spec.md           # 功能规格说明
+│   ├── plan.md           # 技术实施计划
+│   ├── tasks.md          # 任务分解
+│   ├── data-model.md     # 数据模型
+│   ├── quickstart.md     # 快速开始指南
+│   └── ...
+└── 002-insight-product-list/
+    └── ...
+```
+
+## 工作流程
+
+### 1. 创建新需求
+
+```bash
+# 在 main 分支上工作
+git checkout main
+git pull origin main
+
+# 使用 spec-kit 创建新需求（假设编号为 003）
+# 在 AI 助手中运行：
+/speckit.specify [描述你的需求]
+```
+
+### 2. 开发实施
+
+所有开发直接在 `main` 分支进行：
+
+```bash
+# 小步提交，频繁推送
+git add .
+git commit -m "feat(003): 实现某功能"
+git push origin main
+```
+
+### 3. 可选：使用短期分支
+
+仅在以下情况创建临时分支：
+- 大型重构（可能影响多个模块）
+- 实验性功能（不确定是否采用）
+- 需要代码审查的关键功能
+
+```bash
+# 创建临时分支
+git checkout -b feature/003-feature-name
+
+# 开发完成后立即合并
+git checkout main
+git merge feature/003-feature-name
+git branch -d feature/003-feature-name
+git push origin main
+```
+
+### 4. 更新需求状态
+
+完成需求后，更新本文件的需求列表状态。
+
+## 最佳实践
+
+1. **保持 main 分支稳定** - 确保每次提交都是可运行的
+2. **小步迭代** - 将大需求拆分为小任务，频繁提交
+3. **清晰的提交信息** - 使用 `feat(编号): 描述` 格式
+4. **及时更新文档** - 需求变更时同步更新 spec.md
+5. **定期清理** - 删除已合并的临时分支
+
+## 参考资料
+
+- [Spec-Kit 官方文档](https://github.com/github/spec-kit)
+- [项目主 README](../README.md)

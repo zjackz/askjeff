@@ -2,6 +2,8 @@
 
 本项目用于演示如何在最小依赖下实现 Sorftime 表格导入、自然语言问答与数据导出。核心技术栈：FastAPI + PostgreSQL + SQLAlchemy（后端）以及 Vue 3 + Vite + Vue Element Admin（前端）。所有代码、文档与界面均需使用中文。
 
+> 📋 **需求管理**：查看 [specs/README.md](specs/README.md) 了解所有功能需求和开发工作流程。
+
 ## 快速启动（容器优先）
 
 ```bash
