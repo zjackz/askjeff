@@ -40,6 +40,13 @@
         <h2>上传产品列表</h2>
         <div class="table-actions">
           <el-button link type="primary" @click="reload">刷新</el-button>
+          <el-button 
+            type="primary" 
+            :loading="exportLoading" 
+            @click="exportCurrentFilters"
+          >
+            导出当前筛选
+          </el-button>
         </div>
       </div>
 
@@ -175,12 +182,56 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import { isAxiosError } from 'axios'
+import { ElMessage } from 'element-plus'
 import { http, API_BASE } from '@/utils/http'
 import type { ProductItem, ProductQueryParams, ChatResponse } from './types'
 
-const filters = reactive({
+const FILTER_STORAGE_KEY = 'insight_filters'
+
+// 从 localStorage 加载筛选条件
+const loadFiltersFromStorage = () => {
+  try {
+    const stored = localStorage.getItem(FILTER_STORAGE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      return {
+        batchId: parsed.batchId || '',
+        asin: parsed.asin || '',
+        status: parsed.status || '',
+        dateRange: parsed.dateRange || [],
+        sortBy: parsed.sortBy || '',
+        sortOrder: parsed.sortOrder || '' as 'asc' | 'desc' | '',
+        page: 1, // 总是从第一页开始
+        pageSize: parsed.pageSize || 20
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load filters from storage:', e)
+  }
+  return null
+}
+
+// 保存筛选条件到 localStorage
+const saveFiltersToStorage = (filters: typeof filters) => {
+  try {
+    localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+      batchId: filters.batchId,
+      asin: filters.asin,
+      status: filters.status,
+      dateRange: filters.dateRange,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+      pageSize: filters.pageSize
+    }))
+  } catch (e) {
+    console.warn('Failed to save filters to storage:', e)
+  }
+}
+
+const savedFilters = loadFiltersFromStorage()
+const filters = reactive(savedFilters || {
   batchId: '',
   asin: '',
   status: '',
@@ -190,6 +241,11 @@ const filters = reactive({
   page: 1,
   pageSize: 20
 })
+
+// 监听筛选条件变化并保存
+watch(filters, (newFilters) => {
+  saveFiltersToStorage(newFilters)
+}, { deep: true })
 
 const products = ref<ProductItem[]>([])
 const total = ref(0)
@@ -203,6 +259,9 @@ const question = ref('')
 const answer = ref('')
 const chatLoading = ref(false)
 const chatError = ref('')
+
+const exportLoading = ref(false)
+
 
 const trackEvent = (event: string, payload?: Record<string, unknown>) => {
   // 轻量埋点：后续可替换成统一埋点 SDK
@@ -381,6 +440,41 @@ const sendQuestion = async () => {
     console.error(err)
   } finally {
     chatLoading.value = false
+  }
+}
+
+const exportCurrentFilters = async () => {
+  if (exportLoading.value) return
+  
+  exportLoading.value = true
+  trackEvent('export_start', { filters: { ...filters }, total: total.value })
+  
+  try {
+    const params = buildQueryParams()
+    const { data } = await http.post(`${API_BASE}/exports`, {
+      filters: {
+        batchId: params.batchId,
+        asin: params.asin,
+        status: params.status,
+        updated_from: params.updated_from,
+        updated_to: params.updated_to
+      },
+      page: params.page,
+      pageSize: params.pageSize,
+      sortBy: params.sortBy,
+      sortOrder: params.sortOrder
+    })
+    
+    ElMessage.success(`导出任务已创建，任务 ID: ${data.jobId || '未知'}`)
+    trackEvent('export_success', { jobId: data.jobId })
+  } catch (err: unknown) {
+    const detail = extractErrorMessage(err)
+    const errorMsg = (detail && String(detail)) || '导出失败，请稍后重试'
+    ElMessage.error(errorMsg)
+    trackEvent('export_failed', { error: errorMsg })
+    console.error(err)
+  } finally {
+    exportLoading.value = false
   }
 }
 
