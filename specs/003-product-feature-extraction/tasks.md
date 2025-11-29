@@ -26,11 +26,11 @@
 
 ## Phase 4: 前端开发
 
-- [ ] 创建路由和页面 `src/views/extraction/index.vue` <!-- id: 10 -->
-- [ ] 实现文件上传组件 (支持 Excel/CSV) <!-- id: 11 -->
-- [ ] 实现字段配置区域 (Dynamic Tags) <!-- id: 12 -->
-- [ ] 实现任务进度展示 (Progress Bar, Status Badge) <!-- id: 13 -->
-- [ ] 实现导出按钮 <!-- id: 14 -->
+- [x] 创建路由和页面 `src/views/extraction/index.vue` <!-- id: 10 -->
+- [x] 实现文件上传组件 (支持 Excel/CSV) <!-- id: 11 -->
+- [x] 实现字段配置区域 (Dynamic Tags) <!-- id: 12 -->
+- [x] 实现任务进度展示 (Progress Bar, Status Badge) <!-- id: 13 -->
+- [x] 实现导出按钮 <!-- id: 14 -->
 
 ## Phase 5: 验证与优化
 
