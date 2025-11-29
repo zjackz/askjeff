@@ -126,6 +126,8 @@ git push origin main
 
 #### 1. 代码验证
 
+**⚠️ 重要：所有新功能必须编写单元测试，测试通过后才能提交**
+
 ```bash
 # 前端验证
 pnpm --prefix frontend lint
@@ -137,6 +139,12 @@ docker exec askjeff-dev-backend-1 poetry run ruff check
 # 或本地验证
 cd backend && poetry run pytest tests/ && poetry run ruff check
 ```
+
+**测试覆盖要求**：
+- ✅ 新增 API 端点必须有对应的集成测试
+- ✅ 核心业务逻辑（Service 层）必须有单元测试
+- ✅ 复杂的数据处理逻辑必须有测试用例
+- ✅ 所有测试必须通过才能推送代码
 
 #### 2. Git 推送流程
 
