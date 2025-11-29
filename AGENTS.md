@@ -1,47 +1,232 @@
-# askjeff Development Guidelines
+# askjeff 开发规范
 
-Auto-generated from all feature plans. Last updated: 2025-11-15
+AI 代理开发指南 - 技术栈、编码标准与工作流程
 
-## Active Technologies
+**最后更新**: 2025-11-29
 
-- **001-sorftime-data-console**
-  - 前端：Vue 3 + TypeScript + Vite + Vue Element Admin（Element Plus、Pinia、Vue Router、ECharts）
-  - 后端：Python 3.12 + FastAPI、Pydantic v2、SQLAlchemy 2.0、Alembic、HTTPX、FastAPI BackgroundTasks，直接调用 Deepseek API
-  - 数据：PostgreSQL 15（批次/产品/日志），本地挂载目录 `backend/storage/` 存放导入与导出文件
-  - DevOps：开发 & 生产均采用 Docker Compose（prod 由 systemd 管理 compose stack），日志用 Python logging，指标以脚本导出
+> 📋 **需求管理**: 查看 [specs/README.md](specs/README.md) 了解需求管理和开发工作流程  
+> 🚀 **快速开始**: 使用 `/new-requirement` 创建新需求
 
-## Project Structure
+---
+
+## 技术栈
+
+### 前端
+- **框架**: Vue 3 + TypeScript + Vite
+- **UI 组件库**: Vue Element Admin (基于 Element Plus)
+- **状态管理**: Pinia
+- **路由**: Vue Router
+- **图表**: ECharts
+- **包管理**: pnpm
+
+### 后端
+- **框架**: FastAPI (Python 3.12+)
+- **数据验证**: Pydantic v2
+- **ORM**: SQLAlchemy 2.0
+- **数据库迁移**: Alembic
+- **HTTP 客户端**: HTTPX
+- **异步任务**: FastAPI BackgroundTasks
+- **外部 API**: Deepseek API（自然语言查询）
+
+### 数据存储
+- **数据库**: PostgreSQL 15
+- **文件存储**: 本地挂载目录 `backend/storage/`（导入/导出文件）
+
+### DevOps
+- **容器化**: Docker + Docker Compose
+- **开发环境**: Docker Compose（热更新）
+- **生产部署**: systemd 管理 Docker Compose stack
+- **日志**: Python logging
+- **指标**: 脚本导出 CSV
+
+---
+
+## 项目结构
 
 ```text
-frontend/                # Vue Element Admin
-backend/
-├── app/                 # FastAPI 应用
-├── models/              # SQLAlchemy
-├── schemas/             # Pydantic
-├── services/            # 业务逻辑
-├── tasks/               # BackgroundTasks 封装
-└── migrations/          # Alembic
-infra/
-└── docker/              # Compose 与部署脚本
+askjeff/
+├── frontend/              # Vue Element Admin 前端
+│   ├── src/
+│   │   ├── components/   # 可复用组件
+│   │   ├── views/        # 页面视图
+│   │   ├── router/       # 路由配置
+│   │   ├── stores/       # Pinia 状态管理
+│   │   └── api/          # API 调用
+│   └── package.json
+│
+├── backend/               # FastAPI 后端
+│   ├── app/              # 应用入口
+│   ├── models/           # SQLAlchemy 数据模型
+│   ├── schemas/          # Pydantic 数据验证
+│   ├── services/         # 业务逻辑层
+│   ├── tasks/            # BackgroundTasks 封装
+│   ├── migrations/       # Alembic 数据库迁移
+│   └── storage/          # 文件存储（导入/导出）
+│
+├── infra/
+│   └── docker/           # Docker Compose 配置
+│
+├── specs/                # 需求规格文档（spec-kit）
+│   ├── README.md         # 需求索引
+│   ├── 001-*/            # 需求 001
+│   └── 002-*/            # 需求 002
+│
+├── .agent/
+│   └── workflows/        # 工作流程定义
+│
+└── scripts/              # 工具脚本
 ```
 
-## Commands / Tooling
+---
 
-- `pnpm --prefix frontend lint`：前端 ESLint + 中文校验
-- `poetry run ruff check && pytest`：后端静态+单测
-- `python scripts/check_cn.py`：全仓中文检查
-- `docker compose -f infra/docker/compose.yml up -d`：本地依赖
-- `python scripts/report_metrics.py`：生成导入/问答/导出指标 CSV
+## 开发工作流
 
-## Code Style
+### 创建新需求
 
-- 所有代码、注释、Commit 与文档必须使用中文（保留必要术语但需附中文解释）
-- Vue 组件使用 `<script setup>` + Composition API；Element Plus 主题需保持中文文案
-- FastAPI 模块拆分为 `api/routers`、`services`、`models`；BackgroundTasks 处理导入/导出，无单独 Celery worker
+使用简化的工作流程，所有开发在 `main` 分支进行：
 
-## Recent Changes
+```bash
+# 1. 在 AI 助手中运行
+/new-requirement
 
-- 001-sorftime-data-console：技术栈调整为 FastAPI + PostgreSQL + SQLAlchemy + Vue 3 + Vite + Vue Element Admin
+# 2. 按提示使用 spec-kit 命令
+/speckit.specify [需求描述]
+/speckit.plan [技术方案]
+/speckit.tasks
+/speckit.implement
+
+# 3. 提交到 main 分支
+git add .
+git commit -m "feat(00X): 功能描述"
+git push origin main
+```
+
+详细流程参见 [.agent/workflows/new-requirement.md](.agent/workflows/new-requirement.md)
+
+### 分支策略
+
+- **主分支**: `main` - 所有开发直接在此进行
+- **临时分支**: 仅在大型重构或实验性功能时创建，完成后立即合并删除
+- **备份分支**: `backup/*` - 保留历史快照
+
+---
+
+## 常用命令
+
+### 开发环境
+
+```bash
+# 启动所有服务（Docker Compose）
+make up
+# 或
+docker compose -f infra/docker/compose.yml up -d
+
+# 查看服务状态
+make ps
+
+# 查看日志
+make backend-logs
+make frontend-logs
+
+# 停止服务
+make down
+```
+
+### 代码质量检查
+
+```bash
+# 前端 Lint
+pnpm --prefix frontend lint
+
+# 后端静态检查 + 单元测试
+poetry run ruff check && pytest
+
+# 全仓中文合规检查
+python scripts/check_cn.py
+
+# 后端完整测试
+make test-backend
+```
+
+### 指标与监控
+
+```bash
+# 生成导入/问答/导出指标 CSV
+python scripts/report_metrics.py --days 7
+```
+
+---
+
+## 编码规范
+
+### 通用规范
+
+- ✅ **所有代码、注释、Commit 与文档必须使用中文**
+  - 保留必要的技术术语（如 API、HTTP、JSON）
+  - 技术术语首次出现时附中文解释
+- ✅ **提交信息格式**: `feat(编号): 功能描述` 或 `fix(编号): 修复描述`
+- ✅ **小步提交**: 每完成一个小功能就提交一次
+
+### 前端规范（Vue 3）
+
+- 使用 `<script setup>` + Composition API
+- 组件命名采用 PascalCase（如 `UserProfile.vue`）
+- Element Plus 组件保持中文文案
+- 状态管理优先使用 Pinia
+- API 调用统一封装在 `src/api/` 目录
+
+### 后端规范（FastAPI）
+
+- 模块拆分：
+  - `api/routers` - 路由定义
+  - `services` - 业务逻辑
+  - `models` - 数据模型
+  - `schemas` - 数据验证
+- 使用 BackgroundTasks 处理导入/导出，无需单独 Celery worker
+- 所有 API 端点必须有类型注解和文档字符串
+- 使用 Pydantic v2 进行数据验证
+
+### 数据库规范
+
+- 使用 Alembic 管理所有数据库变更
+- 迁移文件必须包含中文注释说明变更原因
+- 表名和字段名使用 snake_case
+
+---
+
+## 测试策略
+
+### 后端测试
+- 单元测试：使用 pytest
+- API 测试：使用 FastAPI TestClient
+- 数据库测试：使用测试数据库
+
+### 前端测试
+- ESLint 静态检查
+- 中文合规检查
+
+---
+
+## 部署
+
+### 开发部署
+使用 Docker Compose 热更新模式
+
+### 生产部署
+通过 systemd 管理 Docker Compose stack
+
+详见 [README.md](README.md) 的部署章节
+
+---
+
+## 参考资料
+
+- [项目 README](README.md) - 快速启动指南
+- [需求管理](specs/README.md) - 所有功能需求索引
+- [Spec-Kit 官方文档](https://github.com/github/spec-kit) - 规格驱动开发
+- [新需求工作流](.agent/workflows/new-requirement.md) - 创建新需求的步骤
+
+---
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
