@@ -31,7 +31,36 @@
         <el-form-item>
           <el-button type="primary" @click="applyFilters">查询</el-button>
           <el-button @click="resetFilters">清除筛选</el-button>
+          <el-button link @click="showAdvanced = !showAdvanced">
+            {{ showAdvanced ? '收起高级筛选' : '展开高级筛选' }}
+          </el-button>
         </el-form-item>
+
+        <div v-if="showAdvanced" class="w-full flex flex-wrap gap-6 mt-4 border-t pt-4">
+          <el-form-item label="价格区间">
+            <el-input-number v-model="filters.minPrice" :min="0" placeholder="Min" style="width: 100px" />
+            <span class="mx-2">-</span>
+            <el-input-number v-model="filters.maxPrice" :min="0" placeholder="Max" style="width: 100px" />
+          </el-form-item>
+          <el-form-item label="评分区间">
+            <el-input-number v-model="filters.minRating" :min="0" :max="5" :step="0.1" placeholder="Min" style="width: 100px" />
+            <span class="mx-2">-</span>
+            <el-input-number v-model="filters.maxRating" :min="0" :max="5" :step="0.1" placeholder="Max" style="width: 100px" />
+          </el-form-item>
+          <el-form-item label="评论数">
+            <el-input-number v-model="filters.minReviews" :min="0" placeholder="Min" style="width: 100px" />
+            <span class="mx-2">-</span>
+            <el-input-number v-model="filters.maxReviews" :min="0" placeholder="Max" style="width: 100px" />
+          </el-form-item>
+          <el-form-item label="排名区间">
+            <el-input-number v-model="filters.minRank" :min="0" placeholder="Min" style="width: 100px" />
+            <span class="mx-2">-</span>
+            <el-input-number v-model="filters.maxRank" :min="0" placeholder="Max" style="width: 100px" />
+          </el-form-item>
+          <el-form-item label="类目">
+            <el-input v-model="filters.category" placeholder="输入类目关键词" clearable />
+          </el-form-item>
+        </div>
       </el-form>
     </el-card>
 
@@ -47,6 +76,24 @@
           >
             导出当前筛选
           </el-button>
+          <el-popover placement="bottom-end" :width="200" trigger="click">
+            <template #reference>
+              <el-button>列设置</el-button>
+            </template>
+            <div class="flex flex-col gap-2">
+              <el-checkbox v-model="columnVisibility.asin" :label="columnLabels.asin" />
+              <el-checkbox v-model="columnVisibility.title" :label="columnLabels.title" />
+              <el-checkbox v-model="columnVisibility.brand" :label="columnLabels.brand" />
+              <el-checkbox v-model="columnVisibility.category" :label="columnLabels.category" />
+              <el-checkbox v-model="columnVisibility.batch_id" :label="columnLabels.batch_id" />
+              <el-checkbox v-model="columnVisibility.validation_status" :label="columnLabels.validation_status" />
+              <el-checkbox v-model="columnVisibility.ingested_at" :label="columnLabels.ingested_at" />
+              <el-checkbox v-model="columnVisibility.price" :label="columnLabels.price" />
+              <el-checkbox v-model="columnVisibility.rating" :label="columnLabels.rating" />
+              <el-checkbox v-model="columnVisibility.reviews" :label="columnLabels.reviews" />
+              <el-checkbox v-model="columnVisibility.sales_rank" :label="columnLabels.sales_rank" />
+            </div>
+          </el-popover>
         </div>
       </div>
 
@@ -67,32 +114,34 @@
         @sort-change="onSortChange"
         @row-click="openDetail"
       >
-        <el-table-column prop="asin" label="ASIN" sortable="custom" width="140" />
-        <el-table-column prop="title" label="标题" min-width="240" show-overflow-tooltip />
-        <el-table-column prop="batch_id" label="批次 ID" sortable="custom" width="160" />
-        <el-table-column prop="validation_status" label="状态" width="120" :formatter="formatStatusCell" />
+        <el-table-column v-if="columnVisibility.asin" prop="asin" label="ASIN" sortable="custom" width="140" />
+        <el-table-column v-if="columnVisibility.title" prop="title" label="标题" min-width="240" show-overflow-tooltip />
+        <el-table-column v-if="columnVisibility.brand" prop="brand" label="品牌" width="120" show-overflow-tooltip />
+        <el-table-column v-if="columnVisibility.category" prop="category" label="类目" width="120" show-overflow-tooltip />
+        <el-table-column v-if="columnVisibility.batch_id" label="批次编号" sortable="custom" prop="batch_id" width="120">
+          <template #default="{ row }">
+            <el-tooltip :content="row.batch_id" placement="top">
+              <span class="font-mono">{{ row.batch_sequence_id || row.batch_id.slice(0, 8) }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columnVisibility.validation_status" prop="validation_status" label="状态" width="100" :formatter="formatStatusCell" />
         <el-table-column
+          v-if="columnVisibility.ingested_at"
           prop="ingested_at"
-          label="最近更新时间"
+          label="更新时间"
           sortable="custom"
-          width="180"
+          width="170"
           :formatter="formatTimeCell"
         />
-        <el-table-column
-          prop="price"
-          label="价格"
-          width="120"
-        />
-        <el-table-column
-          prop="rating"
-          label="评分"
-          width="120"
-        />
-        <el-table-column
-          prop="sales_rank"
-          label="排名"
-          width="120"
-        />
+        <el-table-column v-if="columnVisibility.price" label="价格" width="140">
+          <template #default="{ row }">
+            <span>{{ row.currency }} {{ row.price }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columnVisibility.rating" prop="rating" label="评分" width="100" />
+        <el-table-column v-if="columnVisibility.reviews" prop="reviews" label="评论数" width="100" />
+        <el-table-column v-if="columnVisibility.sales_rank" prop="sales_rank" label="排名" width="120" />
         <template #empty>
           <el-empty description="暂无数据" />
         </template>
@@ -137,77 +186,18 @@
             {{ selectedProduct.validation_messages ? JSON.stringify(selectedProduct.validation_messages) : '—' }}
           </el-descriptions-item>
         </el-descriptions>
-      </div>
-    </el-drawer>
 
-    <div class="chat-fab">
-      <el-button type="primary" circle size="large" @click="openChat">
-        <el-icon><ChatDotRound /></el-icon>
-      </el-button>
-    </div>
-
-    <el-drawer
-      v-model="chatVisible"
-      title="智能数据洞察"
-      size="500px"
-      :modal="false"
-      :lock-scroll="false"
-      class="chat-drawer"
-    >
-      <div class="chat-container">
-        <div class="chat-history" ref="chatHistoryRef">
-          <div v-if="messages.length === 0" class="chat-empty">
-            <p>👋 你好！我是你的数据助手。</p>
-            <p>你可以问我关于当前数据的任何问题，例如：</p>
-            <ul>
-              <li>"销量前 10 的产品有哪些？"</li>
-              <li>"最近一次导入的批次 ID 是多少？"</li>
-              <li>"分析一下价格分布情况"</li>
-            </ul>
-          </div>
-          
-          <div 
-            v-for="(msg, index) in messages" 
-            :key="index" 
-            class="chat-message"
-            :class="msg.role"
-          >
-            <div class="message-avatar">
-              <el-avatar :size="32" :icon="msg.role === 'user' ? UserFilled : Service" :class="msg.role" />
-            </div>
-            <div class="message-content">
-              <div class="message-bubble">
-                {{ msg.content }}
-              </div>
-            </div>
-          </div>
-          
-          <div v-if="chatLoading" class="chat-message assistant">
-             <div class="message-avatar">
-              <el-avatar :size="32" :icon="Service" class="assistant" />
-            </div>
-            <div class="message-content">
-              <div class="message-bubble typing">
-                <span>.</span><span>.</span><span>.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chat-input-area">
-          <el-input
-            v-model="question"
-            type="textarea"
-            :rows="3"
-            placeholder="输入问题，按 Enter 发送..."
-            @keydown.enter.prevent="handleEnter"
-            :disabled="chatLoading"
-          />
-          <div class="chat-actions">
-            <el-button type="primary" :loading="chatLoading" @click="sendQuestion" :disabled="!question.trim()">
-              发送
-            </el-button>
-          </div>
+        <div v-if="selectedProduct.raw_payload" class="mt-6">
+          <h3 class="text-lg font-bold mb-4">原始数据</h3>
+          <el-descriptions :column="1" border>
+            <el-descriptions-item 
+              v-for="(value, key) in selectedProduct.raw_payload" 
+              :key="key" 
+              :label="key"
+            >
+              {{ value }}
+            </el-descriptions-item>
+          </el-descriptions>
         </div>
       </div>
     </el-drawer>
@@ -215,12 +205,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, watch, nextTick } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
-import { ChatDotRound, UserFilled, Service } from '@element-plus/icons-vue'
 import { http, API_BASE } from '@/utils/http'
-import type { ProductItem, ProductQueryParams, ChatResponse } from './types'
+import type { ProductItem, ProductQueryParams } from './types'
 
 const FILTER_STORAGE_KEY = 'insight_filters'
 
@@ -235,6 +225,15 @@ const loadFiltersFromStorage = () => {
         asin: parsed.asin || '',
         status: parsed.status || '',
         dateRange: parsed.dateRange || [],
+        minPrice: parsed.minPrice,
+        maxPrice: parsed.maxPrice,
+        minRating: parsed.minRating,
+        maxRating: parsed.maxRating,
+        minReviews: parsed.minReviews,
+        maxReviews: parsed.maxReviews,
+        minRank: parsed.minRank,
+        maxRank: parsed.maxRank,
+        category: parsed.category || '',
         sortBy: parsed.sortBy || '',
         sortOrder: parsed.sortOrder || '' as 'asc' | 'desc' | '',
         page: 1, // 总是从第一页开始
@@ -255,6 +254,15 @@ const saveFiltersToStorage = (filters: typeof filters) => {
       asin: filters.asin,
       status: filters.status,
       dateRange: filters.dateRange,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      minRating: filters.minRating,
+      maxRating: filters.maxRating,
+      minReviews: filters.minReviews,
+      maxReviews: filters.maxReviews,
+      minRank: filters.minRank,
+      maxRank: filters.maxRank,
+      category: filters.category,
       sortBy: filters.sortBy,
       sortOrder: filters.sortOrder,
       pageSize: filters.pageSize
@@ -270,6 +278,15 @@ const filters = reactive(savedFilters || {
   asin: '',
   status: '',
   dateRange: [] as string[],
+  minPrice: undefined as number | undefined,
+  maxPrice: undefined as number | undefined,
+  minRating: undefined as number | undefined,
+  maxRating: undefined as number | undefined,
+  minReviews: undefined as number | undefined,
+  maxReviews: undefined as number | undefined,
+  minRank: undefined as number | undefined,
+  maxRank: undefined as number | undefined,
+  category: '',
   sortBy: '',
   sortOrder: '' as 'asc' | 'desc' | '',
   page: 1,
@@ -281,26 +298,14 @@ watch(filters, (newFilters) => {
   saveFiltersToStorage(newFilters)
 }, { deep: true })
 
+const showAdvanced = ref(false)
 const products = ref<ProductItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 const errorMessage = ref('')
 const detailVisible = ref(false)
 const selectedProduct = ref<ProductItem | null>(null)
-
-const chatVisible = ref(false)
-const question = ref('')
-const chatLoading = ref(false)
-const chatHistoryRef = ref<HTMLElement | null>(null)
-
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-const messages = ref<ChatMessage[]>([])
-
 const exportLoading = ref(false)
-
 
 const trackEvent = (event: string, payload?: Record<string, unknown>) => {
   // 轻量埋点：后续可替换成统一埋点 SDK
@@ -315,7 +320,16 @@ const buildQueryParams = (): ProductQueryParams => {
     page: filters.page,
     pageSize: filters.pageSize,
     sortBy: filters.sortBy || undefined,
-    sortOrder: (filters.sortOrder as 'asc' | 'desc') || undefined
+    sortOrder: (filters.sortOrder as 'asc' | 'desc') || undefined,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+    minRating: filters.minRating,
+    maxRating: filters.maxRating,
+    minReviews: filters.minReviews,
+    maxReviews: filters.maxReviews,
+    minRank: filters.minRank,
+    maxRank: filters.maxRank,
+    category: filters.category || undefined
   }
   if (filters.dateRange?.length === 2) {
     params.updated_from = filters.dateRange[0]
@@ -326,25 +340,39 @@ const buildQueryParams = (): ProductQueryParams => {
 
 type RawProduct = Record<string, unknown>
 
-const normalizeProduct = (raw: RawProduct): ProductItem => ({
-  id: String(raw.id ?? ''),
-  asin: String(raw.asin ?? ''),
-  title: String(raw.title ?? ''),
-  batch_id: String(raw.batchId ?? raw.batch_id ?? ''),
-  ingested_at: String(raw.ingestedAt ?? raw.ingested_at ?? ''),
-  validation_status: String(raw.validationStatus ?? raw.validation_status ?? ''),
-  validation_messages: (raw.validationMessages as Record<string, unknown> | null) ??
-    (raw.validation_messages as Record<string, unknown> | null) ??
-    null,
-  price: typeof raw.price === 'number' ? raw.price : null,
-  rating: typeof raw.rating === 'number' ? raw.rating : null,
-  sales_rank:
-    typeof raw.salesRank === 'number'
-      ? raw.salesRank
-      : typeof raw.sales_rank === 'number'
-        ? raw.sales_rank
-        : null
-})
+const normalizeProduct = (raw: RawProduct): ProductItem => {
+  const attributes = (raw.attributes as Record<string, unknown>) || {}
+  const rawPayload = (raw.rawPayload as Record<string, unknown>) || (raw.raw_payload as Record<string, unknown>) || {}
+  
+  // 尝试从 attributes 或 rawPayload 中获取 brand
+  const brand = (attributes.brand as string) || (rawPayload.Brand as string) || (rawPayload.brand as string) || (rawPayload['品牌'] as string) || null
+
+  return {
+    id: String(raw.id ?? ''),
+    asin: String(raw.asin ?? ''),
+    title: String(raw.title ?? ''),
+    batch_id: String(raw.batchId ?? raw.batch_id ?? ''),
+    batch_sequence_id: typeof raw.batchSequenceId === 'number' ? raw.batchSequenceId : typeof raw.batch_sequence_id === 'number' ? raw.batch_sequence_id : null,
+    ingested_at: String(raw.ingestedAt ?? raw.ingested_at ?? ''),
+    validation_status: String(raw.validationStatus ?? raw.validation_status ?? ''),
+    validation_messages: (raw.validationMessages as Record<string, unknown> | null) ??
+      (raw.validation_messages as Record<string, unknown> | null) ??
+      null,
+    price: typeof raw.price === 'number' ? raw.price : null,
+    currency: String(raw.currency ?? ''),
+    rating: typeof raw.rating === 'number' ? raw.rating : null,
+    reviews: typeof raw.reviews === 'number' ? raw.reviews : null,
+    sales_rank:
+      typeof raw.salesRank === 'number'
+        ? raw.salesRank
+        : typeof raw.sales_rank === 'number'
+          ? raw.sales_rank
+          : null,
+    category: String(raw.category ?? ''),
+    brand: brand,
+    raw_payload: rawPayload
+  }
+}
 
 const extractErrorMessage = (err: unknown): string | null => {
   if (isAxiosError(err)) {
@@ -374,7 +402,16 @@ const fetchProducts = async (resetPage = false) => {
         sortBy: params.sortBy,
         sortOrder: params.sortOrder,
         updated_from: params.updated_from,
-        updated_to: params.updated_to
+        updated_to: params.updated_to,
+        minPrice: params.minPrice,
+        maxPrice: params.maxPrice,
+        minRating: params.minRating,
+        maxRating: params.maxRating,
+        minReviews: params.minReviews,
+        maxReviews: params.maxReviews,
+        minRank: params.minRank,
+        maxRank: params.maxRank,
+        category: params.category
       }
     })
     const items = (data?.items ?? []).map((item: RawProduct) => normalizeProduct(item))
@@ -403,6 +440,15 @@ const resetFilters = () => {
   filters.asin = ''
   filters.status = ''
   filters.dateRange = []
+  filters.minPrice = undefined
+  filters.maxPrice = undefined
+  filters.minRating = undefined
+  filters.maxRating = undefined
+  filters.minReviews = undefined
+  filters.maxReviews = undefined
+  filters.minRank = undefined
+  filters.maxRank = undefined
+  filters.category = ''
   filters.sortBy = ''
   filters.sortOrder = ''
   filters.page = 1
@@ -410,6 +456,8 @@ const resetFilters = () => {
   trackEvent('filter_reset')
   fetchProducts(true)
 }
+
+const reload = () => fetchProducts()
 
 const onSortChange = ({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) => {
   filters.sortBy = prop
@@ -442,6 +490,7 @@ const formatTime = (value?: string) => {
 
 const formatTimeCell = (_: unknown, __: unknown, cell: unknown) =>
   formatTime(typeof cell === 'string' ? cell : '')
+
 const formatStatus = (status?: string) => {
   const map: Record<string, string> = {
     valid: '有效',
@@ -450,50 +499,9 @@ const formatStatus = (status?: string) => {
   }
   return map[status || ''] || status || ''
 }
+
 const formatStatusCell = (_: unknown, __: unknown, cell: unknown) =>
   formatStatus(typeof cell === 'string' ? cell : '')
-
-const openChat = () => {
-  chatVisible.value = true
-  trackEvent('chat_open')
-  scrollToBottom()
-}
-
-const scrollToBottom = async () => {
-  await nextTick()
-  if (chatHistoryRef.value) {
-    chatHistoryRef.value.scrollTop = chatHistoryRef.value.scrollHeight
-  }
-}
-
-const handleEnter = (e: KeyboardEvent) => {
-  if (!e.shiftKey) {
-    sendQuestion()
-  }
-}
-
-const sendQuestion = async () => {
-  const content = question.value.trim()
-  if (!content) return
-  
-  messages.value.push({ role: 'user', content })
-  question.value = ''
-  chatLoading.value = true
-  scrollToBottom()
-
-  try {
-    const { data } = await http.post<ChatResponse>(`${API_BASE}/chat/query`, {
-      question: content
-    })
-    messages.value.push({ role: 'assistant', content: data.answer })
-    trackEvent('chat_success')
-  } catch (err) {
-    // 全局错误处理已接管
-  } finally {
-    chatLoading.value = false
-    scrollToBottom()
-  }
-}
 
 const exportCurrentFilters = async () => {
   if (exportLoading.value) return
@@ -545,11 +553,64 @@ const exportCurrentFilters = async () => {
   }
 }
 
-const reload = () => fetchProducts()
+const route = useRoute()
+
+const COLUMN_SETTINGS_KEY = 'insight_column_settings'
+
+const columnLabels = {
+  asin: 'ASIN',
+  title: '标题',
+  brand: '品牌',
+  category: '类目',
+  batch_id: '批次编号',
+  validation_status: '状态',
+  ingested_at: '更新时间',
+  price: '价格',
+  rating: '评分',
+  reviews: '评论数',
+  sales_rank: '排名'
+}
+
+const columnVisibility = reactive({
+  asin: true,
+  title: true,
+  brand: true,
+  category: true,
+  batch_id: true,
+  validation_status: true,
+  ingested_at: true,
+  price: true,
+  rating: true,
+  reviews: true,
+  sales_rank: true
+})
+
+// 加载列设置
+const loadColumnSettings = () => {
+  try {
+    const stored = localStorage.getItem(COLUMN_SETTINGS_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      Object.assign(columnVisibility, parsed)
+    }
+  } catch (e) {
+    console.warn('Failed to load column settings:', e)
+  }
+}
+
+// 监听并保存列设置
+watch(columnVisibility, (newSettings) => {
+  localStorage.setItem(COLUMN_SETTINGS_KEY, JSON.stringify(newSettings))
+}, { deep: true })
 
 onMounted(() => {
+  loadColumnSettings()
+  if (route.query.batchId) {
+    filters.batchId = String(route.query.batchId)
+  }
   fetchProducts()
 })
+
 </script>
 
 <style scoped>
@@ -591,86 +652,5 @@ onMounted(() => {
 }
 .mb-12 {
   margin-bottom: 12px;
-}
-.chat-fab {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 20;
-}
-.chat-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-.chat-history {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-.chat-empty {
-  text-align: center;
-  color: #909399;
-  margin-top: 40px;
-}
-.chat-empty ul {
-  text-align: left;
-  display: inline-block;
-  margin-top: 10px;
-}
-.chat-message {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.chat-message.user {
-  flex-direction: row-reverse;
-}
-.message-avatar .el-avatar {
-  background-color: #409eff;
-}
-.message-avatar .el-avatar.user {
-  background-color: #67c23a;
-}
-.message-content {
-  max-width: 80%;
-}
-.message-bubble {
-  padding: 10px 14px;
-  border-radius: 8px;
-  background-color: #fff;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-.chat-message.user .message-bubble {
-  background-color: #95d475;
-  color: #303133;
-}
-.typing span {
-  display: inline-block;
-  animation: dot-blink 1.4s infinite both;
-  margin: 0 2px;
-}
-.typing span:nth-child(2) { animation-delay: 0.2s; }
-.typing span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes dot-blink {
-  0% { opacity: 0.2; }
-  20% { opacity: 1; }
-  100% { opacity: 0.2; }
-}
-
-.chat-input-area {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.chat-actions {
-  display: flex;
-  justify-content: flex-end;
 }
 </style>

@@ -24,7 +24,7 @@ class ChatResponse(BaseModel):
     session_id: str = Field(..., alias="sessionId")
 
 
-router = APIRouter(prefix="/chat", tags=["chat"])
+router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @router.post("/query", response_model=ChatResponse)

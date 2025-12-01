@@ -11,6 +11,12 @@ export interface ExtractionTask {
 }
 
 export const extractionApi = {
+    listTasks(limit = 20, offset = 0) {
+        return http.get<ExtractionTask[]>(`${API_BASE}/extraction/list`, {
+            params: { limit, offset }
+        })
+    },
+
     upload(file: File) {
         const formData = new FormData()
         formData.append('file', file)
@@ -29,5 +35,11 @@ export const extractionApi = {
 
     getExportUrl(taskId: string) {
         return `${API_BASE}/extraction/${taskId}/export`
+    },
+
+    extractBatch(batchId: string, targetFields: string[]) {
+        return http.post(`${API_BASE}/imports/${batchId}/extract`, {
+            target_fields: targetFields
+        })
     }
 }

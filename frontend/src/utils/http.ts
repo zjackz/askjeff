@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'
 
 // 扩展 AxiosRequestConfig 类型以支持自定义配置
 declare module 'axios' {

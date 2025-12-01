@@ -10,7 +10,18 @@ from app.schemas.exports import ExportJobOut, ExportRequest
 # 为便于测试替换，导入模块而不是对象
 from app.services import export_service as service_module
 
-router = APIRouter(prefix="/exports", tags=["exports"])
+router = APIRouter(prefix="/api/exports", tags=["exports"])
+
+
+@router.get("", response_model=list[ExportJobOut])
+async def list_exports(
+    limit: int = 20,
+    offset: int = 0,
+    db: Session = Depends(get_db)
+):
+    """获取导出任务列表"""
+    jobs = service_module.export_service.list_jobs(db, limit=limit, offset=offset)
+    return jobs
 
 
 @router.post("", response_model=ExportJobOut, status_code=202)

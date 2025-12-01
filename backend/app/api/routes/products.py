@@ -9,7 +9,7 @@ from app.api.deps import get_db
 from app.schemas.products import ProductListResponse
 from app.services.import_repository import ImportRepository
 
-router = APIRouter(prefix="/products", tags=["products"])
+router = APIRouter(prefix="/api/products", tags=["products"])
 
 
 @router.get("", response_model=ProductListResponse)
@@ -19,6 +19,15 @@ async def list_products(
     status: str | None = Query(default=None, alias="status"),
     updated_from: str | None = Query(default=None, alias="updated_from"),
     updated_to: str | None = Query(default=None, alias="updated_to"),
+    min_price: float | None = Query(default=None, alias="minPrice"),
+    max_price: float | None = Query(default=None, alias="maxPrice"),
+    min_rating: float | None = Query(default=None, alias="minRating"),
+    max_rating: float | None = Query(default=None, alias="maxRating"),
+    min_reviews: int | None = Query(default=None, alias="minReviews"),
+    max_reviews: int | None = Query(default=None, alias="maxReviews"),
+    min_rank: int | None = Query(default=None, alias="minRank"),
+    max_rank: int | None = Query(default=None, alias="maxRank"),
+    category: str | None = Query(default=None),
     sort_by: str | None = Query(default=None, alias="sortBy"),
     sort_order: str | None = Query(default=None, alias="sortOrder"),
     page: int = Query(default=1, ge=1),
@@ -42,6 +51,15 @@ async def list_products(
         status=status,
         updated_from=parsed_from,
         updated_to=parsed_to,
+        min_price=min_price,
+        max_price=max_price,
+        min_rating=min_rating,
+        max_rating=max_rating,
+        min_reviews=min_reviews,
+        max_reviews=max_reviews,
+        min_rank=min_rank,
+        max_rank=max_rank,
+        category=category,
         sort_by=sort_by,
         sort_order=sort_order,
         page=page,

@@ -20,6 +20,7 @@ class ImportBatch(Base):
     __tablename__ = 'import_batches'
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    sequence_id: Mapped[int] = mapped_column(Integer,  autoincrement=True, nullable=True) # 使用数据库自增
     filename: Mapped[str] = mapped_column(Text, nullable=False)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     import_strategy: Mapped[str] = mapped_column(Enum(*IMPORT_STRATEGIES, name='import_strategy'), nullable=False)
@@ -33,6 +34,12 @@ class ImportBatch(Base):
     created_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
     failure_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     columns_seen: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    
+    # AI Extraction Status for the Batch
+    ai_status: Mapped[str] = mapped_column(String(20), default='none') # none, pending, processing, completed, failed
+    ai_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(default=utc_now)
     archived: Mapped[bool] = mapped_column(default=False)
 
     records: Mapped[List['ProductRecord']] = relationship('ProductRecord', back_populates='batch', cascade='all, delete-orphan')
@@ -55,6 +62,15 @@ class ProductRecord(Base):
     normalized_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     validation_status: Mapped[str] = mapped_column(Enum(*VALIDATION_STATUS, name='validation_status'), default='valid')
     validation_messages: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    
+    # AI Extraction Fields
+    ai_features: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    ai_status: Mapped[str] = mapped_column(String(20), default='pending') # pending, success, failed
+    
     ingested_at: Mapped[datetime] = mapped_column(default=utc_now)
 
     batch: Mapped[ImportBatch] = relationship('ImportBatch', back_populates='records')
+
+    @property
+    def batch_sequence_id(self) -> int | None:
+        return self.batch.sequence_id if self.batch else None

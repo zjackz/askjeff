@@ -167,6 +167,11 @@ class ExportService:
             for item in records
         ]
 
+    def list_jobs(self, db: Session, limit: int = 20, offset: int = 0) -> list[ExportJob]:
+        """获取导出任务列表,按开始时间倒序"""
+        stmt = select(ExportJob).order_by(ExportJob.started_at.desc()).limit(limit).offset(offset)
+        return list(db.execute(stmt).scalars().all())
+
     def get_job(self, db: Session, job_id: str) -> ExportJob | None:
         return db.get(ExportJob, job_id)
 

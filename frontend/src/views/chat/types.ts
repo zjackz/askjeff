@@ -4,12 +4,18 @@ export interface ProductItem {
   asin: string
   title: string
   batch_id: string
+  batch_sequence_id?: number | null
   ingested_at: string
   validation_status: string
   validation_messages?: Record<string, unknown> | null
   price?: number | null
+  currency?: string | null
   rating?: number | null
+  reviews?: number | null
   sales_rank?: number | null
+  category?: string | null
+  brand?: string | null
+  raw_payload?: Record<string, unknown> | null
 }
 
 export interface ProductListResponse {
@@ -23,6 +29,15 @@ export interface ProductQueryParams {
   status?: string
   updated_from?: string
   updated_to?: string
+  minPrice?: number
+  maxPrice?: number
+  minRating?: number
+  maxRating?: number
+  minReviews?: number
+  maxReviews?: number
+  minRank?: number
+  maxRank?: number
+  category?: string
   page: number
   pageSize: number
   sortBy?: string

@@ -261,6 +261,14 @@ python scripts/report_metrics.py --days 7
 - 迁移文件必须包含中文注释说明变更原因
 - 表名和字段名使用 snake_case
 
+### 代码质量保证
+
+- **语法检查**: 每次修改代码后，必须运行 lint 或 build 命令检查语法错误，杜绝低级语法错误（如多余的括号、未闭合的标签）。
+  - 前端: `pnpm --prefix frontend lint` 或 `pnpm --prefix frontend build`
+  - 后端: `ruff check`
+- **编辑验证**: 使用工具修改文件（如 `replace_file_content`）后，务必检查修改块的上下文，防止引入多余的括号、标签或破坏原有结构。
+- **自我修正**: 遇到报错时，优先分析报错信息（如行号、错误类型），定位到具体代码行进行修复，而不是盲目尝试。
+
 ---
 
 ## 测试策略

@@ -82,7 +82,12 @@ const submit = async () => {
 }
 
 const fetchJobs = async () => {
-  // 简化：示例中未提供列表 API，可根据需要扩展
+  try {
+    const { data } = await http.get(`${API_BASE}/exports`)
+    jobs.value = data || []
+  } catch (err) {
+    console.error('获取导出任务列表失败', err)
+  }
 }
 
 const download = async (jobId: string) => {

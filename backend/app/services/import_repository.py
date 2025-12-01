@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Sequence
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.import_batch import ImportBatch, ProductRecord
 
@@ -113,12 +113,21 @@ class ImportRepository:
         status: str | None = None,
         updated_from: datetime | None = None,
         updated_to: datetime | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        min_rating: float | None = None,
+        max_rating: float | None = None,
+        min_reviews: int | None = None,
+        max_reviews: int | None = None,
+        min_rank: int | None = None,
+        max_rank: int | None = None,
+        category: str | None = None,
         sort_by: str | None = None,
         sort_order: str | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[Sequence[ProductRecord], int]:
-        stmt = select(ProductRecord)
+        stmt = select(ProductRecord).options(joinedload(ProductRecord.batch))
         count_stmt = select(func.count())
         if batch_id:
             stmt = stmt.where(ProductRecord.batch_id == batch_id)
@@ -150,6 +159,39 @@ class ImportRepository:
         if updated_to:
             stmt = stmt.where(ProductRecord.ingested_at <= updated_to)
             count_stmt = count_stmt.where(ProductRecord.ingested_at <= updated_to)
+        
+        # 范围查询
+        if min_price is not None:
+            stmt = stmt.where(ProductRecord.price >= min_price)
+            count_stmt = count_stmt.where(ProductRecord.price >= min_price)
+        if max_price is not None:
+            stmt = stmt.where(ProductRecord.price <= max_price)
+            count_stmt = count_stmt.where(ProductRecord.price <= max_price)
+            
+        if min_rating is not None:
+            stmt = stmt.where(ProductRecord.rating >= min_rating)
+            count_stmt = count_stmt.where(ProductRecord.rating >= min_rating)
+        if max_rating is not None:
+            stmt = stmt.where(ProductRecord.rating <= max_rating)
+            count_stmt = count_stmt.where(ProductRecord.rating <= max_rating)
+            
+        if min_reviews is not None:
+            stmt = stmt.where(ProductRecord.reviews >= min_reviews)
+            count_stmt = count_stmt.where(ProductRecord.reviews >= min_reviews)
+        if max_reviews is not None:
+            stmt = stmt.where(ProductRecord.reviews <= max_reviews)
+            count_stmt = count_stmt.where(ProductRecord.reviews <= max_reviews)
+            
+        if min_rank is not None:
+            stmt = stmt.where(ProductRecord.sales_rank >= min_rank)
+            count_stmt = count_stmt.where(ProductRecord.sales_rank >= min_rank)
+        if max_rank is not None:
+            stmt = stmt.where(ProductRecord.sales_rank <= max_rank)
+            count_stmt = count_stmt.where(ProductRecord.sales_rank <= max_rank)
+            
+        if category:
+            stmt = stmt.where(ProductRecord.category.ilike(f"%{category}%"))
+            count_stmt = count_stmt.where(ProductRecord.category.ilike(f"%{category}%"))
         order_field = ProductRecord.ingested_at
         sort_map = {
             "ingested_at": ProductRecord.ingested_at,

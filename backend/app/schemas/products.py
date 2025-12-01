@@ -13,6 +13,7 @@ class ProductOut(BaseModel):
 
     id: str
     batch_id: str = Field(..., alias="batchId")
+    batch_sequence_id: int | None = Field(default=None, alias="batchSequenceId")
     asin: str
     title: str
     category: str | None = None
@@ -22,6 +23,7 @@ class ProductOut(BaseModel):
     rating: float | None = None
     reviews: int | None = None
     ingested_at: datetime = Field(..., alias="ingestedAt")
+    raw_payload: dict[str, Any] | None = Field(default=None, alias="rawPayload")
     normalized_payload: dict[str, Any] | None = Field(default=None, alias="attributes")
     validation_status: str = Field(..., alias="validationStatus")
     validation_messages: dict[str, Any] | None = Field(default=None, alias="validationMessages")

@@ -12,6 +12,7 @@ class ImportBatchOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
+    sequence_id: int | None = Field(default=None, alias="sequenceId")
     filename: str
     import_strategy: str = Field(..., alias="importStrategy")
     status: str

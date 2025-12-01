@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -9,6 +9,41 @@ from app.models import ImportBatch, ProductRecord, QuerySession
 from app.services.audit_service import AuditService
 from app.services.deepseek_client import DeepseekClient
 from app.services.log_service import LogService
+
+ToolFunction = Callable[..., Any]
+
+
+class ToolRegistry:
+    _tools: dict[str, dict[str, Any]] = {}
+
+    @classmethod
+    def register(cls, name: str, description: str, parameters: dict[str, Any]):
+        def decorator(func: ToolFunction):
+            cls._tools[name] = {
+                "name": name,
+                "description": description,
+                "parameters": parameters,
+                "func": func,
+            }
+            return func
+
+        return decorator
+
+    @classmethod
+    def get_tools_schema(cls) -> list[dict[str, Any]]:
+        return [
+            {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["parameters"],
+            }
+            for t in cls._tools.values()
+        ]
+
+    @classmethod
+    def get_tool_func(cls, name: str) -> ToolFunction | None:
+        tool = cls._tools.get(name)
+        return tool["func"] if tool else None
 
 
 class ChatService:
@@ -23,17 +58,76 @@ class ChatService:
         context_batches: list[str] | None = None,
         asked_by: str | None = None,
     ) -> dict[str, Any]:
-        summary = self._collect_summary(db, context_batches)
-        result = self.client.summarize(question, summary)
-        references = self._build_references(summary)
+        # 确保工具已注册
+        from app.services import chat_tools  # noqa: F401
 
+        # 1. 构造 System Prompt
+        tools_schema = ToolRegistry.get_tools_schema()
+        system_prompt = self._build_system_prompt(tools_schema)
+        
+        # 2. 第一轮调用：意图识别
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"问题: {question}"},
+        ]
+        
+        response = self.client.chat(messages, json_mode=True, temperature=0.1)
+        content = response["content"]
+        trace = response.get("trace", {})
+        
+        answer = ""
+        references = []
+        tool_call = None
+        
+        try:
+            import json
+            intent = json.loads(content)
+        except json.JSONDecodeError:
+            intent = {"type": "message", "content": content}
+
+        # 3. 处理工具调用
+        if intent.get("type") == "tool_call":
+            tool_name = intent.get("tool")
+            params = intent.get("params", {})
+            tool_func = ToolRegistry.get_tool_func(tool_name)
+            
+            if tool_func:
+                try:
+                    # 执行工具
+                    tool_result = tool_func(db, **params)
+                    tool_call = {"tool": tool_name, "params": params, "result": tool_result}
+                    
+                    # 4. 第二轮调用：生成回答
+                    messages.append({"role": "assistant", "content": content})
+                    messages.append({
+                        "role": "user", 
+                        "content": f"工具执行结果: {json.dumps(tool_result, ensure_ascii=False)}\n请根据以上结果回答用户问题。"
+                    })
+                    
+                    final_response = self.client.chat(messages, json_mode=False, temperature=0.2)
+                    answer = final_response["content"]
+                    trace["final_response"] = final_response.get("trace")
+                    
+                    # 构造引用信息
+                    if tool_name == "query_products":
+                        references = [{"asin": item["asin"], "title": item["title"]} for item in tool_result]
+                        
+                except Exception as e:
+                    answer = f"执行查询时发生错误: {str(e)}"
+                    trace["tool_error"] = str(e)
+            else:
+                answer = f"无法识别的工具: {tool_name}"
+        else:
+            answer = intent.get("content", str(content))
+
+        # 5. 保存记录
         session = QuerySession(
             question=question,
-            intent="batch-analysis",
-            sql_template=summary.get("sql"),
-            answer=result["answer"],
+            intent=tool_call["tool"] if tool_call else "direct",
+            sql_template=None, # 不再使用 SQL 模板
+            answer=answer,
             references=references,
-            deepseek_trace=result.get("trace"),
+            deepseek_trace=trace,
             status="succeeded",
             asked_by=asked_by,
         )
@@ -46,67 +140,36 @@ class ChatService:
             action="chat.ask",
             actor_id=asked_by,
             entity_id=session.id,
-            payload={"question": question, "references": session.references},
+            payload={"question": question, "tool_call": tool_call},
         )
-        LogService.log(
-            db,
-            level="info",
-            category="chat",
-            message="问答完成",
-            context={"question": question, "session_id": session.id},
-            trace_id=session.id,
-        )
-
+        
         return {
             "answer": session.answer,
             "references": references,
             "session_id": session.id,
         }
 
-    def _collect_summary(self, db: Session, batch_ids: list[str] | None) -> dict[str, Any]:
-        stmt = select(func.count(ImportBatch.id))
-        if batch_ids:
-            stmt = stmt.where(ImportBatch.id.in_(batch_ids))
-        batch_count = db.scalar(stmt) or 0
-
-        product_stmt = select(func.count(ProductRecord.id))
-        if batch_ids:
-            product_stmt = product_stmt.where(ProductRecord.batch_id.in_(batch_ids))
-        product_count = db.scalar(product_stmt) or 0
-
-        latest_stmt = (
-            select(ImportBatch.id, ImportBatch.success_rows)
-            .order_by(ImportBatch.finished_at.desc().nullslast())
-            .limit(1)
+    def _build_system_prompt(self, tools_schema: list[dict]) -> str:
+        import json
+        tools_json = json.dumps(tools_schema, ensure_ascii=False, indent=2)
+        return (
+            "你是 Sorftime 数据分析助手。你可以使用以下工具来查询数据：\n"
+            f"{tools_json}\n\n"
+            "请根据用户问题，决定是否调用工具。\n"
+            "如果需要查询数据，请返回 JSON 格式：\n"
+            '{"type": "tool_call", "tool": "工具名称", "params": { "参数名": "参数值" }}\n\n'
+            "如果不需要查询，或只是闲聊，请返回 JSON 格式：\n"
+            '{"type": "message", "content": "你的回答"}\n\n'
+            "注意：只返回 JSON，不要包含其他文本。"
         )
-        latest_batch = db.execute(latest_stmt).one_or_none()
 
-        summary = {
-            "batch_summary": {
-                "batch_count": batch_count,
-                "product_count": product_count,
-                "latest_batch_id": latest_batch[0] if latest_batch else None,
-                "latest_rows": latest_batch[1] if latest_batch else 0,
-            },
-            "batch_ids": batch_ids or [],
-            "sql": "SELECT COUNT(*) FROM import_batches",
-        }
-        return summary
+    # 移除旧的 _collect_summary 和 _build_references 方法，或保留但不使用
+    def _collect_summary(self, db: Session, batch_ids: list[str] | None) -> dict[str, Any]:
+        return {} # Deprecated
 
     @staticmethod
     def _build_references(summary: dict[str, Any]) -> list[dict[str, Any]]:
-        refs = [
-            {"batchId": bid, "asin": None, "fields": []} for bid in summary.get("batch_ids", []) or []
-        ]
-        if not refs and summary.get("batch_summary", {}).get("latest_batch_id"):
-            refs.append(
-                {
-                    "batchId": summary["batch_summary"]["latest_batch_id"],
-                    "asin": None,
-                    "fields": [],
-                }
-            )
-        return refs
+        return [] # Deprecated
 
 
 chat_service = ChatService()

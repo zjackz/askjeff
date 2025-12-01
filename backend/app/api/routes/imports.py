@@ -11,7 +11,7 @@ from app.schemas.imports import ImportBatchOut, ImportDetailResponse, ImportList
 from app.services.import_repository import ImportRepository
 from app.services.import_service import import_service
 
-router = APIRouter(prefix="/imports", tags=["imports"])
+router = APIRouter(prefix="/api/imports", tags=["imports"])
 
 
 @router.post("", response_model=ImportBatchOut, status_code=201)
@@ -79,3 +79,49 @@ async def get_import_detail(batch_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="批次不存在")
     failure_items = batch.failure_summary.get("items", []) if batch.failure_summary else []
     return {"batch": batch, "failed_rows": failure_items}
+
+
+@router.get("/{batch_id}/records")
+async def get_batch_records(
+    batch_id: str,
+    limit: int = Query(default=5, le=100),
+    offset: int = Query(default=0),
+    db: Session = Depends(get_db)
+):
+    """Get records for a batch (preview)."""
+    from app.models.import_batch import ProductRecord
+    records = (
+        db.query(ProductRecord)
+        .filter(ProductRecord.batch_id == batch_id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return records
+
+
+from fastapi import BackgroundTasks, Body
+from app.services.extraction_service import ExtractionService
+from app.services.deepseek_client import DeepseekClient
+from app.db import SessionLocal
+
+async def run_batch_extraction_background(batch_id: str, target_fields: list[str]):
+    with SessionLocal() as db:
+        service = ExtractionService(db, DeepseekClient())
+        await service.extract_batch_features(batch_id, target_fields)
+
+
+@router.post("/{batch_id}/extract")
+async def extract_batch_features(
+    batch_id: str,
+    background_tasks: BackgroundTasks,
+    target_fields: list[str] = Body(..., embed=True),
+    db: Session = Depends(get_db),
+):
+    """Start AI feature extraction for a batch."""
+    batch = ImportRepository.get_batch(db, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    
+    background_tasks.add_task(run_batch_extraction_background, batch_id, target_fields)
+    return {"message": "Extraction started", "batch_id": batch_id}

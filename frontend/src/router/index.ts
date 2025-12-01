@@ -27,7 +27,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/chat',
         component: () => import('../views/chat/index.vue'),
-        meta: { title: '数据洞察' }
+        meta: { title: '产品查询' }
       },
       {
         path: '/export',
@@ -40,7 +40,7 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '日志中心' }
       },
       {
-        path: '/extraction',
+        path: '/extraction/:batchId',
         component: () => import('../views/extraction/index.vue'),
         meta: { title: '特征提取' }
       }
@@ -51,4 +51,13 @@ const routes: RouteRecordRaw[] = [
 export const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+  if (to.path !== '/login' && !token) {
+    next('/login')
+  } else {
+    next()
+  }
 })
