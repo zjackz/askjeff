@@ -34,10 +34,11 @@ AI 代理开发指南 - 技术栈、编码标准与工作流程
 
 ### DevOps
 - **容器化**: Docker + Docker Compose
-- **开发环境**: Docker Compose（热更新）
+- **开发环境**: 必须使用 Docker Compose（热更新），禁止本地直接运行后端服务
 - **生产部署**: systemd 管理 Docker Compose stack
 - **日志**: Python logging
 - **指标**: 脚本导出 CSV
+- **强制要求**: 所有后端开发、测试必须在 Docker 容器中进行，避免本地环境差异导致的问题
 
 ---
 
@@ -243,6 +244,11 @@ python scripts/report_metrics.py --days 7
 - Element Plus 组件保持中文文案
 - 状态管理优先使用 Pinia
 - API 调用统一封装在 `src/api/` 目录
+- **表格 UI 规范**:
+  - **布局**: 使用全屏 Flex 布局，表格高度自适应 (`height="100%"`)，避免页面滚动条。
+  - **样式**: 使用紧凑模式 (`size="small"`)，最大化单屏数据展示量。
+  - **分页**: 必须提供 `page-sizes` 选项 `[20, 50, 100, 200]`，默认每页 50 条。
+  - **容器**: 表格应包裹在 `.table-container` 中，设置圆角和阴影。
 
 ### 后端规范（FastAPI）
 

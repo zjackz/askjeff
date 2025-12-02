@@ -1,162 +1,150 @@
 <template>
-  <div class="import-page fade-in">
-    <!-- 页面标题 -->
-    <!-- 页面标题 -->
-    <div class="page-header mb-6 flex justify-between items-center" style="display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <h1 class="text-2xl font-bold">文件导入</h1>
-        <p class="text-gray-500">上传并处理您的产品数据文件</p>
+  <div class="import-page">
+    <div class="page-header">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-bold my-0">导入批次</h2>
+        <div class="flex gap-2">
+          <el-button :icon="Refresh" circle @click="fetchBatches" :loading="loading" size="small" />
+          <el-button type="primary" :icon="Plus" @click="importDialogVisible = true" size="small">
+            新建导入
+          </el-button>
+        </div>
       </div>
-      <el-button type="primary" size="large" @click="importDialogVisible = true">
-        <el-icon class="mr-2"><Upload /></el-icon>
-        导入数据
-      </el-button>
     </div>
 
-    <div class="main-content">
-      <!-- 批次列表 -->
-      <el-card class="glass-card">
-        <template #header>
-          <div class="flex justify-between items-center">
-            <div class="flex items-center gap-2">
-              <div class="icon-box bg-success-light">
-                <el-icon><List /></el-icon>
+    <div class="table-container">
+      <el-table 
+        :data="batches" 
+        height="100%" 
+        v-loading="loading" 
+        class="custom-table"
+        size="small"
+        border
+      >
+        <el-table-column label="批次 ID" width="80">
+          <template #default="{ row }">
+            <span class="font-mono text-gray-500">#{{ row.sequence_id || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="filename" label="文件名" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <el-icon class="text-gray-400"><Document /></el-icon>
+                <span class="font-medium truncate" :title="row.filename">{{ row.filename }}</span>
               </div>
-              <span class="font-bold text-lg">最近批次</span>
-              <span v-if="isPolling" class="polling-status ml-2">
-                <span class="pulse-dot"></span>
-                实时更新中
+              <div class="flex items-center gap-2 pl-6">
+                <el-tag size="small" type="info" effect="plain" class="scale-90 origin-left">
+                  {{ getStrategyLabel(row.import_strategy) }}
+                </el-tag>
+                <span class="text-xs text-gray-400" v-if="row.sheet_name">
+                  Sheet: {{ row.sheet_name }}
+                </span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="created_by" label="导入人" width="100" show-overflow-tooltip>
+          <template #default="{ row }">
+            <div class="flex items-center gap-1 text-gray-600">
+              <el-icon><User /></el-icon>
+              <span class="text-xs">管理员</span>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="created_at" label="导入时间" width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span class="text-xs text-gray-500">{{ formatDate(row.created_at) }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="导入进度" width="220">
+          <template #default="{ row }">
+            <div class="flex flex-col gap-1">
+              <div class="flex justify-between text-xs mb-1">
+                <span :class="getStatusColor(row.status)">{{ getStatusLabel(row.status) }}</span>
+                <span class="text-gray-400">{{ row.success_rows }}/{{ row.total_rows }}</span>
+              </div>
+              <el-progress 
+                :percentage="calculateProgress(row)" 
+                :status="getProgressStatus(row.status)"
+                :stroke-width="6"
+                :show-text="false"
+              />
+              <div class="flex justify-between text-xs text-gray-400 mt-1" v-if="row.failed_rows > 0">
+                <span>失败: {{ row.failed_rows }}</span>
+                <el-button 
+                  link 
+                  type="danger" 
+                  size="small" 
+                  class="!p-0 !h-auto text-xs"
+                  @click="downloadFailures(row)"
+                >
+                  下载失败记录
+                </el-button>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="AI 分析" width="140">
+          <template #default="{ row }">
+            <div v-if="row.ai_status === 'processing'" class="flex items-center gap-2 text-primary">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              <span class="text-xs">分析中...</span>
+            </div>
+            <div v-else-if="row.ai_status === 'completed'" class="flex flex-col gap-1">
+              <el-tag type="success" size="small" effect="plain">分析完成</el-tag>
+              <span class="text-xs text-gray-400" v-if="row.ai_summary">
+                {{ row.ai_summary.success || 0 }} 条特征
               </span>
             </div>
-            <div class="flex gap-2">
-              <el-button :icon="Refresh" circle @click="fetchBatches" :loading="loading" />
+            <div v-else-if="row.ai_status === 'failed'" class="text-danger text-xs flex items-center gap-1">
+              <el-icon><Warning /></el-icon>
+              分析失败
             </div>
-          </div>
-        </template>
+            <div v-else class="text-gray-400 text-xs">-</div>
+          </template>
+        </el-table-column>
 
-        <el-table :data="batches" style="width: 100%" v-loading="loading" class="custom-table">
-          <el-table-column prop="filename" label="文件名" min-width="200">
-            <template #default="{ row }">
-              <div class="flex flex-col gap-1">
-                <div class="flex items-center gap-2">
-                  <el-icon class="text-gray-400"><Document /></el-icon>
-                  <span class="font-medium truncate" :title="row.filename">{{ row.filename }}</span>
-                </div>
-                <div class="flex items-center gap-2 pl-6">
-                  <el-tag size="small" type="info" effect="plain" class="scale-90 origin-left">
-                    {{ getStrategyLabel(row.import_strategy) }}
-                  </el-tag>
-                  <span class="text-xs text-gray-400" v-if="row.sheet_name">
-                    Sheet: {{ row.sheet_name }}
-                  </span>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <div class="flex gap-2 items-center justify-center">
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="navigateToChat(row)"
+              >
+                查看详情
+              </el-button>
+              <el-button 
+                type="warning" 
+                size="small" 
+                plain
+                @click="openExtractionDialog(row)"
+              >
+                <el-icon class="mr-1"><MagicStick /></el-icon>
+                AI 提取
+              </el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
 
-          <el-table-column prop="created_by" label="导入人" width="100">
-            <template #default="{ row }">
-              <div class="flex items-center gap-1 text-gray-600">
-                <el-icon><User /></el-icon>
-                <span>{{ row.created_by || '系统' }}</span>
-              </div>
-            </template>
-          </el-table-column>
-          
-          <el-table-column prop="status" label="导入状态" width="120">
-            <template #default="{ row }">
-              <el-tag :type="getStatusType(row.status)" effect="light" round size="small">
-                {{ row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-
-          <!-- 新增：AI 状态列 -->
-          <el-table-column label="AI 提取" width="140">
-            <template #default="{ row }">
-              <div v-if="!row.ai_status || row.ai_status === 'none'" class="text-gray-400 text-xs">
-                -
-              </div>
-              <div v-else class="flex flex-col gap-1">
-                <el-tag :type="getStatusType(row.ai_status)" effect="plain" round size="small">
-                  {{ row.ai_status }}
-                </el-tag>
-                <div v-if="row.ai_summary" class="text-xs text-gray-500 scale-90 origin-left">
-                  {{ row.ai_summary.success }}/{{ row.ai_summary.total }}
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-          
-          <el-table-column label="导入进度" width="180">
-            <template #default="{ row }">
-              <div class="flex flex-col gap-1">
-                <div class="flex justify-between text-xs text-gray-500">
-                  <span class="font-medium">
-                    <span class="text-success">{{ row.success_rows || 0 }}</span>
-                    <span class="mx-1">/</span>
-                    <span>{{ row.total_rows || 0 }}</span>
-                  </span>
-                  <span class="text-danger" v-if="(row.failed_rows || 0) > 0">{{ row.failed_rows }} 失败</span>
-                </div>
-                <el-progress 
-                  :percentage="calculateProgress(row)" 
-                  :status="(row.failed_rows || 0) > 0 ? 'exception' : (row.status === 'completed' ? 'success' : '')"
-                  :show-text="false"
-                  :stroke-width="4"
-                />
-                <div class="text-xs text-gray-400 text-right" v-if="row.duration">
-                  耗时: {{ row.duration }}
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-          
-          <el-table-column prop="created_at" label="时间" width="160">
-            <template #default="{ row }">
-              <div class="flex flex-col text-xs text-gray-500">
-                <span>{{ formatTime(row.created_at).split(' ')[0] }}</span>
-                <span class="text-gray-400">{{ formatTime(row.created_at).split(' ')[1] }}</span>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="操作" width="140" fixed="right">
-            <template #default="{ row }">
-              <div class="flex flex-col gap-2">
-                <el-button 
-                  link 
-                  type="primary" 
-                  size="small" 
-                  @click="viewBatchDetail(row)"
-                >
-                  查看详情
-                </el-button>
-                <el-button 
-                  link 
-                  type="warning" 
-                  size="small" 
-                  @click="navigateToExtraction(row)"
-                >
-                  <el-icon class="mr-1"><MagicStick /></el-icon>
-                  AI 提取
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <!-- 分页 -->
-        <div class="mt-4 flex justify-end">
-          <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :total="total"
-            layout="total, prev, pager, next"
-            @current-change="handlePageChange"
-          />
-        </div>
-      </el-card>
+    <div class="pager-container">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[20, 50, 100, 200]"
+        layout="total, sizes, prev, pager, next"
+        :total="total"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        size="small"
+      />
     </div>
 
     <!-- 导入文件对话框 -->
@@ -224,15 +212,13 @@
         </span>
       </template>
     </el-dialog>
-
-
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Upload, UploadFilled, VideoPlay, List, Document, Refresh, User, MagicStick } from '@element-plus/icons-vue'
+import { UploadFilled, Document, Refresh, User, MagicStick, Plus, Loading, Warning } from '@element-plus/icons-vue'
 import { ElMessage, type UploadUserFile, type UploadFile } from 'element-plus'
 import { useIntervalFn } from '@vueuse/core'
 import { http, API_BASE } from '@/utils/http'
@@ -245,13 +231,15 @@ const fileList = ref<UploadUserFile[]>([])
 
 const importDialogVisible = ref(false)
 
+
 // Pagination
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(50)
 const total = ref(0)
 
 interface BatchRow {
   id: string
+  sequence_id?: number
   filename: string
   sheet_name?: string
   import_strategy?: string
@@ -266,6 +254,7 @@ interface BatchRow {
   started_at?: string
   finished_at?: string
   duration?: string // 前端计算
+  failure_summary?: { failed_rows_path: string, total_failed: number }
 }
 
 const batches = ref<BatchRow[]>([])
@@ -318,7 +307,7 @@ const fetchBatches = async (silent = false) => {
         pageSize: pageSize.value
       }
     })
-    batches.value = (data.items || []).map((item: any) => ({
+    batches.value = (data.items || []).map((item: BatchRow) => ({
       ...item,
       duration: calculateDuration(item.started_at, item.finished_at)
     }))
@@ -340,22 +329,18 @@ const fetchBatches = async (silent = false) => {
   }
 }
 
-const handlePageChange = (val: number) => {
+const handleCurrentChange = (val: number) => {
   currentPage.value = val
   fetchBatches()
 }
 
-
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    completed: 'success',
-    succeeded: 'success',
-    failed: 'danger',
-    processing: 'primary',
-    pending: 'info'
-  }
-  return map[status.toLowerCase()] || 'info'
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  fetchBatches()
 }
+
+
+
 
 const getStrategyLabel = (strategy?: string) => {
   const map: Record<string, string> = {
@@ -388,20 +373,56 @@ const calculateProgress = (row: BatchRow) => {
   return Math.min(Math.round((processed / total) * 100), 100)
 }
 
-const formatTime = (val?: string) => {
+const formatDate = (val?: string) => {
   if (!val) return '-'
   const date = new Date(val)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-const viewBatchDetail = (row: BatchRow) => {
+const getStatusColor = (status: string) => {
+  const map: Record<string, string> = {
+    completed: 'text-success',
+    succeeded: 'text-success',
+    failed: 'text-danger',
+    processing: 'text-primary',
+    pending: 'text-gray-400'
+  }
+  return map[status.toLowerCase()] || 'text-gray-400'
+}
+
+const getStatusLabel = (status: string) => {
+  const map: Record<string, string> = {
+    completed: '已完成',
+    succeeded: '已完成',
+    failed: '失败',
+    processing: '处理中',
+    pending: '等待中'
+  }
+  return map[status.toLowerCase()] || status
+}
+
+const getProgressStatus = (status: string) => {
+  if (status === 'failed') return 'exception'
+  if (status === 'completed' || status === 'succeeded') return 'success'
+  return ''
+}
+
+const downloadFailures = (row: BatchRow) => {
+  if (row.failure_summary?.failed_rows_path) {
+    window.open(`${API_BASE}/exports/download?path=${row.failure_summary.failed_rows_path}`, '_blank')
+  } else {
+    ElMessage.warning('暂无失败记录文件')
+  }
+}
+
+const navigateToChat = (row: BatchRow) => {
   router.push({
-    path: '/chat',
+    path: '/product',
     query: { batchId: row.id }
   })
 }
 
-const navigateToExtraction = (row: BatchRow) => {
+const openExtractionDialog = (row: BatchRow) => {
   router.push(`/extraction/${row.id}`)
 }
 
@@ -412,14 +433,50 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .import-page {
-  max-width: 1400px;
-  margin: 0 auto;
+  height: calc(100vh - 84px);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  box-sizing: border-box;
+  background-color: var(--bg-secondary);
 }
 
-.glass-card {
-  padding: 0; // Ensure header goes edge-to-edge
+.page-header {
+  background: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
+.table-container {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  padding: 1px;
+}
+
+.pager-container {
+  background: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.text-primary {
+  color: var(--primary-color);
+}
+
+.text-danger {
+  color: var(--danger-color);
+}
 .card-header {
   display: flex;
   justify-content: space-between;

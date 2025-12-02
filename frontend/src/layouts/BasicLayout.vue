@@ -25,7 +25,7 @@
           <template #title>文件导入（excel）</template>
         </el-menu-item>
         
-        <el-menu-item index="/chat">
+        <el-menu-item index="/product">
           <el-icon><ChatDotRound /></el-icon>
           <template #title>数据洞察</template>
         </el-menu-item>
@@ -33,11 +33,6 @@
         <el-menu-item index="/export">
           <el-icon><Download /></el-icon>
           <template #title>数据导出</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/extraction">
-          <el-icon><MagicStick /></el-icon>
-          <template #title>特征提取</template>
         </el-menu-item>
         
         <el-menu-item index="/logs">
@@ -128,13 +123,11 @@ const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
 
-// 页面名称映射
 const pageNames: Record<string, string> = {
   '/dashboard': '数据总览',
   '/import': '文件导入',
-  '/chat': '数据洞察',
+  '/product': '数据洞察',
   '/export': '数据导出',
-  '/extraction': '特征提取',
   '/logs': '日志中心'
 }
 
@@ -240,9 +233,7 @@ const handleLogout = () => {
   }
 
   // 折叠状态下的特定样式
-  &:not(:not(.el-menu--collapse)) {
-    padding: 0 8px; // 折叠时减少左右内边距
-    
+  &.el-menu--collapse {
     :deep(.el-menu-item) {
       padding: 0 !important;
       justify-content: center;
@@ -250,19 +241,6 @@ const handleLogout = () => {
       
       .el-icon {
         margin-right: 0;
-        visibility: visible; // 确保图标可见
-        opacity: 1;
-      }
-      
-      // 仅隐藏 title 插槽的内容，Element Plus 通常会自动处理，
-      // 但如果需要强制隐藏，应更精确地定位
-      template, .el-menu-item-title {
-        display: none;
-      }
-      
-      // 移除左侧指示条
-      &.is-active::before {
-        display: none;
       }
     }
   }
@@ -311,11 +289,19 @@ const handleLogout = () => {
     cursor: pointer;
     display: flex;
     align-items: center;
-    color: var(--text-secondary);
-    transition: color 0.3s;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: all 0.3s;
+    border: 1px solid var(--border-light);
 
     &:hover {
       color: var(--primary-color);
+      background: var(--primary-light);
+      border-color: var(--primary-color);
     }
   }
 

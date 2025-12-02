@@ -16,12 +16,14 @@ class DeepseekClient:
         messages: list[dict[str, str]],
         json_mode: bool = False,
         temperature: float = 0.1,
+        system_prompt: str | None = None,
     ) -> dict[str, Any]:
         """
         通用的对话接口
         :param messages: 消息列表 [{"role": "user", "content": "..."}]
         :param json_mode: 是否强制返回 JSON
         :param temperature: 温度系数
+        :param system_prompt: 可选的系统提示词，如果提供，将作为第一条消息
         """
         if not self.api_key:
             return {
@@ -29,9 +31,14 @@ class DeepseekClient:
                 "trace": {"error": "missing_api_key"},
             }
 
+        final_messages = []
+        if system_prompt:
+            final_messages.append({"role": "system", "content": system_prompt})
+        final_messages.extend(messages)
+
         payload = {
             "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
-            "messages": messages,
+            "messages": final_messages,
             "temperature": temperature,
         }
         
@@ -48,13 +55,7 @@ class DeepseekClient:
             
             # JSON 模式下的简单清理
             if json_mode:
-                content = content.strip()
-                if content.startswith("```json"):
-                    content = content[7:]
-                if content.startswith("```"):
-                    content = content[3:]
-                if content.endswith("```"):
-                    content = content[:-3]
+                content = self._clean_json_string(content)
                 
             return {"content": content, "trace": data}
         except Exception as exc:
@@ -63,6 +64,26 @@ class DeepseekClient:
                 "content": f"AI 服务暂时不可用: {str(exc)}",
                 "trace": {"error": str(exc)},
             }
+
+    def _clean_json_string(self, content: str) -> str:
+        """清理 JSON 字符串中的 Markdown 标记"""
+        content = content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.startswith("```"):
+            content = content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+        return content.strip()
+
+    def parse_json_response(self, content: str) -> dict | None:
+        """尝试解析 JSON 响应"""
+        import json
+        try:
+            cleaned = self._clean_json_string(content)
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            return None
 
     def summarize(self, question: str, context: dict) -> dict[str, Any]:
         """
@@ -92,23 +113,26 @@ class DeepseekClient:
             f"问题: {question}"
         )
 
-    def extract_features(self, text: str, fields: list[str]) -> dict[str, Any]:
+    def extract_features(self, text: str, fields: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
         if not self.api_key:
-            return {}
+            return {}, {}
 
-        prompt = (
-            "你是一个电商产品专家。请根据以下产品信息，提取指定的特征字段。\n\n"
-            f"产品信息: {text}\n"
+        # 1. System Prompt (Static for caching)
+        system_prompt = (
+            "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
             f"需要提取的字段: {', '.join(fields)}\n\n"
             "请以 JSON 格式返回结果，key 为字段名，value 为提取出的内容。如果无法提取，value 请留空。\n"
             "只返回 JSON，不要包含markdown格式或其他文本。"
         )
 
+        # 2. User Prompt (Variable)
+        user_prompt = f"产品信息: {text}"
+
         payload = {
             "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
             "messages": [
-                {"role": "system", "content": "你是 Sorftime 数据分析助手，请使用中文回答"},
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
             ],
             "temperature": 0.1,  # Lower temperature for extraction
             "response_format": {"type": "json_object"}, # DeepSeek supports json_object
@@ -120,6 +144,7 @@ class DeepseekClient:
             response.raise_for_status()
             data = response.json()
             content = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
             
             # Simple cleanup if model returns markdown code blocks despite instructions
             content = content.strip()
@@ -131,28 +156,31 @@ class DeepseekClient:
                 content = content[:-3]
             
             import json
-            return json.loads(content)
+            return json.loads(content), usage
         except Exception as exc:
             print(f"DeepSeek Extraction Error: {exc}", flush=True)
-            return {}
+            return {}, {}
 
-    async def extract_features_async(self, text: str, fields: list[str]) -> dict[str, Any]:
+    async def extract_features_async(self, text: str, fields: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
         if not self.api_key:
-            return {}
+            return {}, {}
 
-        prompt = (
-            "你是一个电商产品专家。请根据以下产品信息，提取指定的特征字段。\n\n"
-            f"产品信息: {text}\n"
+        # 1. System Prompt (Static for caching)
+        system_prompt = (
+            "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
             f"需要提取的字段: {', '.join(fields)}\n\n"
             "请以 JSON 格式返回结果，key 为字段名，value 为提取出的内容。如果无法提取，value 请留空。\n"
             "只返回 JSON，不要包含markdown格式或其他文本。"
         )
 
+        # 2. User Prompt (Variable)
+        user_prompt = f"产品信息: {text}"
+
         payload = {
             "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
             "messages": [
-                {"role": "system", "content": "你是 Sorftime 数据分析助手，请使用中文回答"},
-                {"role": "user", "content": prompt},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
             ],
             "temperature": 0.1,
             "response_format": {"type": "json_object"},
@@ -165,6 +193,7 @@ class DeepseekClient:
                 response.raise_for_status()
                 data = response.json()
                 content = data["choices"][0]["message"]["content"]
+                usage = data.get("usage", {})
                 
                 # Simple cleanup
                 content = content.strip()
@@ -176,7 +205,7 @@ class DeepseekClient:
                     content = content[:-3]
                 
                 import json
-                return json.loads(content)
+                return json.loads(content), usage
         except Exception as exc:
             print(f"DeepSeek Async Extraction Error: {exc}", flush=True)
-            return {}
+            return {}, {}

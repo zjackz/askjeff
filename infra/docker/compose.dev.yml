@@ -11,7 +11,7 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sorftime -d sorftime_dev"]
+      test: [ "CMD-SHELL", "pg_isready -U sorftime -d sorftime_dev" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -60,7 +60,25 @@ services:
     ports:
       - "8001:8001"
     healthcheck:
-      test: ["CMD-SHELL", "python - <<'PY'\nimport sys,urllib.request\ntry:\n urllib.request.urlopen('http://localhost:8001/health', timeout=2)\n sys.exit(0)\nexcept Exception:\n sys.exit(1)\nPY\n"]
+      test:
+        [
+          "CMD-SHELL",
+          "python - <<'PY'
+
+            import sys,urllib.request
+
+            try:
+
+            \ urllib.request.urlopen('http://localhost:8001/health', timeout=2)
+
+            \ sys.exit(0)
+
+            except Exception:
+
+            \ sys.exit(1)
+
+            PY\n"
+        ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -69,8 +87,8 @@ services:
     image: mcr.microsoft.com/playwright:v1.56.1-jammy
     working_dir: /app
     environment:
-      CI: "true"
-      VITE_API_BASE_URL: http://localhost:8001
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8001/api
     command: >
       bash -c "npm config set registry https://registry.npmmirror.com && corepack enable && pnpm config set registry https://registry.npmmirror.com && pnpm install --no-frozen-lockfile && pnpm dev --host 0.0.0.0 --port 5174"
     volumes:
@@ -83,7 +101,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:5174').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\" "]
+      test: [ "CMD-SHELL", "node -e \"fetch('http://localhost:5174').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\" " ]
       interval: 10s
       timeout: 3s
       retries: 10

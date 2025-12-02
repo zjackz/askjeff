@@ -1,325 +1,257 @@
 <template>
   <div class="extraction-page fade-in">
-    <!-- Header -->
-    <div class="page-header mb-6 flex justify-between items-center">
-      <div>
-        <div class="flex items-center gap-3 mb-2">
-          <el-button circle :icon="Back" @click="router.back()" />
-          <h1 class="text-2xl font-bold">AI 特征提取</h1>
-        </div>
-        <p class="text-gray-500 ml-12">配置提取字段并预览数据</p>
-      </div>
+    <!-- 页面头部 -->
+    <div class="page-header mb-6">
       <div class="flex items-center gap-4">
-        <div class="text-right" v-if="batch">
-          <div class="text-sm text-gray-500">当前批次</div>
-          <div class="font-medium">{{ batch.filename }}</div>
+        <el-button circle :icon="ArrowLeft" @click="$router.back()" />
+        <div>
+          <h1 class="text-2xl font-bold">
+            AI 特征提取 
+            <span v-if="batch?.sequence_id" class="text-gray-400 text-lg font-normal ml-2">#{{ batch.sequence_id }}</span>
+          </h1>
+          <p class="text-gray-500" v-if="batch">
+            批次: {{ batch.filename }} ({{ batch.total_rows }} 条记录)
+          </p>
         </div>
-        <el-tag :type="getStatusType(batch?.ai_status || 'none')" size="large" effect="dark">
-          {{ getStatusLabel(batch?.ai_status || 'none') }}
-        </el-tag>
       </div>
     </div>
 
-    <div class="grid-layout">
-      <!-- Left: Data Preview -->
-      <div class="preview-section slide-in" style="--delay: 0.1s">
-        <el-card class="glass-card h-full">
-          <template #header>
-            <div class="flex items-center gap-2">
-              <el-icon class="text-primary"><View /></el-icon>
-              <span class="font-bold">数据预览 (前5条)</span>
-            </div>
-          </template>
-          
-          <div class="preview-list" v-loading="loadingRecords">
-            <div v-for="record in records" :key="record.id" class="preview-item">
-              <div class="item-header">
-                <span class="font-medium truncate">{{ record.title }}</span>
-                <el-tag size="small" type="info">{{ record.asin }}</el-tag>
+    <div class="main-content" v-loading="loading">
+      <el-row :gutter="24">
+        <!-- 左侧：数据预览 -->
+        <el-col :span="16">
+          <el-card class="mb-6">
+            <template #header>
+              <div class="flex justify-between items-center">
+                <span class="font-bold">数据预览 (前 5 条)</span>
+                <el-tag size="small" type="info">原始数据</el-tag>
               </div>
-              <div class="item-content">
-                <div class="raw-data">
-                  <div class="label">原始数据:</div>
-                  <pre class="json-content">{{ JSON.stringify(record.raw_payload, null, 2) }}</pre>
-                </div>
-                <div class="ai-data" v-if="record.ai_features">
-                  <div class="label text-success">AI 提取结果:</div>
-                  <pre class="json-content success">{{ JSON.stringify(record.ai_features, null, 2) }}</pre>
-                </div>
-              </div>
-            </div>
-            <el-empty v-if="!loadingRecords && records.length === 0" description="暂无数据" />
-          </div>
-        </el-card>
-      </div>
-
-      <!-- Right: Configuration -->
-      <div class="config-section slide-in" style="--delay: 0.2s">
-        <el-card class="glass-card mb-4">
-          <template #header>
-            <div class="flex items-center gap-2">
-              <el-icon class="text-warning"><Setting /></el-icon>
-              <span class="font-bold">提取配置</span>
-            </div>
-          </template>
-          
-          <div class="config-form">
-            <div class="mb-4">
-              <div class="text-sm font-medium mb-2">目标字段</div>
-              <div class="text-xs text-gray-500 mb-2">输入您希望提取的字段名称，按回车添加</div>
-              <el-select
-                v-model="targetFields"
-                multiple
-                filterable
-                allow-create
-                default-first-option
-                placeholder="例如：电池容量、材质、适用人群"
-                class="w-full"
-                size="large"
+            </template>
+            
+            <el-table :data="previewRecords" style="width: 100%" border stripe size="small">
+              <el-table-column 
+                v-for="col in previewColumns" 
+                :key="col" 
+                :prop="col" 
+                :label="col"
+                min-width="120" 
+                show-overflow-tooltip
               />
-            </div>
-            
-            <el-button 
-              type="primary" 
-              size="large" 
-              class="w-full" 
-              :loading="extracting"
-              @click="handleExtract"
-              :disabled="targetFields.length === 0"
-            >
-              <el-icon class="mr-2"><VideoPlay /></el-icon>
-              开始提取
-            </el-button>
-          </div>
-        </el-card>
+            </el-table>
+          </el-card>
 
-        <!-- Progress -->
-        <el-card class="glass-card" v-if="batch?.ai_status && batch.ai_status !== 'none'">
-          <template #header>
-            <div class="flex items-center gap-2">
-              <el-icon class="text-info"><DataLine /></el-icon>
-              <span class="font-bold">任务进度</span>
+          <!-- 现有字段列表 -->
+          <el-card>
+            <template #header>
+              <span class="font-bold">现有字段</span>
+            </template>
+            <div class="flex flex-wrap gap-2">
+              <el-tag 
+                v-for="col in previewColumns" 
+                :key="col" 
+                effect="plain"
+                class="field-tag"
+              >
+                {{ col }}
+              </el-tag>
             </div>
-          </template>
-          
-          <div class="progress-info">
-            <div class="flex justify-between mb-2 text-sm">
-              <span>处理进度</span>
-              <span>{{ batch.ai_summary?.success || 0 }} / {{ batch.ai_summary?.total || 0 }}</span>
-            </div>
-            <el-progress 
-              :percentage="calculateProgress(batch)" 
-              :status="batch.ai_status === 'failed' ? 'exception' : (batch.ai_status === 'completed' ? 'success' : '')"
-              :stroke-width="8"
-            />
-            
-            <div class="mt-4 grid grid-cols-2 gap-4">
-              <div class="stat-item bg-success-light">
-                <div class="label">成功</div>
-                <div class="value text-success">{{ batch.ai_summary?.success || 0 }}</div>
+          </el-card>
+        </el-col>
+
+        <!-- 右侧：提取配置 -->
+        <el-col :span="8">
+          <el-card class="extraction-config-card">
+            <template #header>
+              <div class="flex items-center gap-2">
+                <el-icon class="text-primary"><MagicStick /></el-icon>
+                <span class="font-bold">提取配置</span>
               </div>
-              <div class="stat-item bg-danger-light">
-                <div class="label">失败</div>
-                <div class="value text-danger">{{ batch.ai_summary?.failed || 0 }}</div>
+            </template>
+
+            <el-form label-position="top">
+              <el-form-item label="目标字段">
+                <div class="text-xs text-gray-400 mb-2">
+                  输入您想要 AI 从原始数据中分析并提取的新字段。
+                </div>
+                <el-select
+                  v-model="targetFields"
+                  multiple
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="输入或选择字段 (回车添加)"
+                  class="w-full"
+                  size="large"
+                >
+                  <el-option label="材质 (Material)" value="Material" />
+                  <el-option label="颜色 (Color)" value="Color" />
+                  <el-option label="尺寸 (Size)" value="Size" />
+                  <el-option label="适用人群 (Target Audience)" value="Target Audience" />
+                  <el-option label="使用场景 (Usage Scenario)" value="Usage Scenario" />
+                  <el-option label="卖点 (Selling Points)" value="Selling Points" />
+                  <el-option label="风格 (Style)" value="Style" />
+                </el-select>
+              </el-form-item>
+
+              <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <h4 class="text-blue-700 font-bold mb-2 text-sm">提示</h4>
+                <ul class="list-disc list-inside text-xs text-blue-600 space-y-1">
+                  <li>AI 将分析所有原始列的内容</li>
+                  <li>提取结果将自动添加到新列中</li>
+                  <li>建议使用清晰的字段名称</li>
+                </ul>
               </div>
-            </div>
-          </div>
-        </el-card>
-      </div>
+
+              <el-button 
+                type="primary" 
+                size="large" 
+                class="w-full" 
+                :loading="extracting"
+                @click="submitExtraction"
+                :disabled="targetFields.length === 0"
+              >
+                开始 AI 提取
+              </el-button>
+            </el-form>
+          </el-card>
+        </el-col>
+      </el-row>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Back, View, Setting, VideoPlay, DataLine } from '@element-plus/icons-vue'
+import { ArrowLeft, MagicStick } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { useIntervalFn } from '@vueuse/core'
 import { http, API_BASE } from '@/utils/http'
-import { extractionApi } from '@/api/extraction'
 
 const route = useRoute()
 const router = useRouter()
 const batchId = route.params.batchId as string
 
-const batch = ref<any>(null)
-const records = ref<any[]>([])
-const loadingRecords = ref(false)
-const targetFields = ref<string[]>([])
-const extracting = ref(false)
-
-// Polling for status updates
-const { pause, resume, isActive: isPolling } = useIntervalFn(() => {
-  fetchBatchInfo(true)
-  fetchRecords(true)
-}, 3000)
-
-const fetchBatchInfo = async (silent = false) => {
-  try {
-    const { data } = await http.get(`${API_BASE}/imports/${batchId}`)
-    batch.value = data.batch
-    
-    // Stop polling if completed or failed
-    if (['completed', 'failed'].includes(batch.value.ai_status)) {
-      // pause() // Optional: keep polling to see updates if re-triggered
-    }
-  } catch (err) {
-    console.error(err)
-  }
+interface Batch {
+  id: string
+  sequence_id?: number
+  filename: string
+  total_rows?: number
+  [key: string]: unknown
 }
 
-const fetchRecords = async (silent = false) => {
-  if (!silent) loadingRecords.value = true
+interface RecordData {
+  id: string
+  normalized_payload?: Record<string, unknown>
+  raw_payload?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+const loading = ref(false)
+const extracting = ref(false)
+const batch = ref<Batch | null>(null)
+const previewRecords = ref<RecordData[]>([])
+const targetFields = ref<string[]>([])
+
+// 计算预览列（从第一条记录的 payload 中获取 key）
+const previewColumns = computed(() => {
+  if (previewRecords.value.length === 0) return []
+  // 优先使用 normalized_payload，否则使用 raw_payload
+  const firstRecord = previewRecords.value[0]
+  if (!firstRecord) return []
+  const payload = firstRecord.normalized_payload || firstRecord.raw_payload || {}
+  return Object.keys(payload)
+})
+
+const fetchBatchDetails = async () => {
+  loading.value = true
   try {
-    const { data } = await http.get(`${API_BASE}/imports/${batchId}/records`, {
+    // 获取批次详情
+    const { data: batchData } = await http.get(`${API_BASE}/imports/${batchId}`)
+    if (batchData && batchData.batch) {
+      batch.value = batchData.batch
+    }
+
+    // 获取预览记录
+    const { data: recordsData } = await http.get(`${API_BASE}/imports/${batchId}/records`, {
       params: { limit: 5 }
     })
-    records.value = data
+    
+    if (Array.isArray(recordsData)) {
+      // 处理记录数据，展平 payload
+      previewRecords.value = recordsData.map((record: RecordData) => {
+        const payload = record.normalized_payload || record.raw_payload || {}
+        return {
+          id: record.id,
+          ...payload
+        }
+      })
+    }
   } catch (err) {
-    console.error(err)
+    console.error('Failed to load batch details:', err)
+    ElMessage.error('加载数据失败')
   } finally {
-    if (!silent) loadingRecords.value = false
+    loading.value = false
   }
 }
 
-const handleExtract = async () => {
-  if (targetFields.value.length === 0) return
-  
+const submitExtraction = async () => {
+  if (!batchId || targetFields.value.length === 0) return
+
   extracting.value = true
   try {
-    await extractionApi.extractBatch(batchId, targetFields.value)
+    await http.post(`${API_BASE}/imports/${batchId}/extract`, {
+      target_fields: targetFields.value
+    })
     ElMessage.success('AI 提取任务已启动')
-    // Force refresh
-    await fetchBatchInfo()
-    resume()
+    // 跳转回导入列表页，或者留在当前页显示状态？
+    // 用户需求是"点击跳转到一个单独页面"，提取后可能想看进度。
+    // 暂时跳转回列表页，因为列表页有进度条。
+    router.push('/import')
   } catch (err) {
-    // handled by interceptor
+    console.error('Extraction failed:', err)
   } finally {
     extracting.value = false
   }
 }
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    completed: 'success',
-    failed: 'danger',
-    processing: 'primary',
-    pending: 'info',
-    none: 'info'
-  }
-  return map[status] || 'info'
-}
-
-const getStatusLabel = (status: string) => {
-  const map: Record<string, string> = {
-    completed: '已完成',
-    failed: '失败',
-    processing: '进行中',
-    pending: '等待中',
-    none: '未开始'
-  }
-  return map[status] || '未知'
-}
-
-const calculateProgress = (batch: any) => {
-  if (!batch || !batch.ai_summary || batch.ai_summary.total === 0) return 0
-  const { total, success, failed } = batch.ai_summary
-  return Math.min(Math.round(((success + failed) / total) * 100), 100)
-}
-
 onMounted(() => {
   if (batchId) {
-    fetchBatchInfo()
-    fetchRecords()
+    fetchBatchDetails()
+  } else {
+    ElMessage.error('缺少批次 ID')
+    router.push('/import')
   }
 })
 </script>
 
 <style scoped lang="scss">
 .extraction-page {
+  max-width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+  background-color: var(--bg-secondary);
+}
+
+.page-header {
+  max-width: 1400px;
+  margin: 0 auto 24px;
+}
+
+.main-content {
   max-width: 1400px;
   margin: 0 auto;
 }
 
-.grid-layout {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 24px;
-  align-items: start;
-  
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
+.text-primary {
+  color: var(--primary-color);
 }
 
-.preview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.extraction-config-card {
+  position: sticky;
+  top: 20px;
 }
 
-.preview-item {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  background: var(--bg-secondary);
-  
-  .item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  
-  .item-content {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-}
-
-.json-content {
-  font-family: monospace;
-  font-size: 12px;
-  background: rgba(0,0,0,0.03);
-  padding: 8px;
-  border-radius: 4px;
-  margin: 4px 0 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 150px;
-  overflow-y: auto;
-  
-  &.success {
-    background: rgba(16, 185, 129, 0.05);
-    border: 1px solid rgba(16, 185, 129, 0.2);
-  }
-}
-
-.label {
-  font-size: 12px;
-  color: var(--text-secondary);
+.field-tag {
   margin-bottom: 4px;
-}
-
-.stat-item {
-  padding: 12px;
-  border-radius: 8px;
-  text-align: center;
-  
-  .value {
-    font-size: 20px;
-    font-weight: bold;
-    margin-top: 4px;
-  }
-  
-  &.bg-success-light { background: rgba(16, 185, 129, 0.1); }
-  &.bg-danger-light { background: rgba(239, 68, 68, 0.1); }
-}
-
-.slide-in {
-  animation: slideInUp 0.5s ease-out backwards;
-  animation-delay: var(--delay, 0s);
 }
 </style>

@@ -12,18 +12,23 @@ class ImportBatchOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
-    sequence_id: int | None = Field(default=None, alias="sequenceId")
+    sequence_id: int | None = None
     filename: str
-    import_strategy: str = Field(..., alias="importStrategy")
+    import_strategy: str
     status: str
-    total_rows: int = Field(..., alias="totalRows")
-    success_rows: int = Field(..., alias="successRows")
-    failed_rows: int = Field(..., alias="failedRows")
-    started_at: datetime | None = Field(default=None, alias="startedAt")
-    finished_at: datetime | None = Field(default=None, alias="finishedAt")
-    sheet_name: str | None = Field(default=None, alias="sheetName")
-    failure_summary: dict | None = Field(default=None, alias="failureSummary")
-    columns_seen: list[str] | None = Field(default=None, alias="columnsSeen")
+    total_rows: int
+    success_rows: int
+    failed_rows: int
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    sheet_name: str | None = None
+    failure_summary: dict | None = None
+    columns_seen: list[str] | None = None
+    
+    # Added fields
+    created_at: datetime
+    ai_status: str = "none"
+    ai_summary: dict | None = None
 
     @field_serializer("id")
     def _serialize_id(self, value: str) -> str:

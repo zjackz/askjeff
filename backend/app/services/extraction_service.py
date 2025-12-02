@@ -93,7 +93,10 @@ class ExtractionService:
                     # Prepare text for LLM
                     text = json.dumps(item.original_data, ensure_ascii=False)
                     
-                    extracted = await self.client.extract_features_async(text, task.target_fields)
+                    extracted, usage = await self.client.extract_features_async(text, task.target_fields)
+                    
+                    if isinstance(extracted, dict):
+                        extracted["_usage"] = usage
                     
                     item.extracted_data = extracted
                     item.status = "SUCCESS"
@@ -153,8 +156,11 @@ class ExtractionService:
                     # Prepare text for LLM
                     text = json.dumps(data, ensure_ascii=False)
                     
-                    extracted = await self.client.extract_features_async(text, target_fields)
+                    extracted, usage = await self.client.extract_features_async(text, target_fields)
                     
+                    if isinstance(extracted, dict):
+                        extracted["_usage"] = usage
+
                     record.ai_features = extracted
                     record.ai_status = "success"
                     stats["success"] += 1

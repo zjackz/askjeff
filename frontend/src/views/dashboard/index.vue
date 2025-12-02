@@ -79,8 +79,8 @@
         </div>
       </el-col>
       
-      <el-col :span="6">
-        <div class="quick-action-card" @click="$router.push('/chat')">
+      <el-col :span="8">
+        <div class="quick-action-card" @click="$router.push('/product')">
           <div class="action-icon bg-green-100 text-green-600">
             <el-icon><Search /></el-icon>
           </div>
@@ -92,20 +92,7 @@
         </div>
       </el-col>
       
-      <el-col :span="6">
-        <div class="quick-action-card" @click="$router.push('/extraction')">
-          <div class="action-icon bg-orange-100 text-orange-600">
-            <el-icon><MagicStick /></el-icon>
-          </div>
-          <div class="action-info">
-            <h4>特征提取</h4>
-            <p>智能提取产品特征</p>
-          </div>
-          <el-icon class="arrow-icon"><ArrowRight /></el-icon>
-        </div>
-      </el-col>
-      
-      <el-col :span="6">
+      <el-col :span="8">
         <div class="quick-action-card" @click="$router.push('/export')">
           <div class="action-icon bg-purple-100 text-purple-600">
             <el-icon><Download /></el-icon>
@@ -148,7 +135,7 @@ const stats = ref({
 // 使用 vueuse 的 useTransition 实现数字滚动
 const CountTo = {
   props: ['startVal', 'endVal', 'duration'],
-  setup(props: any) {
+  setup(props: { startVal: number, endVal: number, duration: number }) {
     const source = ref(props.startVal)
     const output = useTransition(source, {
       duration: props.duration,
@@ -182,12 +169,6 @@ const loadStats = async () => {
       params: { page: 1, pageSize: 1 }
     })
     stats.value.products = productData.total || 0
-
-    // 获取提取任务统计
-    const { data: extractionData } = await http.get(`${API_BASE}/extraction/list`, {
-      params: { limit: 1, offset: 0 }
-    })
-    stats.value.extractions = extractionData.length || 0
   } catch (err) {
     console.error('加载统计数据失败:', err)
   }

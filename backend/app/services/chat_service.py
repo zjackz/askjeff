@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Callable
+import json
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -46,6 +47,8 @@ class ToolRegistry:
         return tool["func"] if tool else None
 
 
+from app.services.tool_registry import ToolRegistry
+
 class ChatService:
     def __init__(self, client: DeepseekClient | None = None) -> None:
         self.client = client or DeepseekClient()
@@ -58,20 +61,24 @@ class ChatService:
         context_batches: list[str] | None = None,
         asked_by: str | None = None,
     ) -> dict[str, Any]:
-        # 确保工具已注册
-        from app.services import chat_tools  # noqa: F401
+        # 确保工具已注册 (Phase 2 将实现具体工具)
+        # from app.services import chat_tools  # noqa: F401
 
         # 1. 构造 System Prompt
-        tools_schema = ToolRegistry.get_tools_schema()
+        tools_schema = ToolRegistry.get_schemas()
         system_prompt = self._build_system_prompt(tools_schema)
         
         # 2. 第一轮调用：意图识别
         messages = [
-            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"问题: {question}"},
         ]
         
-        response = self.client.chat(messages, json_mode=True, temperature=0.1)
+        response = self.client.chat(
+            messages, 
+            json_mode=True, 
+            temperature=0.1,
+            system_prompt=system_prompt
+        )
         content = response["content"]
         trace = response.get("trace", {})
         
@@ -79,17 +86,15 @@ class ChatService:
         references = []
         tool_call = None
         
-        try:
-            import json
-            intent = json.loads(content)
-        except json.JSONDecodeError:
+        intent = self.client.parse_json_response(content)
+        if not intent:
             intent = {"type": "message", "content": content}
 
         # 3. 处理工具调用
         if intent.get("type") == "tool_call":
             tool_name = intent.get("tool")
             params = intent.get("params", {})
-            tool_func = ToolRegistry.get_tool_func(tool_name)
+            tool_func = ToolRegistry.get_tool(tool_name)
             
             if tool_func:
                 try:
@@ -108,9 +113,9 @@ class ChatService:
                     answer = final_response["content"]
                     trace["final_response"] = final_response.get("trace")
                     
-                    # 构造引用信息
-                    if tool_name == "query_products":
-                        references = [{"asin": item["asin"], "title": item["title"]} for item in tool_result]
+                    # 构造引用信息 (Phase 2 细化)
+                    if isinstance(tool_result, list):
+                         references = [{"data": item} for item in tool_result[:5]]
                         
                 except Exception as e:
                     answer = f"执行查询时发生错误: {str(e)}"
@@ -124,7 +129,7 @@ class ChatService:
         session = QuerySession(
             question=question,
             intent=tool_call["tool"] if tool_call else "direct",
-            sql_template=None, # 不再使用 SQL 模板
+            sql_template=None,
             answer=answer,
             references=references,
             deepseek_trace=trace,
@@ -162,14 +167,5 @@ class ChatService:
             '{"type": "message", "content": "你的回答"}\n\n'
             "注意：只返回 JSON，不要包含其他文本。"
         )
-
-    # 移除旧的 _collect_summary 和 _build_references 方法，或保留但不使用
-    def _collect_summary(self, db: Session, batch_ids: list[str] | None) -> dict[str, Any]:
-        return {} # Deprecated
-
-    @staticmethod
-    def _build_references(summary: dict[str, Any]) -> list[dict[str, Any]]:
-        return [] # Deprecated
-
 
 chat_service = ChatService()

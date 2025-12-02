@@ -25,7 +25,7 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '文件导入' }
       },
       {
-        path: '/chat',
+        path: '/product',
         component: () => import('../views/chat/index.vue'),
         meta: { title: '产品查询' }
       },
@@ -38,13 +38,13 @@ const routes: RouteRecordRaw[] = [
         path: '/logs',
         component: () => import('../views/logs/index.vue'),
         meta: { title: '日志中心' }
-      },
-      {
-        path: '/extraction/:batchId',
-        component: () => import('../views/extraction/index.vue'),
-        meta: { title: '特征提取' }
       }
     ]
+  },
+  {
+    path: '/extraction/:batchId',
+    component: () => import('../views/extraction/index.vue'),
+    meta: { title: 'AI 特征提取' }
   }
 ]
 
@@ -53,11 +53,17 @@ export const router = createRouter({
   routes
 })
 
+// 临时禁用登录验证
+// router.beforeEach((to, from, next) => {
+//   const token = localStorage.getItem('token')
+//   if (to.path !== '/login' && !token) {
+//     next('/login')
+//   } else {
+//     next()
+//   }
+// })
+
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  if (to.path !== '/login' && !token) {
-    next('/login')
-  } else {
-    next()
-  }
+  // 开发模式：跳过登录验证
+  next()
 })
