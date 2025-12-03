@@ -111,7 +111,7 @@
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue'
 import { 
-  ChatDotRound, Close, Service, UserFilled, 
+  Close, Service, UserFilled, 
   Position, Delete, Minus, FullScreen, ScaleToOriginal
 } from '@element-plus/icons-vue'
 import { http, API_BASE } from '@/utils/http'
