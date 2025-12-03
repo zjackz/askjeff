@@ -73,30 +73,110 @@ http.interceptors.response.use(
       if (error.response) {
         // 优先使用后端返回的 detail
         const data = error.response.data as { detail?: string | Record<string, unknown> }
-        if (data?.detail) {
-          message = typeof data.detail === 'string'
-            ? data.detail
-            : JSON.stringify(data.detail)
-        } else {
-          // 回退到状态码映射
-          message = HTTP_STATUS_MAP[error.response.status] || `请求失败 (${error.response.status})`
+        // 2. 网络错误或超时,自动重试
+        if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+          const config = error.config
+
+          // 如果还没有重试次数记录,初始化为 0
+          config.__retryCount = config.__retryCount || 0
+
+          // 最多重试 3 次
+          if (config.__retryCount < 3) {
+            config.__retryCount += 1
+            console.log(`网络错误,正在重试 (${config.__retryCount}/3)...`)
+
+            // 延迟后重试
+            await new Promise(resolve => setTimeout(resolve, 1000 * config.__retryCount))
+            return http(config)
+          }
         }
-      } else if (error.message.includes('timeout')) {
-        message = '请求超时，请检查网络'
-      } else if (!window.navigator.onLine) {
-        message = '网络连接已断开'
+
+        // 3. 全局错误提示 (除非显式跳过)
+        if (error.config?.skipGlobalErrorHandler) {
+          return Promise.reject(error)
+        }
+
+        // 处理错误响应
+        const status = error.response?.status
+        const data = error.response?.data as { error?: { code: string, message: string, details?: any }, detail?: string }
+
+        // 新的错误响应格式: { error: { code, message, details } }
+        if (data?.error) {
+          const { code, message, details } = data.error
+
+          // 根据错误码显示用户友好的提示
+          const userMessage = getUserFriendlyMessage(code, message, details)
+          ElMessage.error(userMessage)
+
+          // 记录详细错误信息到控制台
+          console.error('API Error:', { code, message, details, status })
+        }
+        // 兼容旧的错误格式
+        else if (data?.detail) {
+          ElMessage.error(data.detail)
+        }
+        // HTTP 状态码错误
+        else if (status) {
+          const statusMessages: Record<number, string> = {
+            400: '请求参数错误',
+            401: '未授权,请重新登录',
+            403: '没有权限访问',
+            404: '请求的资源不存在',
+            422: '请求数据验证失败',
+            500: '服务器错误,请稍后重试',
+            502: '网关错误',
+            503: '服务暂时不可用',
+          }
+          ElMessage.error(statusMessages[status] || `请求失败 (${status})`)
+        }
+        // 网络错误 (非重试后的最终错误)
+        else {
+          ElMessage.error('网络连接失败,请检查网络后重试')
+        }
+
+        return Promise.reject(error)
       }
-
-      ElMessage.error({
-        message,
-        duration: 5000,
-        showClose: true
-      })
-    }
-
-    return Promise.reject(error)
-  }
 )
+
+/**
+ * 将技术错误码转换为用户友好的消息
+ */
+function getUserFriendlyMessage(code: string, message: string, details?: any): string {
+  // 错误码到用户消息的映射
+  const errorMessages: Record<string, string> = {
+    // 验证错误
+    'VALIDATION_ERROR': '输入信息有误,请检查后重试',
+    'INVALID_FILE_FORMAT': '文件格式不正确,仅支持 CSV 和 XLSX 格式',
+    'FILE_TOO_LARGE': '文件太大,请上传小于 50MB 的文件',
+    'MISSING_REQUIRED_COLUMNS': '文件缺少必需的列',
+    'INVALID_DATA_TYPE': '数据格式不正确',
+
+    // 业务错误
+    'DUPLICATE_DATA': '数据已存在',
+    'BATCH_NOT_FOUND': '批次不存在',
+    'RUN_NOT_FOUND': '提取记录不存在',
+    'EXPORT_JOB_NOT_FOUND': '导出任务不存在',
+
+    // 系统错误
+    'DATABASE_ERROR': '数据库操作失败,请稍后重试',
+    'STORAGE_ERROR': '文件存储失败,请稍后重试',
+    'EXTERNAL_API_ERROR': 'AI 服务暂时不可用,请稍后重试',
+    'INTERNAL_SERVER_ERROR': '系统繁忙,请稍后重试',
+  }
+
+  // 优先使用映射的用户友好消息
+  if (errorMessages[code]) {
+    return errorMessages[code]
+  }
+
+  // 如果后端已经提供了用户友好的消息,直接使用
+  if (message && !message.includes('Error') && !message.includes('Exception')) {
+    return message
+  }
+
+  // 默认消息
+  return '操作失败,请稍后重试'
+}
 
 export { http, API_BASE }
 export type { AxiosRequestConfig, AxiosResponse }
