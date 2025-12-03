@@ -1,12 +1,13 @@
 import axios, { AxiosError } from 'axios'
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'
 
 // 扩展 AxiosRequestConfig 类型以支持自定义配置
 declare module 'axios' {
-  export interface AxiosRequestConfig {
+  export interface InternalAxiosRequestConfig {
+    __retryCount?: number
     skipGlobalErrorHandler?: boolean
   }
 }
@@ -21,7 +22,7 @@ const ingestPath = '/logs/ingest'
 // HTTP 状态码中文映射
 const HTTP_STATUS_MAP: Record<number, string> = {
   400: '请求参数错误',
-  401: '登录已过期，请重新登录',
+  401: '登录已过期,请重新登录',
   403: '没有权限执行此操作',
   404: '请求的资源不存在',
   405: '请求方法不允许',
@@ -56,7 +57,7 @@ async function reportClientError(error: AxiosError) {
       { timeout: 5000 }
     )
   } catch {
-    // 上报失败时静默处理，避免阻塞用户操作
+    // 上报失败时静默处理,避免阻塞用户操作
   }
 }
 
@@ -66,76 +67,68 @@ http.interceptors.response.use(
     // 1. 上报错误日志
     await reportClientError(error)
 
-    // 2. 全局错误提示 (除非显式跳过)
-    if (!error.config?.skipGlobalErrorHandler) {
-      let message = '网络请求失败'
+    // 2. 网络错误或超时,自动重试
+    if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+      const config = error.config
 
-      if (error.response) {
-        // 优先使用后端返回的 detail
-        const data = error.response.data as { detail?: string | Record<string, unknown> }
-        // 2. 网络错误或超时,自动重试
-        if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
-          const config = error.config
+      if (config) {
+        // 如果还没有重试次数记录,初始化为 0
+        config.__retryCount = config.__retryCount || 0
 
-          // 如果还没有重试次数记录,初始化为 0
-          config.__retryCount = config.__retryCount || 0
+        // 最多重试 3 次
+        if (config.__retryCount < 3) {
+          config.__retryCount += 1
+          console.log(`网络错误,正在重试 (${config.__retryCount}/3)...`)
 
-          // 最多重试 3 次
-          if (config.__retryCount < 3) {
-            config.__retryCount += 1
-            console.log(`网络错误,正在重试 (${config.__retryCount}/3)...`)
-
-            // 延迟后重试
-            await new Promise(resolve => setTimeout(resolve, 1000 * config.__retryCount))
-            return http(config)
-          }
+          // 延迟后重试
+          await new Promise(resolve => setTimeout(resolve, 1000 * config.__retryCount))
+          return http(config)
         }
-
-        // 3. 全局错误提示 (除非显式跳过)
-        if (error.config?.skipGlobalErrorHandler) {
-          return Promise.reject(error)
-        }
-
-        // 处理错误响应
-        const status = error.response?.status
-        const data = error.response?.data as { error?: { code: string, message: string, details?: any }, detail?: string }
-
-        // 新的错误响应格式: { error: { code, message, details } }
-        if (data?.error) {
-          const { code, message, details } = data.error
-
-          // 根据错误码显示用户友好的提示
-          const userMessage = getUserFriendlyMessage(code, message, details)
-          ElMessage.error(userMessage)
-
-          // 记录详细错误信息到控制台
-          console.error('API Error:', { code, message, details, status })
-        }
-        // 兼容旧的错误格式
-        else if (data?.detail) {
-          ElMessage.error(data.detail)
-        }
-        // HTTP 状态码错误
-        else if (status) {
-          const statusMessages: Record<number, string> = {
-            400: '请求参数错误',
-            401: '未授权,请重新登录',
-            403: '没有权限访问',
-            404: '请求的资源不存在',
-            422: '请求数据验证失败',
-            500: '服务器错误,请稍后重试',
-            502: '网关错误',
-            503: '服务暂时不可用',
-          }
-          ElMessage.error(statusMessages[status] || `请求失败 (${status})`)
-        }
-        // 网络错误 (非重试后的最终错误)
-        else {
-          ElMessage.error('网络连接失败,请检查网络后重试')
-        }
-
-        return Promise.reject(error)
       }
+    }
+
+    // 3. 全局错误提示 (除非显式跳过)
+    if (error.config?.skipGlobalErrorHandler) {
+      return Promise.reject(error)
+    }
+
+    // 处理错误响应
+    const status = error.response?.status
+    const responseData = error.response?.data as any
+
+    // 新的错误响应格式: { error: { code, message, details } }
+    if (responseData?.error) {
+      const { code, message, details } = responseData.error
+
+      // 根据错误码显示用户友好的提示
+      const userMessage = getUserFriendlyMessage(code, message, details)
+      ElMessage.error(userMessage)
+
+      // 记录详细错误信息到控制台
+      console.error('API Error:', { code, message, details, status })
+    }
+    // 兼容旧的错误格式
+    else if (responseData?.detail) {
+      const detail = typeof responseData.detail === 'string'
+        ? responseData.detail
+        : JSON.stringify(responseData.detail)
+      ElMessage.error(detail)
+    }
+    // HTTP 状态码错误
+    else if (status) {
+      ElMessage.error(HTTP_STATUS_MAP[status] || `请求失败 (${status})`)
+    }
+    // 网络错误
+    else if (error.message.includes('timeout')) {
+      ElMessage.error('请求超时,请检查网络')
+    } else if (!window.navigator.onLine) {
+      ElMessage.error('网络连接已断开')
+    } else {
+      ElMessage.error('网络连接失败,请检查网络后重试')
+    }
+
+    return Promise.reject(error)
+  }
 )
 
 /**
