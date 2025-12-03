@@ -105,9 +105,9 @@
 import { useRoute, useRouter } from 'vue-router'
 import { computed, ref } from 'vue'
 import { 
-  Box, Odometer, Upload, ChatDotRound, Download, 
-  MagicStick, Document, InfoFilled, User, Setting, 
-  SwitchButton, Fold, Expand
+  Odometer, Upload, ChatDotRound, Download, 
+  Document, InfoFilled, User, Setting, 
+  SwitchButton
 } from '@element-plus/icons-vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { ElMessage } from 'element-plus'

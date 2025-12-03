@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 export const useUserStore = defineStore('user', () => {
     const token = ref(localStorage.getItem('token') || '')
-    const router = useRouter()
 
     const login = async (username: string, password: string): Promise<boolean> => {
         // 模拟登录验证
