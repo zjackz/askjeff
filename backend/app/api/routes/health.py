@@ -45,7 +45,7 @@ async def health_check():
     
     # 2. 存储目录检查
     try:
-        storage_path = Path(settings.STORAGE_PATH)
+        storage_path = Path(settings.storage_dir)
         if storage_path.exists() and storage_path.is_dir():
             checks["checks"]["storage"] = "healthy"
         else:
@@ -58,7 +58,7 @@ async def health_check():
     
     # 3. DeepSeek API 检查 (可选,避免频繁调用外部 API)
     # 这里只检查配置是否存在
-    if settings.DEEPSEEK_API_KEY:
+    if settings.deepseek_api_key:
         checks["checks"]["deepseek_config"] = "configured"
     else:
         checks["checks"]["deepseek_config"] = "not_configured"
@@ -79,7 +79,7 @@ async def readiness_check():
             db.execute(text("SELECT 1"))
         
         # 存储检查
-        storage_path = Path(settings.STORAGE_PATH)
+        storage_path = Path(settings.storage_dir)
         if not (storage_path.exists() and storage_path.is_dir()):
             return {"status": "not_ready", "reason": "storage_unavailable"}, 503
         

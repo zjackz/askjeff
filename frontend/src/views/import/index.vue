@@ -264,6 +264,25 @@ const { pause, resume, isActive: isPolling } = useIntervalFn(() => {
 }, 5000)
 
 const handleFileChange = (uploadFile: UploadFile) => {
+  // 文件大小验证 (50MB = 50 * 1024 * 1024 bytes)
+  const maxSize = 50 * 1024 * 1024
+  if (uploadFile.size && uploadFile.size > maxSize) {
+    ElMessage.error('文件大小超过 50MB 限制,请压缩后重试')
+    fileList.value = []
+    return
+  }
+  
+  // 文件格式验证
+  const fileName = uploadFile.name || ''
+  const validExtensions = ['.csv', '.xlsx', '.xls']
+  const hasValidExtension = validExtensions.some(ext => fileName.toLowerCase().endsWith(ext))
+  
+  if (!hasValidExtension) {
+    ElMessage.error('文件格式不正确,仅支持 CSV 和 XLSX 格式')
+    fileList.value = []
+    return
+  }
+  
   fileList.value = [uploadFile] // 限制单文件
 }
 

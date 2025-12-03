@@ -14,15 +14,47 @@ from app.services.import_service import import_service
 router = APIRouter(prefix="/api/imports", tags=["imports"])
 
 
-@router.post("", response_model=ImportBatchOut, status_code=201)
+@router.post("", response_model=ImportBatchOut)
 async def create_import(
-    file: UploadFile | None = File(default=None),
+    file: UploadFile = File(...),
     importStrategy: str = Form(...),
-    sheetName: str | None = Form(default=None),
-    onMissingRequired: str = Form(default="skip"),
-    columnAliases: str | None = Form(default=None),
+    sheetName: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
+    """
+    上传并导入 CSV/XLSX 文件
+    """
+    from app.config import settings
+    from app.core.errors import ValidationException, ErrorCode
+    
+    # 1. 文件格式验证
+    if not file.filename:
+        raise ValidationException(
+            code=ErrorCode.INVALID_FILE_FORMAT,
+            message="文件名不能为空"
+        )
+    
+    valid_extensions = ('.csv', '.xlsx', '.xls')
+    if not file.filename.lower().endswith(valid_extensions):
+        raise ValidationException(
+            code=ErrorCode.INVALID_FILE_FORMAT,
+            details={"filename": file.filename, "valid_extensions": list(valid_extensions)}
+        )
+    
+    # 2. 文件大小验证
+    file.file.seek(0, 2)  # 移动到文件末尾
+    file_size = file.file.tell()
+    file.file.seek(0)  # 重置到开头
+    
+    max_size = settings.max_file_size_mb * 1024 * 1024
+    if file_size > max_size:
+        raise ValidationException(
+            code=ErrorCode.FILE_TOO_LARGE,
+            message=f"文件大小超过 {settings.max_file_size_mb}MB 限制",
+            details={"file_size_mb": round(file_size / 1024 / 1024, 2), "max_size_mb": settings.max_file_size_mb}
+        )
+    
+    # 3. 执行导入
     try:
         normalized_strategy = import_service.normalize_strategy(importStrategy)
     except ValueError as exc:

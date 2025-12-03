@@ -16,7 +16,12 @@ class Settings:
         )
         self.storage_dir = Path(os.getenv("STORAGE_DIR", "backend/storage"))
         self.storage_dir.mkdir(parents=True, exist_ok=True)
+        # DeepSeek API
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        self.deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        
+        # 文件上传限制
+        self.max_file_size_mb = int(os.getenv("MAX_FILE_SIZE_MB", "50"))  # 最大文件大小 (MB)
 
 
 settings = Settings()
