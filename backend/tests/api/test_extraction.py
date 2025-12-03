@@ -1,5 +1,6 @@
+import asyncio
 import io
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pandas as pd
 import pytest
@@ -15,8 +16,8 @@ client = TestClient(app)
 def mock_deepseek():
     with patch("app.api.routes.extraction.DeepseekClient") as MockClient:
         instance = MockClient.return_value
-        # Mock extract_features to return dummy data
-        instance.extract_features.return_value = {"电池容量": "5000mAh", "材质": "铝合金"}
+        # Mock extract_features_async to return dummy data (async)
+        instance.extract_features_async = AsyncMock(return_value=({"电池容量": "5000mAh", "材质": "铝合金"}, {"total_tokens": 10}))
         yield instance
 
 
@@ -72,7 +73,8 @@ def test_extraction_flow(mock_deepseek):
     
     with SessionLocal() as db:
         service = ExtractionService(db, mock_deepseek)
-        service.run_extraction(task_id)
+        # Run async method synchronously
+        asyncio.run(service.run_extraction(task_id))
 
     # 4. Check Status (should be COMPLETED now)
     response = client.get(f"/api/extraction/{task_id}")
