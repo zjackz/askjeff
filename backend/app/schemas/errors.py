@@ -1,11 +1,7 @@
-"""错误响应模型
-
-定义统一的 API 错误响应格式
-"""
 from __future__ import annotations
 
 from typing import Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ErrorDetail(BaseModel):
@@ -17,10 +13,8 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     """统一错误响应格式"""
-    error: ErrorDetail
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "error": {
                     "code": "VALIDATION_ERROR",
@@ -32,3 +26,6 @@ class ErrorResponse(BaseModel):
                 }
             }
         }
+    )
+    
+    error: ErrorDetail

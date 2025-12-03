@@ -72,7 +72,7 @@ class ExtractionService:
     async def run_extraction(self, task_id: uuid.UUID) -> None:
         import asyncio
         
-        task = self.db.query(ExtractionTask).get(task_id)
+        task = self.db.get(ExtractionTask, task_id)
         if not task:
             return
 
@@ -145,7 +145,7 @@ class ExtractionService:
         self.db.refresh(run)
 
         # Update batch status to processing (optional, just to show activity)
-        batch = self.db.query(ImportBatch).get(batch_id)
+        batch = self.db.get(ImportBatch, batch_id)
         if batch:
             batch.ai_status = "processing"
             self.db.commit()
@@ -264,7 +264,7 @@ class ExtractionService:
         )
 
     def get_task(self, task_id: uuid.UUID) -> ExtractionTask | None:
-        return self.db.query(ExtractionTask).get(task_id)
+        return self.db.get(ExtractionTask, task_id)
 
     def export_task(self, task_id: uuid.UUID) -> io.BytesIO:
         task = self.get_task(task_id)
