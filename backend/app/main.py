@@ -12,12 +12,15 @@ from app.api.routes import (
     products as products_router,
     logs as logs_router,
     extraction as extraction_router,
+    health as health_router,
 )
 from app.db import SessionLocal
 from app.services.log_service import LogService
+from app.middleware.error_handler import error_handler_middleware
 
-app = FastAPI(title="Sorftime 数据智能控制台 API")
+app = FastAPI(title="AskJeff API", version="0.1.0")
 
+# CORS 配置
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,7 +29,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 全局错误处理中间件
+app.middleware("http")(error_handler_middleware)
+
 register_exception_handlers(app)
+
+# 注册路由
 app.include_router(imports_router.router)
 app.include_router(chat_router.router)
 app.include_router(exports_router.router)
@@ -34,10 +42,8 @@ app.include_router(products_router.router)
 app.include_router(logs_router.router)
 app.include_router(extraction_router.router)
 
-
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+# 健康检查路由 (无前缀,公开访问)
+app.include_router(health_router.router, tags=["health"])
 
 
 @app.middleware("http")
