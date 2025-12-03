@@ -12,7 +12,7 @@ def test_import_gbk_csv_success() -> None:
     content = "asin,title,currency\nB001,中文标题,USD\n".encode("gbk")
     
     response = client.post(
-        "/imports",
+        "/api/imports",
         files={"file": ("gbk.csv", content, "text/csv")},
         data={"importStrategy": "append"},
     )
@@ -37,7 +37,7 @@ def test_import_excel_fallback_success() -> None:
     bio.seek(0)
     
     response = client.post(
-        "/imports",
+        "/api/imports",
         files={"file": ("wrong_sheet.xlsx", bio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         data={"importStrategy": "append"},
     )

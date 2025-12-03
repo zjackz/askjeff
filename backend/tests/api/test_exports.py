@@ -11,7 +11,7 @@ client = TestClient(app)
 
 def test_create_export(monkeypatch):
     mock_job = MagicMock()
-    mock_job.id = "job123"
+    mock_job.id = 123
     mock_job.export_type = "clean_products"
     mock_job.status = "succeeded"
     mock_job.file_format = "csv"
@@ -28,7 +28,7 @@ def test_create_export(monkeypatch):
     monkeypatch.setattr(service_module, "export_service", MagicMock(create_job=lambda *args, **kwargs: mock_job, get_job=lambda *args, **kwargs: mock_job))
 
     response = client.post(
-        "/exports",
+        "/api/exports",
         json={
             "exportType": "clean-products",
             "filters": {"batch_id": "b1"},
@@ -38,6 +38,6 @@ def test_create_export(monkeypatch):
     )
     assert response.status_code == 202
     payload = response.json()
-    assert payload["id"] == "job123"
+    assert payload["id"] == 123
     assert payload["exportType"] == "clean-products"
-    assert payload["fileUrl"] == "/exports/job123/download"
+    assert payload["fileUrl"] == "/exports/123/download"

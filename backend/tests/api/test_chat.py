@@ -21,7 +21,7 @@ def test_chat_query(monkeypatch):
 
     monkeypatch.setattr(service_module, "chat_service", FakeChatService())
 
-    response = client.post("/chat/query", json={"question": "最近的批次情况?"})
+    response = client.post("/api/chat/query", json={"question": "最近的批次情况?"})
     assert response.status_code == 200
     data = response.json()
     assert data["answer"] == "测试回答"
