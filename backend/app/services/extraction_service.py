@@ -121,11 +121,30 @@ class ExtractionService:
         task.status = "COMPLETED"
         self.db.commit()
 
-    async def extract_batch_features(self, batch_id: str, target_fields: List[str]) -> None:
+    async def extract_batch_features(self, batch_id: int, target_fields: List[str]) -> None:
         import asyncio
+        from datetime import datetime, timezone
         from app.models.import_batch import ProductRecord, ImportBatch
+        from app.models.extraction_run import ExtractionRun
 
-        # Update batch status to processing
+        # Pricing constants (DeepSeek V3)
+        PRICE_PER_1M_INPUT = 0.14
+        PRICE_PER_1M_OUTPUT = 0.28
+
+        start_time = datetime.now(timezone.utc)
+
+        # Create ExtractionRun
+        run = ExtractionRun(
+            batch_id=batch_id,
+            status="processing",
+            target_fields=target_fields,
+            created_at=start_time
+        )
+        self.db.add(run)
+        self.db.commit()
+        self.db.refresh(run)
+
+        # Update batch status to processing (optional, just to show activity)
         batch = self.db.query(ImportBatch).get(batch_id)
         if batch:
             batch.ai_status = "processing"
@@ -138,21 +157,34 @@ class ExtractionService:
         )
         
         if not records:
+            run.status = "completed"
+            run.stats = {"total": 0, "success": 0, "failed": 0}
+            run.finished_at = datetime.now(timezone.utc)
+            self.db.commit()
+            
             if batch:
                 batch.ai_status = "completed"
-                batch.ai_summary = {"total": 0, "success": 0, "failed": 0}
                 self.db.commit()
             return
 
         sem = asyncio.Semaphore(10)
         
-        stats = {"success": 0, "failed": 0}
+        sem = asyncio.Semaphore(10)
+        
+        stats = {
+            "success": 0, 
+            "failed": 0,
+            "total_tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0
+        }
 
         async def process_record(record):
             async with sem:
                 try:
-                    # Use normalized payload if available, else raw
-                    data = record.normalized_payload or record.raw_payload
+                    # Use raw_payload to ensure we have all fields (like description, bullets)
+                    # normalized_payload might be a subset of clean data
+                    data = record.raw_payload or record.normalized_payload
                     # Prepare text for LLM
                     text = json.dumps(data, ensure_ascii=False)
                     
@@ -160,6 +192,13 @@ class ExtractionService:
                     
                     if isinstance(extracted, dict):
                         extracted["_usage"] = usage
+                        # Accumulate tokens
+                        if usage:
+                            input_t = usage.get("prompt_tokens", 0)
+                            output_t = usage.get("completion_tokens", 0)
+                            stats["input_tokens"] += input_t
+                            stats["output_tokens"] += output_t
+                            stats["total_tokens"] += (input_t + output_t)
 
                     record.ai_features = extracted
                     record.ai_status = "success"
@@ -180,12 +219,38 @@ class ExtractionService:
         # Update batch status to completed
         if batch:
             self.db.refresh(batch)
-            batch.ai_status = "completed"
-            batch.ai_summary = {
+            # Calculate cost
+            input_cost = (stats["input_tokens"] / 1_000_000) * PRICE_PER_1M_INPUT
+            output_cost = (stats["output_tokens"] / 1_000_000) * PRICE_PER_1M_OUTPUT
+            total_cost = input_cost + output_cost
+
+            end_time = datetime.now(timezone.utc)
+            duration_seconds = (end_time - start_time).total_seconds()
+
+            end_time = datetime.now(timezone.utc)
+            duration_seconds = (end_time - start_time).total_seconds()
+
+            # Update Run
+            run.status = "completed"
+            run.finished_at = end_time
+            run.stats = {
                 "total": len(records),
                 "success": stats["success"],
-                "failed": stats["failed"]
+                "failed": stats["failed"],
+                "total_tokens": stats["total_tokens"],
+                "input_tokens": stats["input_tokens"],
+                "output_tokens": stats["output_tokens"],
+                "total_cost": round(total_cost, 6),
+                "duration_seconds": round(duration_seconds, 2)
             }
+            
+            # Update Batch status
+            batch.ai_status = "completed"
+            # We don't overwrite ai_summary anymore, or maybe we keep the latest?
+            # Let's keep ai_summary as "latest run summary" for backward compatibility if needed,
+            # or just rely on runs. For now, let's clear it or leave it.
+            # Actually, the requirement is to use runs.
+            
             self.db.commit()
 
     def list_tasks(self, limit: int = 20, offset: int = 0) -> List[ExtractionTask]:

@@ -3,7 +3,14 @@
     <el-card class="filter-card">
       <el-form :inline="true" label-width="86px" class="filter-form">
         <el-form-item label="批次 ID">
-          <el-input v-model="filters.batchId" placeholder="输入批次 ID" clearable />
+          <el-select v-model="filters.batchId" placeholder="选择批次" clearable>
+            <el-option 
+              v-for="batch in batches" 
+              :key="batch.id" 
+              :label="formatBatchLabel(batch)" 
+              :value="batch.id" 
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="ASIN/标题">
           <el-input v-model="filters.asin" placeholder="输入 ASIN 或关键词" clearable />
@@ -120,9 +127,7 @@
         <el-table-column v-if="columnVisibility.category" prop="category" label="类目" width="120" show-overflow-tooltip />
         <el-table-column v-if="columnVisibility.batch_id" label="批次编号" sortable="custom" prop="batch_id" width="120">
           <template #default="{ row }">
-            <el-tooltip :content="row.batch_id" placement="top">
-              <span class="font-mono">{{ row.batch_sequence_id || row.batch_id.slice(0, 8) }}</span>
-            </el-tooltip>
+            <span class="font-mono">#{{ row.batch_id }}</span>
           </template>
         </el-table-column>
         <el-table-column v-if="columnVisibility.validation_status" prop="validation_status" label="状态" width="100" :formatter="formatStatusCell" />
@@ -212,6 +217,8 @@ import { ElMessage } from 'element-plus'
 import { http, API_BASE } from '@/utils/http'
 import type { ProductItem, ProductQueryParams } from './types'
 
+import dayjs from 'dayjs'
+
 const FILTER_STORAGE_KEY = 'insight_filters'
 
 // 从 sessionStorage 加载筛选条件
@@ -274,7 +281,7 @@ const saveFiltersToStorage = (filters: typeof filters) => {
 
 const savedFilters = loadFiltersFromStorage()
 const filters = reactive(savedFilters || {
-  batchId: '',
+  batchId: '' as string | number,
   asin: '',
   status: '',
   dateRange: [] as string[],
@@ -297,6 +304,25 @@ const filters = reactive(savedFilters || {
 watch(filters, (newFilters) => {
   saveFiltersToStorage(newFilters)
 }, { deep: true })
+
+const batches = ref<any[]>([])
+
+const fetchBatches = async () => {
+  try {
+    const { data } = await http.get(`${API_BASE}/imports`, {
+      params: { pageSize: 100 }
+    })
+    batches.value = data.items || []
+  } catch (err) {
+    console.error('Fetch batches failed:', err)
+  }
+}
+
+const formatBatchLabel = (batch: any) => {
+  const time = dayjs(batch.created_at).format('YYYYMMDD HH:mm:ss')
+  return `${batch.id} - ${time}`
+}
+
 
 const showAdvanced = ref(false)
 const products = ref<ProductItem[]>([])
@@ -351,8 +377,7 @@ const normalizeProduct = (raw: RawProduct): ProductItem => {
     id: String(raw.id ?? ''),
     asin: String(raw.asin ?? ''),
     title: String(raw.title ?? ''),
-    batch_id: String(raw.batchId ?? raw.batch_id ?? ''),
-    batch_sequence_id: typeof raw.batchSequenceId === 'number' ? raw.batchSequenceId : typeof raw.batch_sequence_id === 'number' ? raw.batch_sequence_id : null,
+    batch_id: Number(raw.batchId ?? raw.batch_id ?? 0),
     ingested_at: String(raw.ingestedAt ?? raw.ingested_at ?? ''),
     validation_status: String(raw.validationStatus ?? raw.validation_status ?? ''),
     validation_messages: (raw.validationMessages as Record<string, unknown> | null) ??
@@ -605,8 +630,9 @@ watch(columnVisibility, (newSettings) => {
 
 onMounted(() => {
   loadColumnSettings()
+  fetchBatches()
   if (route.query.batchId) {
-    filters.batchId = String(route.query.batchId)
+    filters.batchId = Number(route.query.batchId)
   }
   fetchProducts()
 })

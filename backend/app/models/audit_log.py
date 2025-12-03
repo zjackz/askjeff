@@ -18,6 +18,6 @@ class AuditLog(Base):
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     actor_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
     action: Mapped[str] = mapped_column(String(128), nullable=False)
-    entity_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utc_now)

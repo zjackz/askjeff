@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List
+from typing import List, TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import JSON, Enum, ForeignKey, Integer, Numeric, String, Text
+if TYPE_CHECKING:
+    from app.models.extraction_run import ExtractionRun
+
+from sqlalchemy import JSON, Enum, ForeignKey, Integer, Numeric, String, Text, Identity, FetchedValue
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,8 +22,7 @@ VALIDATION_STATUS = ('valid', 'warning', 'error')
 class ImportBatch(Base):
     __tablename__ = 'import_batches'
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
-    sequence_id: Mapped[int] = mapped_column(Integer,  autoincrement=True, nullable=True) # 使用数据库自增
+    id: Mapped[int] = mapped_column(Integer, Identity(start=1), primary_key=True)
     filename: Mapped[str] = mapped_column(Text, nullable=False)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     import_strategy: Mapped[str] = mapped_column(Enum(*IMPORT_STRATEGIES, name='import_strategy'), nullable=False)
@@ -31,7 +33,7 @@ class ImportBatch(Base):
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(nullable=True)
     sheet_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     failure_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     columns_seen: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     
@@ -43,13 +45,14 @@ class ImportBatch(Base):
     archived: Mapped[bool] = mapped_column(default=False)
 
     records: Mapped[List['ProductRecord']] = relationship('ProductRecord', back_populates='batch', cascade='all, delete-orphan')
+    extraction_runs: Mapped[List['ExtractionRun']] = relationship('ExtractionRun', back_populates='batch', cascade='all, delete-orphan')
 
 
 class ProductRecord(Base):
     __tablename__ = 'product_records'
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
-    batch_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey('import_batches.id'), nullable=False)
+    batch_id: Mapped[int] = mapped_column(Integer, ForeignKey('import_batches.id'), nullable=False)
     asin: Mapped[str] = mapped_column(String(20), nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -73,4 +76,4 @@ class ProductRecord(Base):
 
     @property
     def batch_sequence_id(self) -> int | None:
-        return self.batch.sequence_id if self.batch else None
+        return self.batch.id if self.batch else None

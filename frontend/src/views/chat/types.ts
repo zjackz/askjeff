@@ -3,8 +3,7 @@ export interface ProductItem {
   id: string
   asin: string
   title: string
-  batch_id: string
-  batch_sequence_id?: number | null
+  batch_id: number
   ingested_at: string
   validation_status: string
   validation_messages?: Record<string, unknown> | null

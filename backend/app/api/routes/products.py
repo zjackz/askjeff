@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/products", tags=["products"])
 
 @router.get("", response_model=ProductListResponse)
 async def list_products(
-    batch_id: str | None = Query(default=None, alias="batchId"),
+    batch_id: int | None = Query(None, description="导入批次ID", alias="batchId"),
     asin: str | None = Query(default=None),
     status: str | None = Query(default=None, alias="status"),
     updated_from: str | None = Query(default=None, alias="updated_from"),

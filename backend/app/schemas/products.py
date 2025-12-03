@@ -12,7 +12,7 @@ class ProductOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
-    batch_id: str = Field(..., alias="batchId")
+    batch_id: int = Field(..., alias="batchId")
     batch_sequence_id: int | None = Field(default=None, alias="batchSequenceId")
     asin: str
     title: str
@@ -27,6 +27,8 @@ class ProductOut(BaseModel):
     normalized_payload: dict[str, Any] | None = Field(default=None, alias="attributes")
     validation_status: str = Field(..., alias="validationStatus")
     validation_messages: dict[str, Any] | None = Field(default=None, alias="validationMessages")
+    ai_status: str | None = Field(default=None, alias="aiStatus")
+    ai_features: dict[str, Any] | None = Field(default=None, alias="aiFeatures")
 
     @field_serializer("price", "rating")
     def _serialize_decimal(self, value: float | None) -> float | None:

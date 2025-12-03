@@ -12,14 +12,14 @@ class ExportRequest(BaseModel):
 
     export_type: str = Field(..., alias="exportType")
     filters: dict[str, Any] | None = None
-    selected_fields: list[str] = Field(..., alias="selectedFields")
+    selected_fields: list[str] = Field(default=[], alias="selectedFields")
     file_format: str = Field("csv", alias="fileFormat")
 
 
 class ExportJobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    id: str
+    id: int
     export_type: str = Field(
         ..., alias="exportType", validation_alias=AliasChoices("export_type", "exportType")
     )

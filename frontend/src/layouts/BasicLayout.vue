@@ -22,13 +22,15 @@
         
         <el-menu-item index="/import">
           <el-icon><Upload /></el-icon>
-          <template #title>文件导入（excel）</template>
+          <template #title>文件导入</template>
         </el-menu-item>
         
         <el-menu-item index="/product">
           <el-icon><ChatDotRound /></el-icon>
           <template #title>数据洞察</template>
         </el-menu-item>
+
+
         
         <el-menu-item index="/export">
           <el-icon><Download /></el-icon>
@@ -127,6 +129,7 @@ const pageNames: Record<string, string> = {
   '/dashboard': '数据总览',
   '/import': '文件导入',
   '/product': '数据洞察',
+  '/extraction': 'AI 提取',
   '/export': '数据导出',
   '/logs': '日志中心'
 }

@@ -11,8 +11,7 @@ class ImportBatchOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    id: str
-    sequence_id: int | None = None
+    id: int
     filename: str
     import_strategy: str
     status: str
@@ -30,9 +29,7 @@ class ImportBatchOut(BaseModel):
     ai_status: str = "none"
     ai_summary: dict | None = None
 
-    @field_serializer("id")
-    def _serialize_id(self, value: str) -> str:
-        return str(value)
+
 
     @field_serializer("import_strategy")
     def _serialize_strategy(self, value: str) -> str:

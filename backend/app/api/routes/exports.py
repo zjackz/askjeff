@@ -40,7 +40,7 @@ async def create_export(payload: ExportRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/{job_id}", response_model=ExportJobOut)
-async def get_export(job_id: str, db: Session = Depends(get_db)):
+async def get_export(job_id: int, db: Session = Depends(get_db)):
     job = service_module.export_service.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="导出任务不存在")
@@ -48,7 +48,7 @@ async def get_export(job_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{job_id}/download")
-async def download_export(job_id: str, db: Session = Depends(get_db)):
+async def download_export(job_id: int, db: Session = Depends(get_db)):
     job = service_module.export_service.get_job(db, job_id)
     if not job or not job.file_path:
         raise HTTPException(status_code=404, detail="文件不存在")

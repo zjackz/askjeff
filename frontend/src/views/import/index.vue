@@ -23,7 +23,7 @@
       >
         <el-table-column label="批次 ID" width="80">
           <template #default="{ row }">
-            <span class="font-mono text-gray-500">#{{ row.sequence_id || '-' }}</span>
+            <span class="font-mono text-gray-500">#{{ row.id }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="filename" label="文件名" min-width="200" show-overflow-tooltip>
@@ -238,8 +238,7 @@ const pageSize = ref(50)
 const total = ref(0)
 
 interface BatchRow {
-  id: string
-  sequence_id?: number
+  id: number
   filename: string
   sheet_name?: string
   import_strategy?: string

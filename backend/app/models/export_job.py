@@ -16,7 +16,7 @@ FILE_FORMATS = ("csv", "xlsx")
 class ExportJob(Base):
     __tablename__ = "export_jobs"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     export_type: Mapped[str] = mapped_column(String(32), nullable=False)
     filters: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     selected_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

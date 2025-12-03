@@ -101,14 +101,14 @@ class ImportRepository:
         return items, int(total)
 
     @staticmethod
-    def get_batch(db: Session, batch_id: str) -> ImportBatch | None:
+    def get_batch(db: Session, batch_id: int) -> ImportBatch | None:
         return db.get(ImportBatch, batch_id)
 
     @staticmethod
     def list_products(
         db: Session,
         *,
-        batch_id: str | None = None,
+        batch_id: int | None = None,
         asin: str | None = None,
         status: str | None = None,
         updated_from: datetime | None = None,
