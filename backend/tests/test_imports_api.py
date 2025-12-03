@@ -57,16 +57,16 @@ class TestImportsAPI:
         
         item = data["items"][0]
         
-        # 验证使用 snake_case
-        assert "total_rows" in item
-        assert "success_rows" in item
-        assert "failed_rows" in item
-        assert "created_at" in item
-        assert "ai_status" in item
+        # 验证使用 camelCase (API契约)
+        assert "totalRows" in item
+        assert "successRows" in item
+        assert "failedRows" in item
+        assert "createdAt" in item
+        assert "aiStatus" in item
         
-        # 验证不使用 camelCase
-        assert "totalRows" not in item
-        assert "successRows" not in item
+        # 验证不使用 snake_case
+        assert "total_rows" not in item
+        assert "success_rows" not in item
 
     def test_list_imports_includes_created_at(self, client, db_session):
         """测试 API 响应包含 created_at 字段"""
@@ -88,8 +88,8 @@ class TestImportsAPI:
         data = response.json()
         item = data["items"][0]
         
-        assert "created_at" in item
-        assert item["created_at"] is not None
+        assert "createdAt" in item
+        assert item["createdAt"] is not None
 
     def test_list_imports_includes_ai_fields(self, client, db_session):
         """测试 API 响应包含 AI 相关字段"""
@@ -113,10 +113,10 @@ class TestImportsAPI:
         data = response.json()
         item = data["items"][0]
         
-        assert "ai_status" in item
-        assert item["ai_status"] == "completed"
-        assert "ai_summary" in item
-        assert item["ai_summary"] == {"total": 100, "extracted": 95}
+        assert "aiStatus" in item
+        assert item["aiStatus"] == "completed"
+        assert "aiSummary" in item
+        assert item["aiSummary"] == {"total": 100, "extracted": 95}
 
     def test_list_imports_pagination(self, client, db_session):
         """测试 API 分页功能"""

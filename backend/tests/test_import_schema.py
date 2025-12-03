@@ -1,7 +1,7 @@
 """
 测试 ImportBatchOut schema 的序列化和字段验证
 
-验证修复后的 schema 包含所有必需字段，并使用正确的 snake_case 格式
+验证修复后的 schema 包含所有必需字段，并使用正确的 camelCase 格式(API契约)
 """
 import pytest
 from datetime import datetime, timezone
@@ -19,7 +19,7 @@ class TestImportBatchOutSchema:
         # 创建测试数据
         now = datetime.now(timezone.utc)
         batch_data = {
-            "id": str(uuid4()),
+            "id": 1,
             "sequence_id": 1,
             "filename": "test.xlsx",
             "import_strategy": "append",
@@ -48,7 +48,7 @@ class TestImportBatchOutSchema:
         """测试 schema 包含 ai_status 字段"""
         now = datetime.now(timezone.utc)
         batch_data = {
-            "id": str(uuid4()),
+            "id": 2,
             "filename": "test.xlsx",
             "import_strategy": "append",
             "status": "succeeded",
@@ -70,7 +70,7 @@ class TestImportBatchOutSchema:
         now = datetime.now(timezone.utc)
         ai_summary = {"total": 100, "extracted": 95, "failed": 5}
         batch_data = {
-            "id": str(uuid4()),
+            "id": 3,
             "filename": "test.xlsx",
             "import_strategy": "append",
             "status": "succeeded",
@@ -91,7 +91,7 @@ class TestImportBatchOutSchema:
         """测试 schema 序列化为 snake_case 格式"""
         now = datetime.now(timezone.utc)
         batch_data = {
-            "id": str(uuid4()),
+            "id": 4,
             "filename": "test.xlsx",
             "import_strategy": "append",
             "status": "succeeded",
@@ -103,25 +103,25 @@ class TestImportBatchOutSchema:
         }
         
         batch_out = ImportBatchOut(**batch_data)
-        serialized = batch_out.model_dump()
+        serialized = batch_out.model_dump(by_alias=True)
         
-        # 验证使用 snake_case
-        assert "total_rows" in serialized
-        assert "success_rows" in serialized
-        assert "failed_rows" in serialized
-        assert "created_at" in serialized
-        assert "ai_status" in serialized
+        # 验证使用 camelCase (API契约)
+        assert "totalRows" in serialized
+        assert "successRows" in serialized
+        assert "failedRows" in serialized
+        assert "createdAt" in serialized
+        assert "aiStatus" in serialized
         
-        # 验证不使用 camelCase
-        assert "totalRows" not in serialized
-        assert "successRows" not in serialized
-        assert "failedRows" not in serialized
+        # 验证不使用 snake_case
+        assert "total_rows" not in serialized
+        assert "success_rows" not in serialized
+        assert "failed_rows" not in serialized
 
     def test_schema_default_ai_status(self):
         """测试 ai_status 的默认值"""
         now = datetime.now(timezone.utc)
         batch_data = {
-            "id": str(uuid4()),
+            "id": 5,
             "filename": "test.xlsx",
             "import_strategy": "append",
             "status": "succeeded",
@@ -146,7 +146,7 @@ class TestImportBatchOutSchema:
         """测试所有必需字段都存在"""
         now = datetime.now(timezone.utc)
         batch_data = {
-            "id": str(uuid4()),
+            "id": 6,
             "filename": "test.xlsx",
             "import_strategy": "append",
             "status": "pending",
@@ -179,7 +179,7 @@ class TestImportBatchOutSchema:
         """测试可选字段可以为 None"""
         now = datetime.now(timezone.utc)
         batch_data = {
-            "id": str(uuid4()),
+            "id": 7,
             "filename": "test.xlsx",
             "import_strategy": "append",
             "status": "pending",
@@ -208,7 +208,7 @@ class TestImportBatchOutSchema:
         """测试 import_strategy 的序列化（下划线转连字符）"""
         now = datetime.now(timezone.utc)
         batch_data = {
-            "id": str(uuid4()),
+            "id": 8,
             "filename": "test.xlsx",
             "import_strategy": "append",
             "status": "succeeded",
