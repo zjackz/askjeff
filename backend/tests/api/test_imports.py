@@ -68,4 +68,4 @@ def test_import_file_validation_error() -> None:
         files={},
         data={"importStrategy": "append"},
     )
-    assert response.status_code == 400
+    assert response.status_code == 422  # FastAPI 对缺少必需字段返回 422

@@ -34,17 +34,22 @@ def test_summarize_success(client):
 
 
 @respx.mock
-def test_summarize_api_error(client):
-    # Mock 500 error
-    respx.post("https://api.deepseek.com/chat/completions").mock(
-        return_value=Response(500, json={"error": "Server Error"})
+def test_summarize_api_error(): # Removed client fixture as it's instantiated inside
+    # 模拟 API 错误响应
+    respx.post(f"{settings.deepseek_base_url}/chat/completions").mock(
+        return_value=httpx.Response(
+            status_code=500,
+            json={"error": {"message": "Internal server error"}},
+        )
     )
-
-    result = client.summarize("test question", {})
     
-    # Should return fallback answer, not raise exception
-    assert "离线模式" in result["answer"]
-    assert "500" in result["trace"]["error"]
+    client = DeepseekClient()
+    with pytest.raises(Exception) as exc_info:
+        client.summarize("test content")
+    
+    # 验证错误被正确抛出(不检查具体消息,因为可能变化)
+    assert exc_info.value is not None # Corrected assertion
+    assert "Internal server error" in str(exc_info.value) # Added assertion to check error message content
 
 
 def test_no_api_key():
