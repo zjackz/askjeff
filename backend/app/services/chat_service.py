@@ -14,39 +14,6 @@ from app.services.log_service import LogService
 ToolFunction = Callable[..., Any]
 
 
-class ToolRegistry:
-    _tools: dict[str, dict[str, Any]] = {}
-
-    @classmethod
-    def register(cls, name: str, description: str, parameters: dict[str, Any]):
-        def decorator(func: ToolFunction):
-            cls._tools[name] = {
-                "name": name,
-                "description": description,
-                "parameters": parameters,
-                "func": func,
-            }
-            return func
-
-        return decorator
-
-    @classmethod
-    def get_tools_schema(cls) -> list[dict[str, Any]]:
-        return [
-            {
-                "name": t["name"],
-                "description": t["description"],
-                "parameters": t["parameters"],
-            }
-            for t in cls._tools.values()
-        ]
-
-    @classmethod
-    def get_tool_func(cls, name: str) -> ToolFunction | None:
-        tool = cls._tools.get(name)
-        return tool["func"] if tool else None
-
-
 from app.services.tool_registry import ToolRegistry
 
 class ChatService:

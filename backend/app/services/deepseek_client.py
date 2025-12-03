@@ -117,11 +117,12 @@ class DeepseekClient:
         if not self.api_key:
             return {}, {}
 
+        import json
         # 1. System Prompt (Static for caching)
         system_prompt = (
             "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
-            f"需要提取的字段: {', '.join(fields)}\n\n"
-            "请以 JSON 格式返回结果，key 为字段名，value 为提取出的内容。如果无法提取，value 请留空。\n"
+            f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n\n"
+            "请以 JSON 格式返回结果，必须严格使用上述字段列表中的字符串作为 key，value 为提取出的内容。如果无法提取，value 请留空。\n"
             "只返回 JSON，不要包含markdown格式或其他文本。"
         )
 
@@ -155,7 +156,6 @@ class DeepseekClient:
             if content.endswith("```"):
                 content = content[:-3]
             
-            import json
             return json.loads(content), usage
         except Exception as exc:
             print(f"DeepSeek Extraction Error: {exc}", flush=True)
@@ -165,11 +165,12 @@ class DeepseekClient:
         if not self.api_key:
             return {}, {}
 
+        import json
         # 1. System Prompt (Static for caching)
         system_prompt = (
             "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
-            f"需要提取的字段: {', '.join(fields)}\n\n"
-            "请以 JSON 格式返回结果，key 为字段名，value 为提取出的内容。如果无法提取，value 请留空。\n"
+            f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n\n"
+            "请以 JSON 格式返回结果，必须严格使用上述字段列表中的字符串作为 key，value 为提取出的内容。如果无法提取，value 请留空。\n"
             "只返回 JSON，不要包含markdown格式或其他文本。"
         )
 
@@ -204,7 +205,6 @@ class DeepseekClient:
                 if content.endswith("```"):
                     content = content[:-3]
                 
-                import json
                 return json.loads(content), usage
         except Exception as exc:
             print(f"DeepSeek Async Extraction Error: {exc}", flush=True)

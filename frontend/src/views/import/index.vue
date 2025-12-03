@@ -4,8 +4,8 @@
       <div class="flex justify-between items-center">
         <h2 class="text-lg font-bold my-0">导入批次</h2>
         <div class="flex gap-2">
-          <el-button :icon="Refresh" circle @click="fetchBatches" :loading="loading" size="small" />
-          <el-button type="primary" :icon="Plus" @click="importDialogVisible = true" size="small">
+          <el-button :icon="Refresh" circle @click="fetchBatches" :loading="loading" />
+          <el-button type="primary" :icon="Plus" @click="importDialogVisible = true">
             新建导入
           </el-button>
         </div>
@@ -18,7 +18,6 @@
         height="100%" 
         v-loading="loading" 
         class="custom-table"
-        size="small"
         border
       >
         <el-table-column label="批次 ID" width="80">
@@ -35,28 +34,28 @@
               </div>
               <div class="flex items-center gap-2 pl-6">
                 <el-tag size="small" type="info" effect="plain" class="scale-90 origin-left">
-                  {{ getStrategyLabel(row.import_strategy) }}
+                  {{ getStrategyLabel(row.importStrategy) }}
                 </el-tag>
-                <span class="text-xs text-gray-400" v-if="row.sheet_name">
-                  Sheet: {{ row.sheet_name }}
+                <span class="text-xs text-gray-400" v-if="row.sheetName">
+                  Sheet: {{ row.sheetName }}
                 </span>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="created_by" label="导入人" width="100" show-overflow-tooltip>
+        <el-table-column prop="createdBy" label="导入人" width="100" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="flex items-center gap-1 text-gray-600">
               <el-icon><User /></el-icon>
-              <span class="text-xs">管理员</span>
+              <span class="text-xs">{{ row.createdBy || '管理员' }}</span>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="created_at" label="导入时间" width="160" show-overflow-tooltip>
+        <el-table-column prop="createdAt" label="导入时间" width="160" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="text-xs text-gray-500">{{ formatDate(row.created_at) }}</span>
+            <span class="text-xs text-gray-500">{{ formatDate(row.createdAt) }}</span>
           </template>
         </el-table-column>
 
@@ -65,7 +64,7 @@
             <div class="flex flex-col gap-1">
               <div class="flex justify-between text-xs mb-1">
                 <span :class="getStatusColor(row.status)">{{ getStatusLabel(row.status) }}</span>
-                <span class="text-gray-400">{{ row.success_rows }}/{{ row.total_rows }}</span>
+                <span class="text-gray-400">{{ row.successRows }}/{{ row.totalRows }}</span>
               </div>
               <el-progress 
                 :percentage="calculateProgress(row)" 
@@ -73,8 +72,8 @@
                 :stroke-width="6"
                 :show-text="false"
               />
-              <div class="flex justify-between text-xs text-gray-400 mt-1" v-if="row.failed_rows > 0">
-                <span>失败: {{ row.failed_rows }}</span>
+              <div class="flex justify-between text-xs text-gray-400 mt-1" v-if="row.failedRows > 0">
+                <span>失败: {{ row.failedRows }}</span>
                 <el-button 
                   link 
                   type="danger" 
@@ -91,14 +90,14 @@
 
         <el-table-column label="AI 分析" width="140">
           <template #default="{ row }">
-            <div v-if="row.ai_status === 'processing'" class="flex items-center gap-2 text-primary">
+            <div v-if="row.aiStatus === 'processing'" class="flex items-center gap-2 text-primary">
               <el-icon class="is-loading"><Loading /></el-icon>
               <span class="text-xs">分析中...</span>
             </div>
-            <div v-else-if="row.ai_status === 'completed'" class="flex flex-col gap-1">
+            <div v-else-if="row.aiStatus === 'completed'" class="flex flex-col gap-1">
               <el-tag type="success" size="small" effect="plain">分析完成</el-tag>
-              <span class="text-xs text-gray-400" v-if="row.ai_summary">
-                {{ row.ai_summary.success || 0 }} 条特征
+              <span class="text-xs text-gray-400" v-if="row.aiSummary">
+                {{ row.aiSummary.success || 0 }} 条特征
               </span>
             </div>
             <div v-else-if="row.ai_status === 'failed'" class="text-danger text-xs flex items-center gap-1">
@@ -109,19 +108,17 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <div class="flex gap-2 items-center justify-center">
               <el-button 
                 type="primary" 
-                size="small" 
                 @click="navigateToChat(row)"
               >
                 查看详情
               </el-button>
               <el-button 
                 type="warning" 
-                size="small" 
                 plain
                 @click="openExtractionDialog(row)"
               >
@@ -143,7 +140,6 @@
         :total="total"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        size="small"
       />
     </div>
 
@@ -240,20 +236,20 @@ const total = ref(0)
 interface BatchRow {
   id: number
   filename: string
-  sheet_name?: string
-  import_strategy?: string
+  sheetName?: string
+  importStrategy?: string
   status: string
-  ai_status?: string
-  ai_summary?: { total: number, success: number, failed: number }
-  success_rows?: number
-  failed_rows?: number
-  total_rows?: number
-  created_at?: string
-  created_by?: string
-  started_at?: string
-  finished_at?: string
+  aiStatus?: string
+  aiSummary?: { total: number, success: number, failed: number }
+  successRows?: number
+  failedRows?: number
+  totalRows?: number
+  createdAt?: string
+  createdBy?: string
+  startedAt?: string
+  finishedAt?: string
   duration?: string // 前端计算
-  failure_summary?: { failed_rows_path: string, total_failed: number }
+  failureSummary?: { failed_rows_path: string, total_failed: number }
 }
 
 const batches = ref<BatchRow[]>([])
@@ -327,13 +323,13 @@ const fetchBatches = async (silent = false) => {
     })
     batches.value = (data.items || []).map((item: BatchRow) => ({
       ...item,
-      duration: calculateDuration(item.started_at, item.finished_at)
+      duration: calculateDuration(item.startedAt, item.finishedAt)
     }))
     total.value = data.total || 0
     
     const hasActiveTasks = batches.value.some(b => 
       (b.status && ['pending', 'processing'].includes(b.status.toLowerCase())) ||
-      (b.ai_status && ['pending', 'processing'].includes(b.ai_status.toLowerCase()))
+      (b.aiStatus && ['pending', 'processing'].includes(b.aiStatus.toLowerCase()))
     )
     if (!hasActiveTasks && isPolling.value) {
       // pause() 
@@ -380,14 +376,14 @@ const calculateProgress = (row: BatchRow) => {
   if (row.status === 'completed' || row.status === 'succeeded') return 100
   if (row.status === 'pending') return 0
   
-  const total = row.total_rows || 0
+  const total = row.totalRows || 0
   if (total === 0) {
-    // 如果总行数为 0 但有成功或失败记录，说明可能是后端未正确更新 total_rows，或者正在处理中
-    const processed = (row.success_rows || 0) + (row.failed_rows || 0)
+    // 如果总行数为 0 但有成功或失败记录，说明可能是后端未正确更新 totalRows，或者正在处理中
+    const processed = (row.successRows || 0) + (row.failedRows || 0)
     return processed > 0 ? 50 : 0 // 临时显示 50%
   }
   
-  const processed = (row.success_rows || 0) + (row.failed_rows || 0)
+  const processed = (row.successRows || 0) + (row.failedRows || 0)
   return Math.min(Math.round((processed / total) * 100), 100)
 }
 
@@ -426,8 +422,8 @@ const getProgressStatus = (status: string) => {
 }
 
 const downloadFailures = (row: BatchRow) => {
-  if (row.failure_summary?.failed_rows_path) {
-    window.open(`${API_BASE}/exports/download?path=${row.failure_summary.failed_rows_path}`, '_blank')
+  if (row.failureSummary?.failed_rows_path) {
+    window.open(`${API_BASE}/exports/download?path=${row.failureSummary.failed_rows_path}`, '_blank')
   } else {
     ElMessage.warning('暂无失败记录文件')
   }

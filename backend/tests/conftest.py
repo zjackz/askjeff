@@ -68,3 +68,12 @@ def _reset_db() -> None:
     if not keep_after:
         Base.metadata.drop_all(bind=TestingEngine)
         Base.metadata.create_all(bind=TestingEngine)
+
+
+@pytest.fixture
+def db() -> Session:
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

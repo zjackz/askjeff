@@ -40,6 +40,11 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '日志中心' }
       },
 
+      {
+        path: '/admin',
+        component: () => import('../views/admin/index.vue'),
+        meta: { title: '数据管理', roles: ['admin'] }
+      }
     ]
   },
   {
@@ -54,17 +59,20 @@ export const router = createRouter({
   routes
 })
 
-// 临时禁用登录验证
-// router.beforeEach((to, from, next) => {
-//   const token = localStorage.getItem('token')
-//   if (to.path !== '/login' && !token) {
-//     next('/login')
-//   } else {
-//     next()
-//   }
-// })
-
 router.beforeEach((to, from, next) => {
-  // 开发模式：跳过登录验证
-  next()
+  const token = localStorage.getItem('token')
+  const role = localStorage.getItem('role')
+
+  if (to.path !== '/login' && !token) {
+    next('/login')
+  } else {
+    // Role based guard
+    if (to.meta.roles && Array.isArray(to.meta.roles)) {
+      if (!to.meta.roles.includes(role || '')) {
+        next('/') // Redirect to home if no permission
+        return
+      }
+    }
+    next()
+  }
 })

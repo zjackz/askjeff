@@ -247,10 +247,28 @@ class ExportService:
         
         results = []
         for record in records:
-            # 1. Start with Original Data (raw_payload)
-            row = record.raw_payload.copy() if record.raw_payload else {}
+            # 1. Start with Standard Fields
+            row = {
+                "asin": record.asin,
+                "title": record.title,
+                "price": record.price,
+                "currency": record.currency,
+                "category": record.category,
+                "sales_rank": record.sales_rank,
+                "reviews": record.reviews,
+                "rating": record.rating,
+            }
             
-            # 2. Merge AI Features
+            # 2. Merge Original Data (raw_payload) - optional, but good for context
+            # Be careful not to overwrite standard fields with raw/unnormalized data if we want clean data
+            # But user might expect original columns. Let's merge raw_payload but keep standard fields if they exist?
+            # Actually, let's just add raw_payload keys that are NOT in standard fields
+            if record.raw_payload:
+                for k, v in record.raw_payload.items():
+                    if k not in row:
+                        row[k] = v
+            
+            # 3. Merge AI Features
             if record.ai_features:
                 row.update(record.ai_features)
                 

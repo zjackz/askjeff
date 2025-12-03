@@ -104,7 +104,7 @@
             </div>
           </template>
           
-          <el-table :data="previewData" border stripe v-loading="loadingPreview" height="300" size="small">
+          <el-table :data="previewData" border stripe v-loading="loadingPreview" height="300">
              <el-table-column 
                v-for="col in previewColumns" 
                :key="col" 
@@ -126,29 +126,47 @@
           <template #header>
             <div class="flex justify-between items-center">
               <span class="font-bold">导出历史</span>
-              <el-button :icon="Refresh" circle size="small" @click="fetchJobs" />
+              <el-button :icon="Refresh" circle @click="fetchJobs" />
             </div>
           </template>
-          <el-table :data="jobs" stripe size="small">
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="exportType" label="类型" width="120" />
-            <el-table-column prop="status" label="状态" width="100">
+          <el-table :data="jobs" stripe>
+            <el-table-column prop="id" label="ID" width="80" align="center" />
+            <el-table-column prop="exportType" label="类型" min-width="150">
               <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small">{{ row.status }}</el-tag>
+                {{ formatExportType(row.exportType) }}
               </template>
             </el-table-column>
-            <el-table-column prop="startedAt" label="创建时间" width="160">
+            <el-table-column prop="status" label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="getStatusType(row.status)" size="small" effect="plain">
+                  {{ formatStatus(row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="startedAt" label="创建时间" width="180">
                <template #default="{ row }">
-                 {{ formatDate(row.startedAt) }}
+                 <span class="text-gray-500 text-sm">{{ formatDate(row.startedAt) }}</span>
                </template>
             </el-table-column>
-            <el-table-column label="操作" min-width="100">
+            <el-table-column label="操作" width="120" fixed="right" align="center">
               <template #default="{ row }">
-                <el-link type="primary" v-if="row.fileUrl" :href="API_BASE + row.fileUrl" target="_blank">下载</el-link>
-                <span v-else-if="row.status === 'failed'" class="text-red-500 text-xs truncate" :title="row.errorMessage">
-                  {{ row.errorMessage || '失败' }}
-                </span>
-                <span v-else>--</span>
+                <el-button 
+                  v-if="row.fileUrl" 
+                  link 
+                  type="primary" 
+                  :loading="downloadingId === row.id"
+                  @click="handleDownload(row)"
+                >
+                  下载
+                </el-button>
+                <el-tooltip 
+                  v-else-if="row.status === 'failed'" 
+                  :content="row.errorMessage || '未知错误'" 
+                  placement="top"
+                >
+                  <span class="text-red-500 text-xs cursor-help">失败原因</span>
+                </el-tooltip>
+                <span v-else class="text-gray-300">--</span>
               </template>
             </el-table-column>
           </el-table>
@@ -191,11 +209,14 @@ const runs = ref<any[]>([]) // 提取运行列表
 // 预定义字段
 const standardFields = ['asin', 'title', 'price', 'brand', 'reviews', 'rating']
 const availableFields = computed(() => {
-  if (form.exportType === 'extraction_results') {
-    // 对于提取结果，允许用户输入任意字段，这里提供一些建议
-    return [...standardFields, ...form.selectedFields]
+  let fields = [...standardFields]
+  if (form.exportType === 'extraction_results' && form.filters.run_id) {
+    const run = runs.value.find(r => r.id === form.filters.run_id)
+    if (run && run.target_fields) {
+      fields = [...fields, ...run.target_fields]
+    }
   }
-  return standardFields
+  return Array.from(new Set(fields))
 })
 
 const canPreview = computed(() => {
@@ -228,7 +249,7 @@ const fetchBatches = async () => {
 // 格式化批次显示
 const formatBatchLabel = (batch: any) => {
   const time = dayjs(batch.created_at).format('YYYY-MM-DD HH:mm')
-  return `[${batch.id}] ${batch.original_filename} (${time})`
+  return `[${batch.id}] ${batch.filename} (${time})`
 }
 
 const formatRunLabel = (run: any) => {
@@ -264,6 +285,20 @@ onMounted(async () => {
   fetchJobs()
 })
 
+const updateSelectedFields = () => {
+  if (form.exportType !== 'extraction_results' || !form.filters.run_id) return
+  const run = runs.value.find(r => r.id === form.filters.run_id)
+  if (run && run.target_fields) {
+     form.selectedFields = Array.from(new Set([...standardFields, ...run.target_fields]))
+  } else {
+     form.selectedFields = [...standardFields]
+  }
+}
+
+watch(() => form.filters.run_id, () => {
+  updateSelectedFields()
+})
+
 const handleTypeChange = () => {
   form.selectedFields = []
   // 如果已经选了 batch，尝试重新获取 runs (如果切换到 extraction)
@@ -294,6 +329,10 @@ const fetchRuns = async (batchId: number | string) => {
     // 如果只有一个 run，自动选中
     if (runs.value.length === 1) {
       form.filters.run_id = runs.value[0].id
+    }
+    // 刷新选中字段 (如果 run_id 已存在或刚被选中)
+    if (form.filters.run_id) {
+      updateSelectedFields()
     }
   } catch (err) {
     console.error('Fetch runs failed:', err)
@@ -408,6 +447,65 @@ const getStatusType = (status: string) => {
     failed: 'danger'
   }
   return map[status] || 'info'
+}
+
+const formatStatus = (status: string) => {
+  const map: Record<string, string> = {
+    pending: '等待中',
+    processing: '处理中',
+    succeeded: '成功',
+    failed: '失败'
+  }
+  return map[status] || status
+}
+
+const formatExportType = (type: string) => {
+  const map: Record<string, string> = {
+    clean_products: '标准化产品',
+    extraction_results: 'AI 提取结果',
+    failed_rows: '失败行'
+  }
+  return map[type] || type
+}
+
+const downloadingId = ref<number | null>(null)
+
+const handleDownload = async (row: any) => {
+  if (!row.fileUrl) return
+  
+  downloadingId.value = row.id
+  try {
+    const response = await http.get(row.fileUrl, {
+      responseType: 'blob'
+    })
+    
+    // Create blob link to download
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    
+    // Extract filename from header or generate one
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `export-${row.id}.${row.fileFormat || 'xlsx'}`
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
+      if (filenameMatch && filenameMatch.length === 2)
+        filename = filenameMatch[1]
+    }
+    
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    
+    // Cleanup
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Download failed:', err)
+    ElMessage.error('下载失败，请稍后重试')
+  } finally {
+    downloadingId.value = null
+  }
 }
 
 const formatDate = (dateStr: string) => {

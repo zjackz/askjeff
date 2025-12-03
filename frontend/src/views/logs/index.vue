@@ -3,18 +3,18 @@
     <div class="page-header">
       <div class="filter-row">
         <h2 class="text-lg font-bold mr-4 my-0">日志中心</h2>
-        <el-select v-model="level" placeholder="级别" clearable style="width: 100px" size="small">
+        <el-select v-model="level" placeholder="级别" clearable style="width: 100px">
           <el-option label="全部" value="" />
           <el-option label="Info" value="info" />
           <el-option label="Warning" value="warning" />
           <el-option label="Error" value="error" />
         </el-select>
-        <el-input v-model="category" placeholder="分类" style="width: 140px" size="small" />
-        <el-input v-model="keyword" placeholder="关键字" style="width: 180px" size="small" />
-        <el-button type="primary" :loading="loading" @click="fetchLogs" size="small">查询</el-button>
-        <el-button @click="resetFilters" size="small">重置</el-button>
+        <el-input v-model="category" placeholder="分类" style="width: 140px" />
+        <el-input v-model="keyword" placeholder="关键字" style="width: 180px" />
+        <el-button type="primary" :loading="loading" @click="fetchLogs">查询</el-button>
+        <el-button @click="resetFilters">重置</el-button>
         <div class="flex-grow"></div>
-        <el-button type="success" :loading="analyzing" @click="analyzeLogs" size="small" plain>AI 分析</el-button>
+        <el-button type="success" :loading="analyzing" @click="analyzeLogs" plain>AI 分析</el-button>
       </div>
     </div>
 
@@ -24,7 +24,6 @@
         height="100%" 
         :loading="loading" 
         border 
-        size="small"
         class="logs-table"
       >
         <el-table-column prop="timestamp" label="时间" width="160" show-overflow-tooltip />
@@ -52,7 +51,6 @@
         :total="total"
         @size-change="handleSizeChange"
         @current-change="onPageChange"
-        size="small"
       />
     </div>
 

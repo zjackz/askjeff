@@ -5,19 +5,23 @@ class ToolRegistry:
     _schemas: List[Dict[str, Any]] = []
 
     @classmethod
-    def register(cls, name: str, func: Callable, schema: Dict[str, Any]):
+    def register(cls, name: str, description: str, parameters: Dict[str, Any]):
         """
-        Register a tool with its function and schema.
+        Register a tool using a decorator.
         
-        :param name: Unique name of the tool (e.g., 'query_products')
-        :param func: The callable function to execute
-        :param schema: JSON schema describing the tool (for LLM context)
+        :param name: Unique name of the tool
+        :param description: Description for LLM
+        :param parameters: JSON schema parameters for LLM
         """
-        cls._tools[name] = func
-        cls._schemas.append({
-            "name": name,
-            "schema": schema
-        })
+        def decorator(func: Callable):
+            cls._tools[name] = func
+            cls._schemas.append({
+                "name": name,
+                "description": description,
+                "parameters": parameters
+            })
+            return func
+        return decorator
 
     @classmethod
     def get_tool(cls, name: str) -> Callable | None:

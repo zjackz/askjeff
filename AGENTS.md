@@ -244,9 +244,12 @@ python scripts/report_metrics.py --days 7
 - Element Plus 组件保持中文文案
 - 状态管理优先使用 Pinia
 - API 调用统一封装在 `src/api/` 目录
+- **UI 尺寸规范**:
+  - **全局尺寸**: Element Plus 使用默认尺寸 (`size="default"`)。
+  - **避免硬编码**: 严禁在按钮、输入框等组件上硬编码 `size="small"`，除非在极紧凑的上下文中（如表格行内操作）。
 - **表格 UI 规范**:
   - **布局**: 使用全屏 Flex 布局，表格高度自适应 (`height="100%"`)，避免页面滚动条。
-  - **样式**: 使用紧凑模式 (`size="small"`)，最大化单屏数据展示量。
+  - **样式**: 跟随全局默认尺寸，确保行高适中，提升可读性。
   - **分页**: 必须提供 `page-sizes` 选项 `[20, 50, 100, 200]`，默认每页 50 条。
   - **容器**: 表格应包裹在 `.table-container` 中，设置圆角和阴影。
 
@@ -260,6 +263,15 @@ python scripts/report_metrics.py --days 7
 - 使用 BackgroundTasks 处理导入/导出，无需单独 Celery worker
 - 所有 API 端点必须有类型注解和文档字符串
 - 使用 Pydantic v2 进行数据验证
+
+### 权限控制规范 (RBAC)
+
+- **角色体系**:
+  - `admin`: 管理员，拥有所有权限（包括数据清空）。
+  - `shangu`: 运营人员，拥有除破坏性操作外的日常操作权限。
+- **实现方式**:
+  - 后端: `User` 模型 `role` 字段，API 依赖注入 `current_user` 判断权限。
+  - 前端: 路由 `meta.roles` 守卫，菜单根据角色动态渲染。
 
 ### 数据库规范
 

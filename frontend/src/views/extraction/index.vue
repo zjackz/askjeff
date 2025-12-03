@@ -93,14 +93,41 @@
                     class="w-full"
                     size="large"
                   >
-                    <el-option label="材质 (Material)" value="Material" />
-                    <el-option label="颜色 (Color)" value="Color" />
-                    <el-option label="尺寸 (Size)" value="Size" />
-                    <el-option label="适用人群 (Target Audience)" value="Target Audience" />
-                    <el-option label="使用场景 (Usage Scenario)" value="Usage Scenario" />
-                    <el-option label="卖点 (Selling Points)" value="Selling Points" />
-                    <el-option label="风格 (Style)" value="Style" />
+                    <el-option
+                      v-for="field in commonFields"
+                      :key="field.value"
+                      :label="field.label"
+                      :value="field.value"
+                    />
                   </el-select>
+                  
+                  <!-- 快速选择区域 -->
+                  <div class="mt-3">
+                    <div class="text-xs text-gray-400 mb-2 flex justify-between items-center">
+                      <span>快速选择 (点击添加)</span>
+                      <el-button 
+                        v-if="targetFields.length > 0" 
+                        link 
+                        type="primary" 
+                        size="small" 
+                        @click="targetFields = []"
+                      >
+                        清空已选
+                      </el-button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <el-tag
+                        v-for="field in commonFields"
+                        :key="field.value"
+                        class="cursor-pointer hover:opacity-80 transition-opacity select-none"
+                        :effect="targetFields.includes(field.value) ? 'dark' : 'plain'"
+                        :type="targetFields.includes(field.value) ? 'primary' : 'info'"
+                        @click="toggleField(field.value)"
+                      >
+                        {{ field.label }}
+                      </el-tag>
+                    </div>
+                  </div>
                 </el-form-item>
 
                 <div class="info-box mb-6">
@@ -198,6 +225,12 @@
                     </template>
                   </el-table>
                 </div>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="编号" width="80" prop="id">
+              <template #default="{ row }">
+                <span class="font-mono text-gray-500">#{{ row.id }}</span>
               </template>
             </el-table-column>
 
@@ -386,6 +419,28 @@ const extracting = ref(false)
 const batch = ref<Batch | null>(null)
 const previewRecords = ref<RecordData[]>([])
 const targetFields = ref<string[]>([])
+
+const commonFields = [
+  { label: '材质 (Material)', value: 'Material' },
+  { label: '颜色 (Color)', value: 'Color' },
+  { label: '尺寸 (Size)', value: 'Size' },
+  { label: '适用人群 (Target Audience)', value: 'Target Audience' },
+  { label: '使用场景 (Usage Scenario)', value: 'Usage Scenario' },
+  { label: '卖点 (Selling Points)', value: 'Selling Points' },
+  { label: '风格 (Style)', value: 'Style' },
+  { label: '是否带电池 (Has Battery)', value: 'Has Battery' },
+  { label: '保修期 (Warranty)', value: 'Warranty' },
+  { label: '产地 (Origin)', value: 'Origin' }
+]
+
+const toggleField = (value: string) => {
+  const index = targetFields.value.indexOf(value)
+  if (index > -1) {
+    targetFields.value.splice(index, 1)
+  } else {
+    targetFields.value.push(value)
+  }
+}
 
 // 结果列表相关
 const resultRecords = ref<RecordData[]>([])
@@ -691,10 +746,6 @@ const submitExtraction = async () => {
     await http.post(`${API_BASE}/imports/${batchId}/extract`, {
       target_fields: targetFields.value
     })
-    ElMessage.success('AI 提取任务已启动')
-    // 跳转回导入列表页，或者留在当前页显示状态？
-    // 用户需求是"点击跳转到一个单独页面"，提取后可能想看进度。
-    // 暂时跳转回列表页，因为列表页有进度条。
     ElMessage.success('AI 提取任务已启动')
     // 开始轮询
     startPolling()

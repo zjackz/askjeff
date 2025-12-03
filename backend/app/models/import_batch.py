@@ -24,6 +24,7 @@ class ImportBatch(Base):
 
     id: Mapped[int] = mapped_column(Integer, Identity(start=1), primary_key=True)
     filename: Mapped[str] = mapped_column(Text, nullable=False)
+    file_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     import_strategy: Mapped[str] = mapped_column(Enum(*IMPORT_STRATEGIES, name='import_strategy'), nullable=False)
     status: Mapped[str] = mapped_column(Enum(*IMPORT_STATUS, name='import_status'), default='pending')

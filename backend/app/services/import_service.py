@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -80,6 +82,17 @@ class ImportService:
         created_by: str | None = None,
     ):
         saved_path = self._save_file(file)
+        
+        # Calculate hash
+        file_hash = self._calculate_file_hash(saved_path)
+        
+        # Check for duplicates
+        # existing_batch = ImportRepository.find_batch_by_hash(db, file_hash)
+        # if existing_batch:
+        #     # Clean up uploaded file
+        #     saved_path.unlink(missing_ok=True)
+        #     raise ValueError(f"检测到重复文件导入 (与批次 {existing_batch.id} 内容相同)")
+
         effective_config = self.base_config.merge_overrides(
             sheet_name=sheet_name,
             on_missing_required=on_missing_required,
@@ -92,7 +105,11 @@ class ImportService:
             import_strategy=import_strategy,
             sheet_name=effective_config.sheet_name,
             created_by=created_by,
+            file_hash=file_hash,
         )
+        
+        # Update status to running
+        ImportRepository.update_batch_progress(db, batch, status="running", total_rows=0)
 
         failure_file = None
         try:
@@ -180,6 +197,14 @@ class ImportService:
         file.file.seek(0)
         return target
 
+    def _calculate_file_hash(self, path: Path) -> str:
+        sha256_hash = hashlib.sha256()
+        with path.open("rb") as f:
+            # Read and update hash string value in blocks of 4K
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+
     def _parse_file(self, path: Path, *, batch_id: str, config: ImportConfig) -> ParsedResult:
         records: list[ProductRecord] = []
         failures: list[dict] = []
@@ -252,9 +277,16 @@ class ImportService:
                     raise ImportAbort(reason)
                 continue
 
+            # ASIN Validation
+            asin_val = str(mapped_payload.get("asin", "")).strip()
+            if asin_val and not re.match(r"^B0[A-Z0-9]{8}$", asin_val):
+                validation_status = "warning"
+                validation_messages["asin"] = "ASIN 格式不正确 (应为 B0 开头的 10 位字符)"
+                warnings_count += 1
+
             record = ProductRecord(
                 batch_id=batch_id,
-                asin=str(mapped_payload.get("asin")),
+                asin=asin_val,
                 title=str(mapped_payload.get("title")),
                 category=mapped_payload.get("category"),
                 price=self._to_decimal(normalized_payload.get("price")),

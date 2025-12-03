@@ -19,6 +19,7 @@ class ImportRepository:
         import_strategy: str,
         sheet_name: str | None = None,
         created_by: str | None = None,
+        file_hash: str | None = None,
     ) -> ImportBatch:
         batch = ImportBatch(
             filename=filename,
@@ -28,11 +29,20 @@ class ImportRepository:
             sheet_name=sheet_name,
             created_by=created_by,
             started_at=datetime.now(timezone.utc),
+            file_hash=file_hash,
         )
         db.add(batch)
         db.commit()
         db.refresh(batch)
         return batch
+
+    @staticmethod
+    def find_batch_by_hash(db: Session, file_hash: str) -> ImportBatch | None:
+        stmt = select(ImportBatch).where(
+            ImportBatch.file_hash == file_hash,
+            ImportBatch.status == "succeeded"
+        ).limit(1)
+        return db.scalar(stmt)
 
     @staticmethod
     def update_batch_stats(
@@ -53,6 +63,22 @@ class ImportRepository:
         batch.failure_summary = failure_summary
         batch.columns_seen = columns_seen
         batch.finished_at = datetime.now(timezone.utc)
+        db.add(batch)
+        db.commit()
+        db.refresh(batch)
+        db.refresh(batch)
+        return batch
+
+    @staticmethod
+    def update_batch_progress(
+        db: Session,
+        batch: ImportBatch,
+        *,
+        status: str,
+        total_rows: int,
+    ) -> ImportBatch:
+        batch.status = status
+        batch.total_rows = total_rows
         db.add(batch)
         db.commit()
         db.refresh(batch)

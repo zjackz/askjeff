@@ -37,9 +37,14 @@
           <template #title>数据导出</template>
         </el-menu-item>
         
-        <el-menu-item index="/logs">
+        <el-menu-item index="/logs" v-if="userStore.role === 'admin'">
           <el-icon><Document /></el-icon>
           <template #title>日志中心</template>
+        </el-menu-item>
+
+        <el-menu-item index="/admin" v-if="userStore.role === 'admin'">
+          <el-icon><Delete /></el-icon>
+          <template #title>数据管理</template>
         </el-menu-item>
       </el-menu>
       
@@ -95,6 +100,10 @@
         <transition name="fade-slide" mode="out-in">
           <router-view />
         </transition>
+        
+        <div class="layout-footer">
+          <p>深圳拓芽 @2025</p>
+        </div>
       </el-main>
     </el-container>
     <ChatBot />
@@ -107,7 +116,7 @@ import { computed, ref } from 'vue'
 import { 
   Odometer, Upload, ChatDotRound, Download, 
   Document, InfoFilled, User, Setting, 
-  SwitchButton
+  SwitchButton, Delete
 } from '@element-plus/icons-vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { ElMessage } from 'element-plus'
@@ -131,7 +140,8 @@ const pageNames: Record<string, string> = {
   '/product': '数据洞察',
   '/extraction': 'AI 提取',
   '/export': '数据导出',
-  '/logs': '日志中心'
+  '/logs': '日志中心',
+  '/admin': '数据管理'
 }
 
 const currentPageName = computed(() => pageNames[route.path] || '')
@@ -361,6 +371,20 @@ const handleLogout = () => {
   background: var(--bg-secondary);
   padding: var(--spacing-xl);
   min-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-footer {
+  margin-top: auto;
+  padding-top: var(--spacing-lg);
+  text-align: center;
+  
+  p {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    margin: 0;
+  }
 }
 
 // ==========================================

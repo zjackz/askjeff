@@ -1,30 +1,39 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { http } from '@/utils/http'
 
 export const useUserStore = defineStore('user', () => {
     const token = ref(localStorage.getItem('token') || '')
+    const role = ref(localStorage.getItem('role') || '')
+    const username = ref('')
 
-    const login = async (username: string, password: string): Promise<boolean> => {
-        // 模拟登录验证
-        if (username === 'admin' && password === 'admin666') {
-            const mockToken = 'mock-token-' + Date.now()
-            token.value = mockToken
-            localStorage.setItem('token', mockToken)
-            return true
+    const getUserInfo = async () => {
+        try {
+            const { data } = await http.get('/users/me')
+            role.value = data.role
+            username.value = data.username
+            // Persist role for basic route guards (optional, but good for UX)
+            localStorage.setItem('role', data.role)
+            return data
+        } catch (error) {
+            console.error('Failed to get user info', error)
+            throw error
         }
-        return false
     }
 
     const logout = () => {
         token.value = ''
+        role.value = ''
+        username.value = ''
         localStorage.removeItem('token')
-        // 这里的 router 可能在 setup 外无法直接使用，通常在组件内调用 logout 后手动跳转
-        // 或者直接使用 window.location.reload() 简单粗暴
+        localStorage.removeItem('role')
     }
 
     return {
         token,
-        login,
+        role,
+        username,
+        getUserInfo,
         logout
     }
 })

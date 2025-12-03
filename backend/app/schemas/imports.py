@@ -26,6 +26,7 @@ class ImportBatchOut(BaseModel):
     
     # Added fields
     created_at: datetime = Field(..., alias="createdAt")
+    created_by: str | None = Field(default=None, alias="createdBy")
     ai_status: str = Field(default="none", alias="aiStatus")
     ai_summary: dict | None = Field(default=None, alias="aiSummary")
 

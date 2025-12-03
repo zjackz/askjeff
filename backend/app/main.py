@@ -13,6 +13,10 @@ from app.api.routes import (
     logs as logs_router,
     extraction as extraction_router,
     health as health_router,
+    login as login_router,
+    backups as backups_router,
+    users as users_router,
+    admin as admin_router,
 )
 from app.db import SessionLocal
 from app.services.log_service import LogService
@@ -40,10 +44,14 @@ app.include_router(chat_router.router)
 app.include_router(exports_router.router)
 app.include_router(products_router.router)
 app.include_router(logs_router.router)
+app.include_router(users_router.router)
+app.include_router(admin_router.router)
 app.include_router(extraction_router.router)
 
 # 健康检查路由 (无前缀,公开访问)
 app.include_router(health_router.router, tags=["health"])
+app.include_router(login_router.router, tags=["login"])
+app.include_router(backups_router.router, prefix="/api/backups", tags=["backups"])
 
 
 @app.middleware("http")

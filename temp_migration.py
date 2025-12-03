@@ -1,7 +1,7 @@
 """change_audit_log_entity_id_to_string
 
 Revision ID: 0093f8604f42
-Revises: b2c3d4e5f6g7
+Revises: 0008
 Create Date: 2025-12-02 07:55:33.813558
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "0093f8604f42"
-down_revision: Union[str, None] = "b2c3d4e5f6g7"
+down_revision: Union[str, None] = "0008"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
