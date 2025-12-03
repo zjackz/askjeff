@@ -59,19 +59,11 @@ async def create_import(
         normalized_strategy = import_service.normalize_strategy(importStrategy)
     except ValueError as exc:
         raise AppError(str(exc))
-    if onMissingRequired not in ("skip", "abort"):
-        raise AppError("onMissingRequired 仅支持 skip 或 abort")
-    if file is None:
-        # 测试期望缺少文件时返回 400，而不是 422
-        raise AppError("缺少导入文件")
-    if file.filename is None:
-        raise AppError("文件名不能为空")
-    aliases = None
-    if columnAliases:
-        try:
-            aliases = json.loads(columnAliases)
-        except json.JSONDecodeError as exc:  # pragma: no cover - 防御
-            raise AppError(f"columnAliases 需要是 JSON 对象: {exc.msg}")
+    
+    # 使用默认值
+    onMissingRequired = "skip"
+    columnAliases = None
+    
     try:
         batch = import_service.handle_upload(
             db,
@@ -79,7 +71,8 @@ async def create_import(
             import_strategy=normalized_strategy,
             sheet_name=sheetName,
             on_missing_required=onMissingRequired,
-            column_aliases=aliases,
+            column_aliases=columnAliases,
+            created_by=None,
         )
     except ValueError as exc:
         raise AppError(str(exc))
