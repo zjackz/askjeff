@@ -14,7 +14,7 @@ from app.services.import_service import import_service
 router = APIRouter(prefix="/api/imports", tags=["imports"])
 
 
-@router.post("", response_model=ImportBatchOut)
+@router.post("", response_model=ImportBatchOut, status_code=201)
 async def create_import(
     file: UploadFile = File(...),
     importStrategy: str = Form(...),
