@@ -20,6 +20,7 @@ def upgrade() -> None:
         "import_batches",
         sa.Column("id", sa.String(length=36), primary_key=True),
         sa.Column("filename", sa.Text(), nullable=False),
+        sa.Column("file_hash", sa.String(length=64), nullable=True),
         sa.Column("storage_path", sa.Text(), nullable=False),
         sa.Column("import_strategy", sa.String(length=32), nullable=False),
         sa.Column("status", sa.String(length=32), nullable=False, server_default="pending"),

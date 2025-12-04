@@ -24,7 +24,7 @@ services:
       - -lc
       - |
         set -e
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+        # pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
         pip install --no-cache-dir poetry poetry-plugin-export
         poetry export --without-hashes -f requirements.txt -o /tmp/requirements.txt
         for i in 1 2 3 4 5; do pip install --no-cache-dir -r /tmp/requirements.txt && break || echo "pip install retry $$i" && sleep 3; done
@@ -90,7 +90,7 @@ services:
       - NODE_ENV=development
       - VITE_API_BASE_URL=http://localhost:8001
     command: >
-      bash -c "npm config set registry https://registry.npmmirror.com && corepack enable && pnpm config set registry https://registry.npmmirror.com && pnpm install --no-frozen-lockfile && pnpm dev --host 0.0.0.0 --port 5174"
+      bash -c "corepack enable && pnpm install --no-frozen-lockfile && pnpm dev --host 0.0.0.0 --port 5174"
     volumes:
       - ../../frontend:/app
       - frontend-node-modules:/app/node_modules

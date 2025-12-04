@@ -25,7 +25,7 @@ class ChatService:
         asked_by: str | None = None,
     ) -> dict[str, Any]:
         # 确保工具已注册 (Phase 2 将实现具体工具)
-        # from app.services import chat_tools  # noqa: F401
+        from app.services import chat_tools  # noqa: F401
 
         # 1. 构造 System Prompt
         tools_schema = ToolRegistry.get_schemas()

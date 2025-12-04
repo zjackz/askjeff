@@ -64,7 +64,7 @@
         <div class="header-left">
           <div class="collapse-btn" @click="toggleCollapse">
             <el-icon :size="20">
-              <component :is="isCollapse ? 'Expand' : 'Fold'" />
+              <component :is="isCollapse ? Expand : Fold" />
             </el-icon>
           </div>
           <el-breadcrumb separator="/">
@@ -118,7 +118,7 @@ import { computed, ref } from 'vue'
 import { 
   Odometer, Upload, ChatDotRound, Download, 
   Document, InfoFilled, User, Setting, 
-  SwitchButton, Delete
+  SwitchButton, Delete, Expand, Fold
 } from '@element-plus/icons-vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { ElMessage } from 'element-plus'

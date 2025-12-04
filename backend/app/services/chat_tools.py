@@ -144,3 +144,63 @@ def analyze_logs(
             "message": log.message,
         })
     return results
+
+
+@ToolRegistry.register(
+    name="search_market_gaps",
+    description="寻找蓝海市场机会（高需求、低竞争、改进空间）",
+    parameters={
+        "max_reviews": "最大评论数 (衡量竞争度，如 < 100)",
+        "min_sales_rank": "最小排名 (衡量需求)",
+        "max_sales_rank": "最大排名 (衡量需求，如 < 5000)",
+        "max_rating": "最大评分 (衡量改进空间，如 < 3.8)",
+        "min_price": "最低价格",
+        "max_price": "最高价格",
+        "category": "类目筛选",
+        "limit": "返回数量 (默认 5)",
+    },
+)
+def search_market_gaps(
+    db: Session,
+    max_reviews: int | None = None,
+    min_sales_rank: int | None = None,
+    max_sales_rank: int | None = None,
+    max_rating: float | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    category: str | None = None,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    limit = min(limit, 20)
+    
+    # 默认按销量排名排序（需求优先）
+    sort_by = "sales_rank"
+    sort_order = "asc"
+    
+    items, _ = ImportRepository.list_products(
+        db,
+        max_reviews=max_reviews,
+        min_rank=min_sales_rank,
+        max_rank=max_sales_rank,
+        max_rating=max_rating,
+        min_price=min_price,
+        max_price=max_price,
+        category=category,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=1,
+        page_size=limit,
+    )
+    
+    results = []
+    for item in items:
+        results.append({
+            "asin": item.asin,
+            "title": item.title,
+            "price": str(item.price) if item.price else None,
+            "sales_rank": item.sales_rank,
+            "rating": str(item.rating) if item.rating else None,
+            "reviews": item.reviews,
+            "category": item.category,
+        })
+    return results
