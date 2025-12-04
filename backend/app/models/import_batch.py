@@ -7,7 +7,7 @@ from uuid import uuid4
 if TYPE_CHECKING:
     from app.models.extraction_run import ExtractionRun
 
-from sqlalchemy import JSON, Enum, ForeignKey, Integer, Numeric, String, Text, Identity, FetchedValue
+from sqlalchemy import JSON, Enum, ForeignKey, Integer, Numeric, String, Text, Identity
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

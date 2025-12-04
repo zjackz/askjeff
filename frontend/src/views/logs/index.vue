@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { http } from '@/utils/http'
 
 interface LogRow {
   id: string
@@ -112,7 +112,7 @@ const analysis = ref<AnalysisResult>({ summary: '', probableCauses: [], suggesti
 const fetchLogs = async () => {
   loading.value = true
   try {
-    const { data } = await axios.get(`${API_BASE}/logs`, {
+    const { data } = await http.get('/logs', {
       params: {
         level: level.value || undefined,
         category: category.value || undefined,
@@ -134,7 +134,7 @@ const analyzeLogs = async () => {
   analyzing.value = true
   try {
     const ids = logs.value.map((item) => item.id)
-    const { data } = await axios.post(`${API_BASE}/logs/analyze`, {
+    const { data } = await http.post('/logs/analyze', {
       logIds: ids
     })
     analysis.value = data

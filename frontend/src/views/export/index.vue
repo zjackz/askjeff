@@ -4,175 +4,197 @@
       <h1 class="text-2xl font-bold text-gray-800">数据导出</h1>
     </div>
 
-    <el-row :gutter="24">
-      <!-- Left: Configuration -->
-      <el-col :span="8">
-        <el-card shadow="never" class="mb-6">
-          <template #header>
-            <span class="font-bold">导出配置</span>
-          </template>
-          
-          <el-form label-position="top" :model="form">
-            <!-- 1. Batch Selection (Always First) -->
-            <el-form-item label="选择批次 (Batch)">
-              <el-select 
-                v-model="form.filters.batch_id" 
-                placeholder="请先选择批次" 
-                class="w-full" 
-                filterable
-                @change="handleBatchChange"
-              >
-                <el-option 
-                  v-for="batch in batches" 
-                  :key="batch.id" 
-                  :label="formatBatchLabel(batch)" 
-                  :value="batch.id" 
-                />
-              </el-select>
-            </el-form-item>
+    <div class="main-content">
+      <!-- Top Section: Configuration & Preview Combined -->
+      <div class="section-card mb-24">
+        <el-row>
+          <!-- Left: Configuration (25%) -->
+          <el-col :span="6" class="config-col">
+            <div class="section-header">
+              <h2 class="section-title">导出配置</h2>
+            </div>
+            
+            <el-form label-position="top" :model="form" class="compact-form">
+              <!-- 1. Batch Selection (Always First) -->
+              <el-form-item label="选择批次 (Batch)">
+                <el-select 
+                  v-model="form.filters.batch_id" 
+                  placeholder="请先选择批次" 
+                  class="w-full" 
+                  filterable
+                  @change="handleBatchChange"
+                >
+                  <el-option 
+                    v-for="batch in batches" 
+                    :key="batch.id" 
+                    :label="formatBatchLabel(batch)" 
+                    :value="batch.id" 
+                  />
+                </el-select>
+              </el-form-item>
 
-            <!-- 2. Export Type -->
-            <el-form-item label="导出类型">
-              <el-select v-model="form.exportType" @change="handleTypeChange" class="w-full">
-                <el-option label="标准化产品 (Clean Products)" value="clean_products" />
-                <el-option label="AI 提取结果 (Extraction Results)" value="extraction_results" />
-                <el-option label="失败行 (Failed Rows)" value="failed_rows" />
-              </el-select>
-            </el-form-item>
+              <!-- 2. Export Type -->
+              <el-form-item label="导出类型">
+                <el-select v-model="form.exportType" @change="handleTypeChange" class="w-full">
+                  <el-option label="标准化产品 (Clean Products)" value="clean_products" />
+                  <el-option label="AI 提取结果 (Extraction Results)" value="extraction_results" />
+                  <el-option label="失败行 (Failed Rows)" value="failed_rows" />
+                </el-select>
+              </el-form-item>
 
-            <!-- 3. Dynamic Filters -->
-            <template v-if="form.exportType === 'extraction_results'">
-               <el-form-item label="提取运行记录 (Run ID)">
+              <!-- 3. Dynamic Filters -->
+              <template v-if="form.exportType === 'extraction_results'">
+                 <el-form-item label="提取运行记录 (Run ID)">
+                   <el-select 
+                     v-model="form.filters.run_id" 
+                     placeholder="选择提取运行记录" 
+                     class="w-full"
+                     :disabled="!form.filters.batch_id"
+                     no-data-text="该批次无提取记录"
+                   >
+                     <el-option
+                       v-for="run in runs"
+                       :key="run.id"
+                       :label="formatRunLabel(run)"
+                       :value="run.id"
+                     />
+                   </el-select>
+                   <div class="text-xs text-gray-400 mt-1" v-if="!form.filters.batch_id">
+                     请先选择批次以加载运行记录
+                   </div>
+                 </el-form-item>
+              </template>
+
+              <!-- 4. Field Selection -->
+              <el-form-item label="选择字段">
                  <el-select 
-                   v-model="form.filters.run_id" 
-                   placeholder="选择提取运行记录" 
+                   v-model="form.selectedFields" 
+                   multiple 
+                   filterable 
+                   allow-create 
+                   default-first-option
+                   placeholder="选择要导出的字段"
                    class="w-full"
-                   :disabled="!form.filters.batch_id"
-                   no-data-text="该批次无提取记录"
                  >
-                   <el-option
-                     v-for="run in runs"
-                     :key="run.id"
-                     :label="formatRunLabel(run)"
-                     :value="run.id"
+                   <el-option 
+                     v-for="field in availableFields" 
+                     :key="field" 
+                     :label="field" 
+                     :value="field" 
                    />
                  </el-select>
-                 <div class="text-xs text-gray-400 mt-1" v-if="!form.filters.batch_id">
-                   请先选择批次以加载运行记录
+                 <div class="text-xs text-gray-400 mt-1" v-if="form.exportType === 'extraction_results'">
+                   留空则导出所有字段 (原始数据 + AI 提取结果)
                  </div>
-               </el-form-item>
-            </template>
+              </el-form-item>
 
-            <!-- 4. Field Selection -->
-            <el-form-item label="选择字段">
-               <el-select 
-                 v-model="form.selectedFields" 
-                 multiple 
-                 filterable 
-                 allow-create 
-                 default-first-option
-                 placeholder="选择要导出的字段"
-                 class="w-full"
-               >
-                 <el-option 
-                   v-for="field in availableFields" 
-                   :key="field" 
-                   :label="field" 
-                   :value="field" 
+              <el-button type="primary" class="w-full mt-4" :loading="submitting" @click="submit" :disabled="!canSubmit">
+                创建导出任务
+              </el-button>
+            </el-form>
+          </el-col>
+
+          <!-- Right: Preview (75%) -->
+          <el-col :span="18" class="preview-col">
+            <div class="h-full flex flex-col">
+              <div class="section-header">
+                <div class="flex justify-between items-center">
+                  <h2 class="section-title">数据预览 (前 10 条)</h2>
+                  <el-button link type="primary" @click="fetchPreview" :disabled="!canPreview">刷新预览</el-button>
+                </div>
+              </div>
+              
+              <el-table :data="previewData" border stripe v-loading="loadingPreview" height="100%" class="flex-1">
+                 <el-table-column 
+                   v-for="col in previewColumns" 
+                   :key="col" 
+                   :prop="col" 
+                   :label="col" 
+                   min-width="120" 
+                   show-overflow-tooltip 
                  />
-               </el-select>
-               <div class="text-xs text-gray-400 mt-1" v-if="form.exportType === 'extraction_results'">
-                 留空则导出所有字段 (原始数据 + AI 提取结果)
-               </div>
-            </el-form-item>
-
-            <el-button type="primary" class="w-full mt-4" :loading="submitting" @click="submit" :disabled="!canSubmit">
-              创建导出任务
-            </el-button>
-          </el-form>
-        </el-card>
-      </el-col>
-
-      <!-- Right: Preview & History -->
-      <el-col :span="16">
-        <!-- Preview -->
-        <el-card shadow="never" class="mb-6">
-          <template #header>
-            <div class="flex justify-between items-center">
-              <span class="font-bold">数据预览 (前 10 条)</span>
-              <el-button link type="primary" @click="fetchPreview" :disabled="!canPreview">刷新预览</el-button>
+                 <template #empty>
+                   <div class="text-center py-8 text-gray-400">
+                     {{ previewMessage }}
+                   </div>
+                 </template>
+              </el-table>
             </div>
-          </template>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- Bottom Section: History -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="flex justify-between items-center">
+            <h2 class="section-title">导出历史</h2>
+            <el-button :icon="Refresh" circle @click="fetchJobs" />
+          </div>
+        </div>
+        <el-table :data="jobs" stripe>
+          <el-table-column prop="id" label="ID" width="80" align="center" />
+          <el-table-column prop="exportType" label="类型" width="150">
+            <template #default="{ row }">
+              {{ formatExportType(row.exportType) }}
+            </template>
+          </el-table-column>
           
-          <el-table :data="previewData" border stripe v-loading="loadingPreview" height="300">
-             <el-table-column 
-               v-for="col in previewColumns" 
-               :key="col" 
-               :prop="col" 
-               :label="col" 
-               min-width="120" 
-               show-overflow-tooltip 
-             />
-             <template #empty>
-               <div class="text-center py-8 text-gray-400">
-                 {{ previewMessage }}
-               </div>
-             </template>
-          </el-table>
-        </el-card>
+          <!-- 新增来源列 -->
+          <el-table-column label="来源 (Batch / Run)" min-width="200">
+            <template #default="{ row }">
+              <div class="text-sm">
+                <div v-if="row.filters?.batch_id">
+                  <span class="text-gray-500">Batch:</span> 
+                  <span class="font-mono ml-1">{{ row.filters.batch_id }}</span>
+                </div>
+                <div v-if="row.filters?.run_id">
+                  <span class="text-gray-500">Run:</span> 
+                  <span class="font-mono ml-1">{{ row.filters.run_id }}</span>
+                </div>
+                <div v-if="!row.filters?.batch_id && !row.filters?.run_id" class="text-gray-400">
+                  -
+                </div>
+              </div>
+            </template>
+          </el-table-column>
 
-        <!-- Export History -->
-        <el-card shadow="never">
-          <template #header>
-            <div class="flex justify-between items-center">
-              <span class="font-bold">导出历史</span>
-              <el-button :icon="Refresh" circle @click="fetchJobs" />
-            </div>
-          </template>
-          <el-table :data="jobs" stripe>
-            <el-table-column prop="id" label="ID" width="80" align="center" />
-            <el-table-column prop="exportType" label="类型" min-width="150">
-              <template #default="{ row }">
-                {{ formatExportType(row.exportType) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small" effect="plain">
-                  {{ formatStatus(row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="startedAt" label="创建时间" width="180">
-               <template #default="{ row }">
-                 <span class="text-gray-500 text-sm">{{ formatDate(row.startedAt) }}</span>
-               </template>
-            </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right" align="center">
-              <template #default="{ row }">
-                <el-button 
-                  v-if="row.fileUrl" 
-                  link 
-                  type="primary" 
-                  :loading="downloadingId === row.id"
-                  @click="handleDownload(row)"
-                >
-                  下载
-                </el-button>
-                <el-tooltip 
-                  v-else-if="row.status === 'failed'" 
-                  :content="row.errorMessage || '未知错误'" 
-                  placement="top"
-                >
-                  <span class="text-red-500 text-xs cursor-help">失败原因</span>
-                </el-tooltip>
-                <span v-else class="text-gray-300">--</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </el-col>
-    </el-row>
+          <el-table-column prop="status" label="状态" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)" size="small" effect="plain">
+                {{ formatStatus(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="startedAt" label="创建时间" width="180">
+             <template #default="{ row }">
+               <span class="text-gray-500 text-sm">{{ formatDate(row.startedAt) }}</span>
+             </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right" align="center">
+            <template #default="{ row }">
+              <el-button 
+                v-if="row.fileUrl" 
+                link 
+                type="primary" 
+                :loading="downloadingId === row.id"
+                @click="handleDownload(row)"
+              >
+                下载
+              </el-button>
+              <el-tooltip 
+                v-else-if="row.status === 'failed'" 
+                :content="row.errorMessage || '未知错误'" 
+                placement="top"
+              >
+                <span class="text-red-500 text-xs cursor-help">失败原因</span>
+              </el-tooltip>
+              <span v-else class="text-gray-300">--</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -180,7 +202,7 @@
 import { reactive, ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { isAxiosError } from 'axios'
-import { http, API_BASE } from '@/utils/http'
+import { http } from '@/utils/http'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
@@ -236,7 +258,7 @@ const previewColumns = computed(() => {
 // 获取批次列表
 const fetchBatches = async () => {
   try {
-    const { data } = await http.get(`${API_BASE}/imports`, {
+    const { data } = await http.get('/imports', {
       params: { pageSize: 100 } // 获取最近 100 个批次
     })
     batches.value = data.items || []
@@ -324,7 +346,7 @@ const handleBatchChange = async () => {
 
 const fetchRuns = async (batchId: number | string) => {
   try {
-    const { data } = await http.get(`${API_BASE}/imports/${batchId}/runs`)
+    const { data } = await http.get(`/imports/${batchId}/runs`)
     runs.value = data.items || []
     // 如果只有一个 run，自动选中
     if (runs.value.length === 1) {
@@ -361,7 +383,7 @@ const fetchPreview = async () => {
   
   try {
     // 获取原始记录
-    const { data } = await http.get(`${API_BASE}/imports/${form.filters.batch_id}/records`, {
+    const { data } = await http.get(`/imports/${form.filters.batch_id}/records`, {
       params: { limit: 10 }
     })
     
@@ -413,7 +435,7 @@ const submit = async () => {
       if (form.filters.batch_id) filters.batch_id = form.filters.batch_id
     }
 
-    await http.post(`${API_BASE}/exports`, {
+    await http.post('/exports', {
       exportType: form.exportType,
       filters: filters,
       selectedFields: form.selectedFields,
@@ -432,7 +454,7 @@ const submit = async () => {
 
 const fetchJobs = async () => {
   try {
-    const { data } = await http.get(`${API_BASE}/exports`)
+    const { data } = await http.get('/exports')
     jobs.value = data || []
   } catch (err) {
     console.error('Fetch jobs failed:', err)
@@ -518,5 +540,57 @@ const formatDate = (dateStr: string) => {
 .export-page {
   background-color: #f3f4f6;
   min-height: 100vh;
+}
+
+.main-content {
+  margin: 0 auto;
+}
+
+.section-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.section-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+}
+
+:deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+  
+  th {
+    background: #f9fafb !important;
+    color: #374151;
+    font-weight: 600;
+  }
+}
+
+.compact-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+
+.config-col {
+  border-right: 1px solid #f0f0f0;
+  padding-right: 24px;
+}
+
+.preview-col {
+  padding-left: 24px;
+}
+
+.mb-24 {
+  margin-bottom: 24px;
 }
 </style>

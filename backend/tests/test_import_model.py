@@ -47,8 +47,6 @@ class TestImportBatchModel:
 
     def test_create_batch_with_all_fields(self, db_session):
         """测试创建包含所有字段的批次记录"""
-        now = datetime.now(timezone.utc)
-        
         batch = ImportBatch(
             filename="test.xlsx",
             storage_path="/storage/test.xlsx",

@@ -334,8 +334,3 @@ docker exec askjeff-dev-backend-1 poetry run pytest --cov=app tests/
 - [需求管理](specs/README.md) - 所有功能需求索引
 - [Spec-Kit 官方文档](https://github.com/github/spec-kit) - 规格驱动开发
 - [新需求工作流](.agent/workflows/new-requirement.md) - 创建新需求的步骤
-
----
-
-<!-- MANUAL ADDITIONS START -->
-<!-- MANUAL ADDITIONS END -->

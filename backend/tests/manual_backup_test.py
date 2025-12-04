@@ -1,5 +1,4 @@
 import httpx
-import sys
 
 # Use container internal URL
 BASE_URL = "http://127.0.0.1:8001"

@@ -114,7 +114,7 @@ import {
   Close, Service, UserFilled, 
   Position, Delete, Minus, FullScreen, ScaleToOriginal
 } from '@element-plus/icons-vue'
-import { http, API_BASE } from '@/utils/http'
+import { http } from '@/utils/http'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -186,7 +186,7 @@ const sendMessage = async () => {
   scrollToBottom()
 
   try {
-    const { data } = await http.post<ChatResponse>(`${API_BASE}/chat/query`, {
+    const { data } = await http.post<ChatResponse>('/chat/query', {
       question: content
     })
     messages.value.push({ role: 'assistant', content: data.answer })

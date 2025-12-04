@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001'
 
 // 扩展 AxiosRequestConfig 类型以支持自定义配置
 declare module 'axios' {
@@ -12,8 +12,12 @@ declare module 'axios' {
   }
 }
 
+// 确保 baseURL 总是包含 /api
+const baseURL = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`
+console.log('HTTP Client initialized with baseURL:', baseURL)
+
 const http: AxiosInstance = axios.create({
-  baseURL: API_BASE,
+  baseURL,
   timeout: 10000
 })
 
@@ -40,7 +44,7 @@ async function reportClientError(error: AxiosError) {
     // 避免递归上报
     if (error.config?.url && error.config.url.includes(ingestPath)) return
     await axios.post(
-      `${API_BASE}${ingestPath}`,
+      `${baseURL}${ingestPath}`,
       {
         level: 'error',
         category: 'frontend',

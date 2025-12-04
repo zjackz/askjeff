@@ -1,8 +1,6 @@
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.orm import Session
 
 from app.services.chat_service import ChatService
 from app.services.chat_tools import query_products, get_batch_status

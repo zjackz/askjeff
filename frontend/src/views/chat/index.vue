@@ -3,7 +3,7 @@
     <el-card class="filter-card">
       <el-form :inline="true" label-width="86px" class="filter-form">
         <el-form-item label="批次 ID">
-          <el-select v-model="filters.batchId" placeholder="选择批次" clearable>
+          <el-select v-model="filters.batchId" placeholder="选择批次" clearable style="width: 200px">
             <el-option 
               v-for="batch in batches" 
               :key="batch.id" 
@@ -13,10 +13,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="ASIN/标题">
-          <el-input v-model="filters.asin" placeholder="输入 ASIN 或关键词" clearable />
+          <el-input v-model="filters.asin" placeholder="输入 ASIN 或关键词" clearable style="width: 240px" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="filters.status" placeholder="全部" clearable>
+          <el-select v-model="filters.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="全部" value="" />
             <el-option label="有效" value="valid" />
             <el-option label="警告" value="warning" />
@@ -33,11 +33,21 @@
             format="YYYY-MM-DD"
             value-format="YYYY-MM-DDTHH:mm:ss"
             :clearable="true"
+            style="width: 340px"
           />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="applyFilters">查询</el-button>
           <el-button @click="resetFilters">清除筛选</el-button>
+          <el-button 
+            type="warning" 
+            plain 
+            :icon="MagicStick"
+            :disabled="!filters.batchId"
+            @click="navigateToExtraction"
+          >
+            AI 提取
+          </el-button>
           <el-button link @click="showAdvanced = !showAdvanced">
             {{ showAdvanced ? '收起高级筛选' : '展开高级筛选' }}
           </el-button>
@@ -211,10 +221,11 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
 import { http, API_BASE } from '@/utils/http'
+import { MagicStick } from '@element-plus/icons-vue'
 import type { ProductItem, ProductQueryParams } from './types'
 
 import dayjs from 'dayjs'
@@ -253,8 +264,28 @@ const loadFiltersFromStorage = () => {
   return null
 }
 
+interface ProductFilters {
+  batchId: string | number
+  asin: string
+  status: string
+  dateRange: string[]
+  minPrice?: number
+  maxPrice?: number
+  minRating?: number
+  maxRating?: number
+  minReviews?: number
+  maxReviews?: number
+  minRank?: number
+  maxRank?: number
+  category: string
+  sortBy: string
+  sortOrder: 'asc' | 'desc' | ''
+  page: number
+  pageSize: number
+}
+
 // 保存筛选条件到 sessionStorage
-const saveFiltersToStorage = (filters: typeof filters) => {
+const saveFiltersToStorage = (filters: ProductFilters) => {
   try {
     sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
       batchId: filters.batchId,
@@ -280,22 +311,22 @@ const saveFiltersToStorage = (filters: typeof filters) => {
 }
 
 const savedFilters = loadFiltersFromStorage()
-const filters = reactive(savedFilters || {
-  batchId: '' as string | number,
+const filters = reactive<ProductFilters>(savedFilters || {
+  batchId: '',
   asin: '',
   status: '',
-  dateRange: [] as string[],
-  minPrice: undefined as number | undefined,
-  maxPrice: undefined as number | undefined,
-  minRating: undefined as number | undefined,
-  maxRating: undefined as number | undefined,
-  minReviews: undefined as number | undefined,
-  maxReviews: undefined as number | undefined,
-  minRank: undefined as number | undefined,
-  maxRank: undefined as number | undefined,
+  dateRange: [],
+  minPrice: undefined,
+  maxPrice: undefined,
+  minRating: undefined,
+  maxRating: undefined,
+  minReviews: undefined,
+  maxReviews: undefined,
+  minRank: undefined,
+  maxRank: undefined,
   category: '',
   sortBy: '',
-  sortOrder: '' as 'asc' | 'desc' | '',
+  sortOrder: '',
   page: 1,
   pageSize: 20
 })
@@ -309,7 +340,7 @@ const batches = ref<any[]>([])
 
 const fetchBatches = async () => {
   try {
-    const { data } = await http.get(`${API_BASE}/imports`, {
+    const { data } = await http.get('/imports', {
       params: { pageSize: 100 }
     })
     batches.value = data.items || []
@@ -340,7 +371,7 @@ const trackEvent = (event: string, payload?: Record<string, unknown>) => {
 
 const buildQueryParams = (): ProductQueryParams => {
   const params: ProductQueryParams = {
-    batchId: filters.batchId || undefined,
+    batchId: filters.batchId ? String(filters.batchId) : undefined,
     asin: filters.asin || undefined,
     status: filters.status || undefined,
     page: filters.page,
@@ -417,7 +448,7 @@ const fetchProducts = async (resetPage = false) => {
   errorMessage.value = ''
   try {
     const params = buildQueryParams()
-    const { data } = await http.get(`${API_BASE}/products`, {
+    const { data } = await http.get('/products', {
       params: {
         batchId: params.batchId,
         asin: params.asin,
@@ -550,11 +581,11 @@ const exportCurrentFilters = async () => {
       fileFormat: 'csv'
     }
 
-    const { data } = await http.post(`${API_BASE}/exports`, payload)
+    const { data } = await http.post('/exports', payload)
     
     if (data.status === 'succeeded' && data.fileUrl) {
       // 触发下载
-      const downloadUrl = `${API_BASE}${data.fileUrl}`
+      const downloadUrl = `${API_BASE}/api${data.fileUrl}`
       const link = document.createElement('a')
       link.href = downloadUrl
       link.setAttribute('download', `export-${data.id}.csv`)
@@ -579,6 +610,13 @@ const exportCurrentFilters = async () => {
 }
 
 const route = useRoute()
+const router = useRouter()
+
+const navigateToExtraction = () => {
+  if (filters.batchId) {
+    router.push(`/extraction/${filters.batchId}`)
+  }
+}
 
 const COLUMN_SETTINGS_KEY = 'insight_column_settings'
 
@@ -631,9 +669,33 @@ watch(columnVisibility, (newSettings) => {
 onMounted(() => {
   loadColumnSettings()
   fetchBatches()
+  
+  // 优先处理 URL 参数
   if (route.query.batchId) {
+    // 如果 URL 中有 batchId，强制重置其他筛选条件，只保留 batchId
+    // 这样可以避免之前的筛选条件（如 status=error）导致看不到新批次的数据
     filters.batchId = Number(route.query.batchId)
+    filters.asin = ''
+    filters.status = ''
+    filters.dateRange = []
+    filters.minPrice = undefined
+    filters.maxPrice = undefined
+    filters.minRating = undefined
+    filters.maxRating = undefined
+    filters.minReviews = undefined
+    filters.maxReviews = undefined
+    filters.minRank = undefined
+    filters.maxRank = undefined
+    filters.category = ''
+    filters.sortBy = ''
+    filters.sortOrder = ''
+    filters.page = 1
+    // pageSize 保持不变，或者也可以重置
+    
+    // 保存重置后的状态，避免刷新后又恢复旧的
+    saveFiltersToStorage(filters)
   }
+  
   fetchProducts()
 })
 

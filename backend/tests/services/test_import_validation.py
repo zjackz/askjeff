@@ -2,7 +2,7 @@ import io
 import pytest
 from fastapi import UploadFile
 from app.services.import_service import import_service
-from app.models.import_batch import ImportBatch, ProductRecord
+from app.models.import_batch import ProductRecord
 
 def create_upload_file(content: bytes, filename: str) -> UploadFile:
     return UploadFile(filename=filename, file=io.BytesIO(content))

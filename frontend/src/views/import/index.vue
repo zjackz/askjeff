@@ -298,7 +298,7 @@ const submit = async () => {
   
   submitting.value = true
   try {
-    await http.post(`${API_BASE}/imports`, form)
+    await http.post('/imports', form)
     ElMessage.success('导入任务已提交，正在处理...')
     fileList.value = [] // 清空选择
     importDialogVisible.value = false // 关闭弹窗
@@ -315,7 +315,7 @@ const submit = async () => {
 const fetchBatches = async (silent = false) => {
   if (!silent) loading.value = true
   try {
-    const { data } = await http.get(`${API_BASE}/imports`, {
+    const { data } = await http.get('/imports', {
       params: {
         page: currentPage.value,
         pageSize: pageSize.value
@@ -423,7 +423,7 @@ const getProgressStatus = (status: string) => {
 
 const downloadFailures = (row: BatchRow) => {
   if (row.failureSummary?.failed_rows_path) {
-    window.open(`${API_BASE}/exports/download?path=${row.failureSummary.failed_rows_path}`, '_blank')
+    window.open(`${API_BASE}/api/exports/download?path=${row.failureSummary.failed_rows_path}`, '_blank')
   } else {
     ElMessage.warning('暂无失败记录文件')
   }

@@ -89,54 +89,21 @@
                     filterable
                     allow-create
                     default-first-option
-                    placeholder="输入或选择字段 (回车添加)"
-                    class="w-full"
+                    :reserve-keyword="false"
+                    placeholder="输入新字段名称并回车添加 (如: 材质, 适用人群)"
+                    no-data-text="输入字段名称并回车添加"
+                    class="w-full custom-tag-input"
                     size="large"
-                  >
-                    <el-option
-                      v-for="field in commonFields"
-                      :key="field.value"
-                      :label="field.label"
-                      :value="field.value"
-                    />
-                  </el-select>
-                  
-                  <!-- 快速选择区域 -->
-                  <div class="mt-3">
-                    <div class="text-xs text-gray-400 mb-2 flex justify-between items-center">
-                      <span>快速选择 (点击添加)</span>
-                      <el-button 
-                        v-if="targetFields.length > 0" 
-                        link 
-                        type="primary" 
-                        size="small" 
-                        @click="targetFields = []"
-                      >
-                        清空已选
-                      </el-button>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                      <el-tag
-                        v-for="field in commonFields"
-                        :key="field.value"
-                        class="cursor-pointer hover:opacity-80 transition-opacity select-none"
-                        :effect="targetFields.includes(field.value) ? 'dark' : 'plain'"
-                        :type="targetFields.includes(field.value) ? 'primary' : 'info'"
-                        @click="toggleField(field.value)"
-                      >
-                        {{ field.label }}
-                      </el-tag>
-                    </div>
-                  </div>
+                  />
                 </el-form-item>
 
-                <div class="info-box mb-6">
+                <div class="info-box">
                   <div class="flex items-start gap-2">
                     <el-icon class="text-blue-500 mt-0.5"><InfoFilled /></el-icon>
-                    <div class="text-xs text-gray-600 space-y-1">
-                      <p>• AI 将分析所有原始列的内容</p>
-                      <p>• 提取结果将自动添加到新列中</p>
-                      <p>• 建议使用清晰的字段名称</p>
+                    <div class="text-xs text-gray-600 leading-5">
+                      <div>• AI 将分析所有原始列的内容</div>
+                      <div>• 提取结果将自动添加到新列中</div>
+                      <div>• 建议使用清晰的字段名称</div>
                     </div>
                   </div>
                 </div>
@@ -144,7 +111,7 @@
                 <el-button 
                   type="primary" 
                   size="large" 
-                  class="w-full" 
+                  class="w-full mt-4" 
                   :loading="extracting"
                   @click="submitExtraction"
                   :disabled="targetFields.length === 0"
@@ -383,7 +350,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, MagicStick, Refresh, InfoFilled, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { http, API_BASE } from '@/utils/http'
+import { http } from '@/utils/http'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -420,27 +387,7 @@ const batch = ref<Batch | null>(null)
 const previewRecords = ref<RecordData[]>([])
 const targetFields = ref<string[]>([])
 
-const commonFields = [
-  { label: '材质 (Material)', value: 'Material' },
-  { label: '颜色 (Color)', value: 'Color' },
-  { label: '尺寸 (Size)', value: 'Size' },
-  { label: '适用人群 (Target Audience)', value: 'Target Audience' },
-  { label: '使用场景 (Usage Scenario)', value: 'Usage Scenario' },
-  { label: '卖点 (Selling Points)', value: 'Selling Points' },
-  { label: '风格 (Style)', value: 'Style' },
-  { label: '是否带电池 (Has Battery)', value: 'Has Battery' },
-  { label: '保修期 (Warranty)', value: 'Warranty' },
-  { label: '产地 (Origin)', value: 'Origin' }
-]
 
-const toggleField = (value: string) => {
-  const index = targetFields.value.indexOf(value)
-  if (index > -1) {
-    targetFields.value.splice(index, 1)
-  } else {
-    targetFields.value.push(value)
-  }
-}
 
 // 结果列表相关
 const resultRecords = ref<RecordData[]>([])
@@ -494,13 +441,13 @@ const fetchBatchDetails = async () => {
   loading.value = true
   try {
     // 获取批次详情
-    const { data: batchData } = await http.get(`${API_BASE}/imports/${batchId}`)
+    const { data: batchData } = await http.get(`/imports/${batchId}`)
     if (batchData && batchData.batch) {
       batch.value = batchData.batch
     }
 
     // 获取预览记录
-    const { data: recordsData } = await http.get(`${API_BASE}/imports/${batchId}/records`, {
+    const { data: recordsData } = await http.get(`/imports/${batchId}/records`, {
       params: { limit: 5 }
     })
     
@@ -525,7 +472,7 @@ const fetchBatchDetails = async () => {
 const fetchResults = async () => {
   loadingResults.value = true
   try {
-    const { data } = await http.get(`${API_BASE}/imports/${batchId}/records`, {
+    const { data } = await http.get(`/imports/${batchId}/records`, {
       params: { 
         limit: resultPageSize.value,
         offset: (resultPage.value - 1) * resultPageSize.value
@@ -548,7 +495,7 @@ const fetchResults = async () => {
 
 const fetchRuns = async () => {
   try {
-    const { data } = await http.get(`${API_BASE}/imports/${batchId}/runs`)
+    const { data } = await http.get(`/imports/${batchId}/runs`)
     if (data && Array.isArray(data.items)) {
       runs.value = data.items
       // 如果没有选中的 run，默认选中最新的一个
@@ -584,7 +531,7 @@ const loadRunResults = async (runId: number) => {
     if (!run) return
     
     // 获取该批次的所有记录（API 限制最大 100）
-    const { data } = await http.get(`${API_BASE}/imports/${run.batch_id}/records`, {
+    const { data } = await http.get(`/imports/${run.batch_id}/records`, {
       params: { limit: 100 }
     })
     
@@ -743,7 +690,7 @@ const submitExtraction = async () => {
 
   extracting.value = true
   try {
-    await http.post(`${API_BASE}/imports/${batchId}/extract`, {
+    await http.post(`/imports/${batchId}/extract`, {
       target_fields: targetFields.value
     })
     ElMessage.success('AI 提取任务已启动')
@@ -780,7 +727,7 @@ const reExtractRecord = async () => {
     
     // 调用后端 API 进行提取（这里需要一个单条记录提取的 API）
     // 暂时使用模拟调用
-    const { data } = await http.post(`${API_BASE}/extraction/single`, {
+    const { data } = await http.post('/extraction/single', {
       prompt: prompt,
       record_id: currentRecord.value.id
     })
@@ -802,26 +749,19 @@ const viewDetails = (row: RecordData) => {
 }
 
 const constructPrompt = (record: RecordData) => {
-  // Use raw_payload to ensure we have all fields (like description, bullets)
-  // normalized_payload might be a subset of clean data
-  const data = record.raw_payload || record.normalized_payload
-  const text = JSON.stringify(data, null, 2) // Pretty print for readability in UI
+  const fields = targetFields.value.length > 0 ? targetFields.value.join(', ') : '所有相关特征'
+  const payload = record.normalized_payload || record.raw_payload || {}
+  return `请分析以下产品数据，并提取以下字段：${fields}。
   
-  return `[System Prompt]
-你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。
-需要提取的字段: ${targetFields.value.join(', ') || extractedFields.value.join(', ')}
+产品数据：
+${JSON.stringify(payload, null, 2)}
 
-请以 JSON 格式返回结果，key 为字段名，value 为提取出的内容。如果无法提取，value 请留空。
-只返回 JSON，不要包含markdown格式或其他文本。
-
-[User Prompt]
-产品信息: ${text}`
+请以 JSON 格式返回提取结果。`
 }
 
 onMounted(() => {
   if (batchId) {
     fetchBatchDetails()
-    fetchResults()
     fetchRuns()
     startPolling()
   } else {
@@ -894,10 +834,11 @@ onUnmounted(() => {
 }
 
 .info-box {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-left: 3px solid #3b82f6;
-  padding: 12px;
+  background: #f3f4f6;
+  border-left: 3px solid #9ca3af;
+  padding: 8px 12px;
   border-radius: 8px;
+  margin-bottom: 24px;
 }
 
 .field-tag {
@@ -984,5 +925,10 @@ onUnmounted(() => {
 
 .field-tag {
   margin-bottom: 4px;
+}
+
+/* 隐藏下拉箭头，使其看起来像纯文本输入框 */
+.custom-tag-input :deep(.el-select__suffix) {
+  display: none;
 }
 </style>

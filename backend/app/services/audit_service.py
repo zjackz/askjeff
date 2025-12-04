@@ -31,3 +31,12 @@ class AuditService:
         db.commit()
         db.refresh(log)
         return log
+
+    @staticmethod
+    def get_recent_logs(db: Session, limit: int = 10) -> list[AuditLog]:
+        return (
+            db.query(AuditLog)
+            .order_by(AuditLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )

@@ -97,9 +97,11 @@
       
       <!-- 主内容 -->
       <el-main class="layout-main">
-        <transition name="fade-slide" mode="out-in">
-          <router-view />
-        </transition>
+        <router-view v-slot="{ Component }">
+          <transition name="fade-slide" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
         
         <div class="layout-footer">
           <p>深圳拓芽 @2025</p>

@@ -1,13 +1,12 @@
 import asyncio
 import io
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import patch, AsyncMock
 
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services.deepseek_client import DeepseekClient
 
 client = TestClient(app)
 

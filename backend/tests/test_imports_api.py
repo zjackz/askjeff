@@ -5,7 +5,6 @@
 """
 import pytest
 from fastapi.testclient import TestClient
-from datetime import datetime, timezone
 
 from app.main import app
 from app.db import SessionLocal

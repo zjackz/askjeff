@@ -1,7 +1,6 @@
 import pytest
-from unittest.mock import MagicMock, patch
 from app.services.export_service import export_service
-from app.models import ExportJob, ProductRecord, ExtractionRun
+from app.models import ProductRecord
 
 def test_export_invalid_type(db):
     """Test exporting with an invalid export type."""

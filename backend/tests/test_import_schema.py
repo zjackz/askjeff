@@ -3,12 +3,9 @@
 
 验证修复后的 schema 包含所有必需字段，并使用正确的 camelCase 格式(API契约)
 """
-import pytest
 from datetime import datetime, timezone
-from uuid import uuid4
 
 from app.schemas.imports import ImportBatchOut
-from app.models.import_batch import ImportBatch
 
 
 class TestImportBatchOutSchema:

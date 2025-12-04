@@ -3,18 +3,14 @@ from __future__ import annotations
 from typing import Any, Callable
 import json
 
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import ImportBatch, ProductRecord, QuerySession
+from app.models import QuerySession
 from app.services.audit_service import AuditService
 from app.services.deepseek_client import DeepseekClient
-from app.services.log_service import LogService
+from app.services.tool_registry import ToolRegistry
 
 ToolFunction = Callable[..., Any]
-
-
-from app.services.tool_registry import ToolRegistry
 
 class ChatService:
     def __init__(self, client: DeepseekClient | None = None) -> None:

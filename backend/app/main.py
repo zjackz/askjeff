@@ -17,6 +17,7 @@ from app.api.routes import (
     backups as backups_router,
     users as users_router,
     admin as admin_router,
+    dashboard as dashboard_router,
 )
 from app.db import SessionLocal
 from app.services.log_service import LogService
@@ -47,6 +48,7 @@ app.include_router(logs_router.router)
 app.include_router(users_router.router)
 app.include_router(admin_router.router)
 app.include_router(extraction_router.router)
+app.include_router(dashboard_router.router)
 
 # 健康检查路由 (无前缀,公开访问)
 app.include_router(health_router.router, tags=["health"])

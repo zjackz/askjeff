@@ -66,14 +66,14 @@
     </div>
     
     <el-row :gutter="20" class="mb-6 slide-in" style="--delay: 0.5s">
-      <el-col :span="6">
+      <el-col :span="8">
         <div class="quick-action-card" @click="$router.push('/import')">
           <div class="action-icon bg-blue-100 text-blue-600">
             <el-icon><Upload /></el-icon>
           </div>
           <div class="action-info">
             <h4>导入数据</h4>
-            <p>上传新的产品数据文件</p>
+            <p>上传产品数据文件</p>
           </div>
           <el-icon class="arrow-icon"><ArrowRight /></el-icon>
         </div>
@@ -86,7 +86,7 @@
           </div>
           <div class="action-info">
             <h4>查询产品</h4>
-            <p>AI 辅助产品数据查询</p>
+            <p>AI 产品数据查询</p>
           </div>
           <el-icon class="arrow-icon"><ArrowRight /></el-icon>
         </div>
@@ -99,14 +99,14 @@
           </div>
           <div class="action-info">
             <h4>导出数据</h4>
-            <p>批量导出处理结果</p>
+            <p>批量导出结果</p>
           </div>
           <el-icon class="arrow-icon"><ArrowRight /></el-icon>
         </div>
       </el-col>
     </el-row>
     
-    <!-- 最近活动 (示例) -->
+    <!-- 最近活动 -->
     <el-card class="recent-activity slide-in" style="--delay: 0.6s">
       <template #header>
         <div class="flex justify-between items-center">
@@ -114,7 +114,27 @@
           <el-tag type="success" effect="dark" round>运行正常</el-tag>
         </div>
       </template>
-      <el-empty description="暂无最近活动记录" :image-size="100" />
+      
+      <div v-if="activities.length > 0" class="activity-list">
+        <el-timeline>
+          <el-timeline-item
+            v-for="(activity, index) in activities"
+            :key="index"
+            :type="getActivityType(activity.action)"
+            :color="getActivityColor(activity.action)"
+            :timestamp="formatTime(activity.created_at)"
+            placement="top"
+          >
+            <div class="activity-content">
+              <span class="font-medium">{{ getActivityLabel(activity.action) }}</span>
+              <span class="text-xs text-gray-400 ml-2" v-if="activity.payload?.filename">
+                ({{ activity.payload.filename }})
+              </span>
+            </div>
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+      <el-empty v-else description="暂无最近活动记录" :image-size="100" />
     </el-card>
   </div>
 </template>
@@ -122,7 +142,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Upload, Box, MagicStick, Search, Download, ArrowRight } from '@element-plus/icons-vue'
-import { http, API_BASE } from '@/utils/http'
+import { http } from '@/utils/http'
 // 简单的数字滚动组件逻辑，实际项目中可以使用 vue-count-to
 import { TransitionPresets, useTransition } from '@vueuse/core'
 
@@ -131,6 +151,8 @@ const stats = ref({
   products: 0,
   extractions: 0
 })
+
+const activities = ref<any[]>([])
 
 // 使用 vueuse 的 useTransition 实现数字滚动
 const CountTo = {
@@ -161,17 +183,53 @@ const CountTo = {
 const loadStats = async () => {
   try {
     // 获取批次统计
-    const { data: batchData } = await http.get(`${API_BASE}/imports`)
+    const { data: batchData } = await http.get('/imports')
     stats.value.batches = batchData.total || 0
 
     // 获取产品统计
-    const { data: productData } = await http.get(`${API_BASE}/products`, {
+    const { data: productData } = await http.get('/products', {
       params: { page: 1, pageSize: 1 }
     })
     stats.value.products = productData.total || 0
+    
+    // 获取活动日志
+    const { data: activityData } = await http.get('/dashboard/activities')
+    activities.value = activityData || []
+    
   } catch (err) {
     console.error('加载统计数据失败:', err)
   }
+}
+
+const formatTime = (val: string) => {
+  if (!val) return ''
+  return new Date(val).toLocaleString()
+}
+
+const getActivityType = (action: string) => {
+  if (action.includes('failed') || action.includes('error')) return 'danger'
+  if (action.includes('success') || action.includes('completed')) return 'success'
+  return 'primary'
+}
+
+const getActivityColor = (action: string) => {
+  if (action.includes('failed') || action.includes('error')) return '#f56c6c'
+  if (action.includes('success') || action.includes('completed')) return '#67c23a'
+  return '#409eff'
+}
+
+const getActivityLabel = (action: string) => {
+  const map: Record<string, string> = {
+    'import_batch_created': '创建导入批次',
+    'import_batch_completed': '导入批次完成',
+    'import_batch_failed': '导入批次失败',
+    'export_job_created': '创建导出任务',
+    'extraction_task_created': '创建 AI 提取任务',
+    'extraction_task_completed': 'AI 提取任务完成',
+    'extraction_task_failed': 'AI 提取任务失败',
+    'user_login': '用户登录'
+  }
+  return map[action] || action
 }
 
 onMounted(() => {
@@ -265,6 +323,7 @@ onMounted(() => {
 // 快速入口卡片
 .quick-action-card {
   background: var(--bg-primary);
+  height: 100%;
   padding: 20px;
   border-radius: var(--radius-lg);
   display: flex;

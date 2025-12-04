@@ -86,7 +86,7 @@ const formRef = ref<FormInstance>()
 
 const form = reactive({
   username: 'admin',
-  password: 'password'
+  password: 'admin666'
 })
 
 const rules = reactive<FormRules>({

@@ -1,14 +1,12 @@
-import asyncio
 import io
-import json
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import patch, AsyncMock
 
 import pandas as pd
 import pytest
 from fastapi import UploadFile
 
 from app.services.extraction_service import ExtractionService
-from app.models import ImportBatch, ProductRecord, ExtractionTask, ExtractionItem
+from app.models import ImportBatch, ProductRecord, ExtractionItem
 
 @pytest.fixture
 def mock_deepseek():

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import json
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.api.errors import AppError
+from app.db import SessionLocal
 from app.schemas.imports import ImportBatchOut, ImportDetailResponse, ImportListResponse
+from app.services.deepseek_client import DeepseekClient
+from app.services.extraction_service import ExtractionService
 from app.services.import_repository import ImportRepository
 from app.services.import_service import import_service
 
@@ -127,11 +129,6 @@ async def get_batch_records(
     )
     return records
 
-
-from fastapi import BackgroundTasks, Body
-from app.services.extraction_service import ExtractionService
-from app.services.deepseek_client import DeepseekClient
-from app.db import SessionLocal
 
 async def run_batch_extraction_background(batch_id: int, target_fields: list[str]):
     with SessionLocal() as db:

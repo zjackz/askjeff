@@ -140,6 +140,36 @@ class ExportService:
         
         # Determine fields to write
         fields = job.selected_fields
+        
+        # Special handling for extraction_results:
+        # User wants "Source Data + Selected AI Fields".
+        # So we should ALWAYS include source fields (Standard + Raw), 
+        # and only filter AI fields based on selection.
+        if job.export_type == "extraction_results" and rows:
+            # 1. Get AI fields definition from the run
+            run_id = job.filters.get("run_id")
+            ai_fields = set()
+            if run_id:
+                run = db.get(ExtractionRun, run_id)
+                if run and run.target_fields:
+                    ai_fields = set(run.target_fields)
+            
+            # 2. Identify all available keys from data
+            # Use a dict to preserve order while removing duplicates, starting from standard fields if possible
+            all_keys = list(rows[0].keys())
+            
+            final_fields = []
+            for key in all_keys:
+                if key in ai_fields:
+                    # It's an AI field. Include only if selected (or if no selection made)
+                    if not job.selected_fields or key in job.selected_fields:
+                        final_fields.append(key)
+                else:
+                    # It's a source field (Standard or Raw). ALWAYS include.
+                    final_fields.append(key)
+            
+            fields = final_fields
+
         if not fields and rows:
             # If no fields selected (or dynamic), use keys from first row
             fields = list(rows[0].keys())
@@ -167,17 +197,9 @@ class ExportService:
         # Identify AI columns for extraction_results
         ai_columns = set()
         if job.export_type == "extraction_results" and rows:
-            # Get run to identify target fields
-            run_id = job.filters.get("run_id") if job.filters else None
-            if run_id:
-                from app.models.extraction_run import ExtractionRun
-                from sqlalchemy.orm import Session
-                run = job  # We need db session here, will get it from context
-                # For now, identify AI columns by checking if they exist in ai_features
-                first_row = rows[0]
-                # AI columns are those that are NOT in the standard product fields
-                standard_fields = {"asin", "title", "category", "price", "currency", "sales_rank", "reviews", "rating"}
-                ai_columns = {field for field in fields if field not in standard_fields}
+            # AI columns are those that are NOT in the standard product fields
+            standard_fields = {"asin", "title", "category", "price", "currency", "sales_rank", "reviews", "rating"}
+            ai_columns = {field for field in fields if field not in standard_fields}
         
         # Yellow fill for AI columns
         yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")

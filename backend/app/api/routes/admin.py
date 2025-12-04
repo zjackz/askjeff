@@ -2,7 +2,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 
 from app.api import deps
 from app.models.user import User
