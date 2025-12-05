@@ -25,38 +25,7 @@ from app.middleware.error_handler import error_handler_middleware
 
 app = FastAPI(title="AskJeff API", version="0.1.0")
 
-# CORS 配置
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 全局错误处理中间件
-app.middleware("http")(error_handler_middleware)
-
-register_exception_handlers(app)
-
-# 注册路由
-app.include_router(imports_router.router)
-app.include_router(chat_router.router)
-app.include_router(exports_router.router)
-app.include_router(products_router.router)
-app.include_router(logs_router.router)
-app.include_router(users_router.router)
-app.include_router(admin_router.router)
-app.include_router(extraction_router.router)
-app.include_router(dashboard_router.router)
-
-# 健康检查路由 (无前缀,公开访问)
-app.include_router(health_router.router, tags=["health"])
-app.include_router(login_router.router, tags=["login"])
-app.include_router(backups_router.router, prefix="/api/backups", tags=["backups"])
-
-
-@app.middleware("http")
+# 1. 日志中间件 (最内层，记录原始请求和异常)
 async def request_logging(request: Request, call_next):
     """记录请求耗时与状态，方便排障。"""
     trace_id = request.headers.get("X-Trace-Id", str(uuid4()))
@@ -99,3 +68,44 @@ async def request_logging(request: Request, call_next):
                 status="new",
             )
         raise
+
+app.middleware("http")(request_logging)
+
+# 2. 错误处理中间件 (中间层，捕获异常并转换为响应)
+app.middleware("http")(error_handler_middleware)
+
+# 3. CORS 配置 (最外层，确保所有响应都有 CORS 头)
+# 注意: allow_credentials=True 时，allow_origins 不能为 ["*"]，必须指定具体域名
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 全局错误处理中间件 (Wait, error_handler_middleware is already added above)
+# app.middleware("http")(error_handler_middleware) # Removed duplicate
+
+register_exception_handlers(app)
+
+# 注册路由
+app.include_router(imports_router.router)
+app.include_router(chat_router.router)
+app.include_router(exports_router.router)
+app.include_router(products_router.router)
+app.include_router(logs_router.router)
+app.include_router(users_router.router)
+app.include_router(admin_router.router)
+app.include_router(extraction_router.router)
+app.include_router(dashboard_router.router)
+
+# 健康检查路由 (无前缀,公开访问)
+app.include_router(health_router.router, tags=["health"])
+app.include_router(login_router.router, tags=["login"])
+app.include_router(backups_router.router, prefix="/api/backups", tags=["backups"])

@@ -316,7 +316,7 @@
             <!-- Tab 2: 原始数据 -->
             <el-tab-pane label="原始数据 (JSON)" name="raw">
               <div class="code-block">
-{{ JSON.stringify(currentRecord.normalized_payload || currentRecord.raw_payload, null, 2) }}
+{{ JSON.stringify(currentRecord.raw_payload || currentRecord.normalized_payload, null, 2) }}
               </div>
             </el-tab-pane>
 
@@ -454,7 +454,7 @@ const fetchBatchDetails = async () => {
     if (Array.isArray(recordsData)) {
       // 处理记录数据，展平 payload
       previewRecords.value = recordsData.map((record: RecordData) => {
-        const payload = record.normalized_payload || record.raw_payload || {}
+        const payload = record.raw_payload || record.normalized_payload || {}
         return {
           id: record.id,
           ...payload
@@ -749,8 +749,10 @@ const viewDetails = (row: RecordData) => {
 }
 
 const constructPrompt = (record: RecordData) => {
-  const fields = targetFields.value.length > 0 ? targetFields.value.join(', ') : '所有相关特征'
-  const payload = record.normalized_payload || record.raw_payload || {}
+  // 优先使用 selectedRun 的 target_fields，其次使用 targetFields
+  const fieldsToUse = selectedRun.value?.target_fields || targetFields.value
+  const fields = fieldsToUse.length > 0 ? fieldsToUse.join(', ') : '所有相关特征'
+  const payload = record.raw_payload || record.normalized_payload || {}
   return `请分析以下产品数据，并提取以下字段：${fields}。
   
 产品数据：

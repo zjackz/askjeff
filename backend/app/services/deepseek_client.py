@@ -94,7 +94,7 @@ class DeepseekClient:
             return {"answer": answer, "trace": {"mode": "fallback"}}
 
         messages = [
-            {"role": "system", "content": "你是 Sorftime 数据分析助手，请使用中文回答"},
+            {"role": "system", "content": "你是产品分析助手，请使用中文回答"},
             {
                 "role": "user",
                 "content": f"问题: {question}\n上下文: {context}",
@@ -208,4 +208,51 @@ class DeepseekClient:
                 return json.loads(content), usage
         except Exception as exc:
             print(f"DeepSeek Async Extraction Error: {exc}", flush=True)
+            return {}, {}
+
+    async def translate_product_info_async(self, text: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        自动翻译产品信息（标题和五点）为中文
+        """
+        if not self.api_key:
+            return {}, {}
+
+        import json
+        
+        system_prompt = (
+            "你是一个专业的亚马逊运营专家，精通中英文互译。\n"
+            "请将提供的产品信息（标题和五点描述）翻译成通顺、符合电商习惯的中文。\n"
+            "请以 JSON 格式返回结果，包含以下两个字段：\n"
+            "- title_cn: 翻译后的中文标题\n"
+            "- bullets_cn: 翻译后的中文五点描述（保持列表格式或拼接成字符串）\n\n"
+            "只返回 JSON，不要包含markdown格式或其他文本。"
+        )
+
+        user_prompt = f"产品信息: {text}"
+
+        payload = {
+            "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
+        }
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(self.endpoint, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                usage = data.get("usage", {})
+                
+                # Simple cleanup
+                content = self._clean_json_string(content)
+                
+                return json.loads(content), usage
+        except Exception as exc:
+            print(f"DeepSeek Translation Error: {exc}", flush=True)
             return {}, {}

@@ -214,7 +214,7 @@ watch(visible, (val) => {
   position: fixed;
   right: 30px;
   bottom: 30px;
-  z-index: 2000;
+  z-index: 9999;
   font-family: var(--font-family-base);
 }
 

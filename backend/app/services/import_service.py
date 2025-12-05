@@ -231,7 +231,10 @@ class ImportService:
         columns_unmapped = set()
 
         for idx, raw_values in enumerate(data_rows, start=header_idx + 2):
-            row_dict: dict[str, Any] = {header_keyed[i]: raw_values[i] for i in range(len(header_keyed))}
+            row_dict: dict[str, Any] = {
+                header_keyed[i]: self._to_jsonable(raw_values[i]) 
+                for i in range(len(header_keyed))
+            }
             if all(value in (None, "") for value in row_dict.values()):
                 continue
             mapped_payload: dict[str, Any] = {}
@@ -412,8 +415,11 @@ class ImportService:
     @staticmethod
     def _to_jsonable(value: Any) -> Any:
         """将 Decimal 等不可 JSON 序列化的对象转换为基础类型。"""
+        from datetime import date, datetime
         if isinstance(value, Decimal):
             return float(value)
+        if isinstance(value, (date, datetime)):
+            return value.isoformat()
         return value
 
 

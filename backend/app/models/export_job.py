@@ -12,10 +12,12 @@ EXPORT_TYPES = ("clean_products", "failed_rows")
 FILE_FORMATS = ("csv", "xlsx")
 
 
+import uuid
+
 class ExportJob(Base):
     __tablename__ = "export_jobs"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     export_type: Mapped[str] = mapped_column(String(32), nullable=False)
     filters: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     selected_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)

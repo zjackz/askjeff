@@ -182,10 +182,18 @@ class ExportService:
                     writer.writerow({field: item.get(field) for field in fields})
         else:
             # Real XLSX generation with styling
-            self._generate_xlsx(filename, fields, rows, job)
+            ai_columns = set()
+            if job.export_type == "extraction_results":
+                run_id = job.filters.get("run_id")
+                if run_id:
+                    run = db.get(ExtractionRun, run_id)
+                    if run and run.target_fields:
+                        ai_columns = set(run.target_fields)
+            
+            self._generate_xlsx(filename, fields, rows, job, ai_columns)
         return ExportResult(file_path=filename, rows=len(rows))
     
-    def _generate_xlsx(self, filename: Path, fields: list[str], rows: list[dict], job: ExportJob) -> None:
+    def _generate_xlsx(self, filename: Path, fields: list[str], rows: list[dict], job: ExportJob, ai_columns: set[str] = None) -> None:
         """Generate XLSX file with styling for AI columns."""
         from openpyxl import Workbook
         from openpyxl.styles import PatternFill, Font
@@ -194,12 +202,10 @@ class ExportService:
         ws = wb.active
         ws.title = "Export Data"
         
-        # Identify AI columns for extraction_results
-        ai_columns = set()
-        if job.export_type == "extraction_results" and rows:
-            # AI columns are those that are NOT in the standard product fields
-            standard_fields = {"asin", "title", "category", "price", "currency", "sales_rank", "reviews", "rating"}
-            ai_columns = {field for field in fields if field not in standard_fields}
+        # Wait, I need to refactor _generate_file to pass ai_columns to _generate_xlsx
+        # because _generate_xlsx doesn't have access to the DB session.
+        # Let's modify _generate_file first to prepare ai_columns.
+
         
         # Yellow fill for AI columns
         yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
@@ -269,30 +275,23 @@ class ExportService:
         
         results = []
         for record in records:
-            # 1. Start with Standard Fields
-            row = {
-                "asin": record.asin,
-                "title": record.title,
-                "price": record.price,
-                "currency": record.currency,
-                "category": record.category,
-                "sales_rank": record.sales_rank,
-                "reviews": record.reviews,
-                "rating": record.rating,
-            }
+            # 1. Start with Raw Payload (Original Data)
+            # This ensures we preserve ALL original columns exactly as uploaded
+            row = record.raw_payload.copy() if record.raw_payload else {}
             
-            # 2. Merge Original Data (raw_payload) - optional, but good for context
-            # Be careful not to overwrite standard fields with raw/unnormalized data if we want clean data
-            # But user might expect original columns. Let's merge raw_payload but keep standard fields if they exist?
-            # Actually, let's just add raw_payload keys that are NOT in standard fields
-            if record.raw_payload:
-                for k, v in record.raw_payload.items():
-                    if k not in row:
-                        row[k] = v
-            
-            # 3. Merge AI Features
+            # 2. Merge AI Features
             if record.ai_features:
-                row.update(record.ai_features)
+                for k, v in record.ai_features.items():
+                    # Skip metadata fields
+                    if k.startswith("_"):
+                        continue
+                    
+                    # Convert complex types to string for Excel compatibility
+                    if isinstance(v, (dict, list)):
+                        import json
+                        row[k] = json.dumps(v, ensure_ascii=False)
+                    else:
+                        row[k] = v
                 
             results.append(row)
             

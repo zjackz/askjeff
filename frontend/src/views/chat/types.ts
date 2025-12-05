@@ -15,6 +15,8 @@ export interface ProductItem {
   category?: string | null
   brand?: string | null
   raw_payload?: Record<string, unknown> | null
+  title_cn?: string | null
+  bullets_cn?: string | null
 }
 
 export interface ProductListResponse {

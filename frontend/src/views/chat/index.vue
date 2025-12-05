@@ -100,6 +100,8 @@
             <div class="flex flex-col gap-2">
               <el-checkbox v-model="columnVisibility.asin" :label="columnLabels.asin" />
               <el-checkbox v-model="columnVisibility.title" :label="columnLabels.title" />
+              <el-checkbox v-model="columnVisibility.title_cn" :label="columnLabels.title_cn" />
+              <el-checkbox v-model="columnVisibility.bullets_cn" :label="columnLabels.bullets_cn" />
               <el-checkbox v-model="columnVisibility.brand" :label="columnLabels.brand" />
               <el-checkbox v-model="columnVisibility.category" :label="columnLabels.category" />
               <el-checkbox v-model="columnVisibility.batch_id" :label="columnLabels.batch_id" />
@@ -109,6 +111,15 @@
               <el-checkbox v-model="columnVisibility.rating" :label="columnLabels.rating" />
               <el-checkbox v-model="columnVisibility.reviews" :label="columnLabels.reviews" />
               <el-checkbox v-model="columnVisibility.sales_rank" :label="columnLabels.sales_rank" />
+              <div v-if="dynamicColumns.length > 0" class="border-t my-2 pt-2">
+                <div class="text-xs text-gray-500 mb-2">动态字段</div>
+                <el-checkbox 
+                  v-for="col in dynamicColumns" 
+                  :key="col"
+                  v-model="columnVisibility[col]" 
+                  :label="col" 
+                />
+              </div>
             </div>
           </el-popover>
         </div>
@@ -133,6 +144,50 @@
       >
         <el-table-column v-if="columnVisibility.asin" prop="asin" label="ASIN" sortable="custom" width="140" />
         <el-table-column v-if="columnVisibility.title" prop="title" label="标题" min-width="240" show-overflow-tooltip />
+        <el-table-column v-if="columnVisibility.title_cn" prop="title_cn" label="中文标题" min-width="240">
+          <template #default="{ row }">
+            <el-popover
+              effect="dark"
+              trigger="hover"
+              placement="top"
+              :width="400"
+              append-to-body
+            >
+              <template #default>
+                <div class="break-words whitespace-pre-wrap">
+                  {{ row.title_cn || '—' }}
+                </div>
+              </template>
+              <template #reference>
+                <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer;">
+                  {{ row.title_cn || '—' }}
+                </div>
+              </template>
+            </el-popover>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="columnVisibility.bullets_cn" prop="bullets_cn" label="中文五点" min-width="240">
+          <template #default="{ row }">
+            <el-popover
+              effect="dark"
+              trigger="hover"
+              placement="top"
+              :width="400"
+              append-to-body
+            >
+              <template #default>
+                <div class="break-words whitespace-pre-wrap">
+                  {{ row.bullets_cn || '—' }}
+                </div>
+              </template>
+              <template #reference>
+                <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer;">
+                  {{ row.bullets_cn || '—' }}
+                </div>
+              </template>
+            </el-popover>
+          </template>
+        </el-table-column>
         <el-table-column v-if="columnVisibility.brand" prop="brand" label="品牌" width="120" show-overflow-tooltip />
         <el-table-column v-if="columnVisibility.category" prop="category" label="类目" width="120" show-overflow-tooltip />
         <el-table-column v-if="columnVisibility.batch_id" label="批次编号" sortable="custom" prop="batch_id" width="120">
@@ -157,6 +212,38 @@
         <el-table-column v-if="columnVisibility.rating" prop="rating" label="评分" width="100" />
         <el-table-column v-if="columnVisibility.reviews" prop="reviews" label="评论数" width="100" />
         <el-table-column v-if="columnVisibility.sales_rank" prop="sales_rank" label="排名" width="120" />
+        <el-table-column v-if="columnVisibility.sales_rank" prop="sales_rank" label="排名" width="120" />
+        
+        <!-- 动态列 -->
+        <template v-for="col in dynamicColumns" :key="col">
+          <el-table-column 
+            v-if="columnVisibility[col]" 
+            :label="col" 
+            min-width="150" 
+          >
+            <template #default="{ row }">
+              <el-popover
+                effect="dark"
+                trigger="hover"
+                placement="top"
+                :width="400"
+                append-to-body
+              >
+                <template #default>
+                  <div class="break-words whitespace-pre-wrap">
+                    {{ row.raw_payload?.[col] ?? '—' }}
+                  </div>
+                </template>
+                <template #reference>
+                  <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer;">
+                    {{ row.raw_payload?.[col] ?? '—' }}
+                  </div>
+                </template>
+              </el-popover>
+            </template>
+          </el-table-column>
+        </template>
+
         <template #empty>
           <el-empty description="暂无数据" />
         </template>
@@ -187,6 +274,10 @@
         <el-descriptions :column="1" border>
           <el-descriptions-item label="ASIN">{{ selectedProduct.asin }}</el-descriptions-item>
           <el-descriptions-item label="标题">{{ selectedProduct.title }}</el-descriptions-item>
+          <el-descriptions-item label="中文标题">{{ selectedProduct.title_cn || '—' }}</el-descriptions-item>
+          <el-descriptions-item label="中文五点">
+            <div class="whitespace-pre-wrap">{{ selectedProduct.bullets_cn || '—' }}</div>
+          </el-descriptions-item>
           <el-descriptions-item label="批次 ID">{{ selectedProduct.batch_id }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             {{ formatStatus(selectedProduct.validation_status) }}
@@ -220,7 +311,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, watch } from 'vue'
+import { reactive, ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
@@ -426,7 +517,9 @@ const normalizeProduct = (raw: RawProduct): ProductItem => {
           : null,
     category: String(raw.category ?? ''),
     brand: brand,
-    raw_payload: rawPayload
+    raw_payload: rawPayload,
+    title_cn: (rawPayload.title_cn as string) || null,
+    bullets_cn: (rawPayload.bullets_cn as string) || null
   }
 }
 
@@ -631,12 +724,16 @@ const columnLabels = {
   price: '价格',
   rating: '评分',
   reviews: '评论数',
-  sales_rank: '排名'
+  sales_rank: '排名',
+  title_cn: '中文标题',
+  bullets_cn: '中文五点'
 }
 
 const columnVisibility = reactive({
   asin: true,
   title: true,
+  title_cn: true,
+  bullets_cn: true,
   brand: true,
   category: true,
   batch_id: true,
@@ -646,6 +743,43 @@ const columnVisibility = reactive({
   rating: true,
   reviews: true,
   sales_rank: true
+}) as Record<string, boolean>
+
+const dynamicColumns = computed(() => {
+  const keys = new Set<string>()
+  products.value.forEach(p => {
+    if (p.raw_payload) {
+      Object.keys(p.raw_payload).forEach(k => {
+        // Exclude standard columns that are already handled
+        // Note: 'Brand' might be in raw_payload but we have a specific column for it. 
+        // If we want to show raw 'Brand' as well, we can keep it, or exclude it if it maps to standard 'brand'.
+        // Let's exclude keys that map to standard columns to avoid duplication if they are exactly the same.
+        // However, standard columns use normalized data. Raw payload might have different values.
+        // For simplicity, let's just exclude keys that are explicitly standard columns' source keys if known, 
+        // or just exclude the keys we manually render if they match exactly.
+        // Actually, let's just exclude nothing for now, or maybe just 'asin'?
+        // User wants "Complete Fields", so maybe duplicates are okay if they are distinct in raw data.
+        // But let's try to be smart.
+        const lowerK = k.toLowerCase()
+        if (['asin', 'title', 'price', 'currency', 'sales_rank', 'reviews', 'rating', 'category', 'title_cn', 'bullets_cn'].includes(lowerK)) {
+           return
+        }
+        keys.add(k)
+      })
+    }
+  })
+  return Array.from(keys).sort()
+})
+
+// Watch dynamic columns and ensure they exist in visibility map
+watch(dynamicColumns, (newCols) => {
+  newCols.forEach(col => {
+    if (columnVisibility[col] === undefined) {
+      // Default to true for new columns? Or false to avoid clutter?
+      // Let's default to true so user sees them immediately as requested.
+      columnVisibility[col] = true
+    }
+  })
 })
 
 // 加载列设置

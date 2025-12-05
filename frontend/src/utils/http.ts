@@ -2,7 +2,8 @@ import axios, { AxiosError } from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001'
+// Use relative path to leverage Vite proxy in dev and Nginx in prod
+const API_BASE = '/api'
 
 // 扩展 AxiosRequestConfig 类型以支持自定义配置
 declare module 'axios' {
@@ -12,8 +13,8 @@ declare module 'axios' {
   }
 }
 
-// 确保 baseURL 总是包含 /api
-const baseURL = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`
+// baseURL is just API_BASE since it already includes /api
+const baseURL = API_BASE
 console.log('HTTP Client initialized with baseURL:', baseURL)
 
 const http: AxiosInstance = axios.create({
@@ -98,7 +99,7 @@ http.interceptors.response.use(
           console.log(`网络错误,正在重试 (${config.__retryCount}/3)...`)
 
           // 延迟后重试
-          await new Promise(resolve => setTimeout(resolve, 1000 * config.__retryCount))
+          await new Promise(resolve => setTimeout(resolve, 1000 * (config.__retryCount || 1)))
           return http(config)
         }
       }

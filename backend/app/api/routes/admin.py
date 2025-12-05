@@ -30,30 +30,39 @@ def delete_all_data(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
-    # 1. Delete data in order of dependencies
-    # 注意: 用户表(users)被保留,不会被删除
-    # Logs and sessions (independent or loosely coupled)
-    db.query(SystemLog).delete()
-    db.query(AuditLog).delete()
-    db.query(QuerySession).delete()
+    # Helper to safely delete table data
+    def safe_delete(table_name: str):
+        # Check if table exists to avoid "relation does not exist" errors
+        # causing transaction aborts
+        exists = db.execute(text(
+            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = :table)"
+        ), {"table": table_name}).scalar()
+        
+        if not exists:
+            return
+
+        try:
+            with db.begin_nested():
+                db.execute(text(f"DELETE FROM {table_name}"))
+        except Exception as e:
+            print(f"Warning: Failed to delete {table_name}: {e}")
+
+    # 1. Delete data in order of dependencies (Child -> Parent)
+    # Tables to delete (using actual table names)
+    tables = [
+        "system_logs",
+        "audit_logs",
+        "query_sessions",
+        # "extraction_items", # Table missing in current schema
+        # "extraction_tasks", # Table missing in current schema
+        "extraction_runs",
+        "product_records", # Fixed from "products"
+        "import_batches",
+        "export_jobs",
+    ]
     
-    # Extraction Items (referencing tasks and products)
-    db.query(ExtractionItem).delete()
-    
-    # Extraction Tasks (referencing batches)
-    db.query(ExtractionTask).delete()
-    
-    # Extraction Runs (referencing batches)
-    db.query(ExtractionRun).delete()
-    
-    # Products (referencing batches)
-    db.query(ProductRecord).delete()
-    
-    # Import Batches
-    db.query(ImportBatch).delete()
-    
-    # Export Jobs
-    db.query(ExportJob).delete()
+    for table in tables:
+        safe_delete(table)
     
     # 2. Reset ID sequences for tables with Identity/autoincrement
     sequences_to_reset = [
@@ -64,8 +73,13 @@ def delete_all_data(
     ]
     
     for seq_name in sequences_to_reset:
-        db.execute(text(f"ALTER SEQUENCE {seq_name} RESTART WITH 1"))
-    
+        try:
+            with db.begin_nested():
+                db.execute(text(f"ALTER SEQUENCE {seq_name} RESTART WITH 1"))
+        except Exception as e:
+            if "does not exist" not in str(e):
+                print(f"Error resetting sequence {seq_name}: {e}")
+
     db.commit()
     
     return {"message": "All data deleted and ID sequences reset successfully"}

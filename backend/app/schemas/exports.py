@@ -19,7 +19,7 @@ class ExportRequest(BaseModel):
 class ExportJobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    id: int
+    id: str
     export_type: str = Field(
         ..., alias="exportType", validation_alias=AliasChoices("export_type", "exportType")
     )

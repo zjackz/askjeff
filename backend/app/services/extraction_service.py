@@ -307,3 +307,60 @@ class ExtractionService:
             df.to_excel(writer, index=False)
         output.seek(0)
         return output
+
+    async def auto_translate_batch(self, batch_id: int) -> None:
+        """
+        自动翻译批次中的产品信息（标题和五点）
+        """
+        import asyncio
+        from app.models.import_batch import ProductRecord
+        
+        records = (
+            self.db.query(ProductRecord)
+            .filter(ProductRecord.batch_id == batch_id)
+            .all()
+        )
+        
+        if not records:
+            return
+
+        sem = asyncio.Semaphore(10)
+        
+        async def process_record(record):
+            async with sem:
+                try:
+                    # Construct text from raw_payload
+                    payload = record.raw_payload or {}
+                    # Try to find title and bullets from common keys
+                    title = payload.get("Title") or payload.get("title") or payload.get("标题") or ""
+                    bullets = payload.get("Bullet Points") or payload.get("bullet_points") or payload.get("五点描述") or ""
+                    
+                    if not title and not bullets:
+                        return
+
+                    text = f"Title: {title}\nBullets: {bullets}"
+                    
+                    translated, _ = await self.client.translate_product_info_async(text)
+                    
+                    if translated:
+                        # Update raw_payload with new fields
+                        # We need to clone it to trigger SQLAlchemy change detection if it's a mutable dict, 
+                        # or just assign a new dict.
+                        new_payload = dict(payload)
+                        if "title_cn" in translated:
+                            new_payload["title_cn"] = translated["title_cn"]
+                        if "bullets_cn" in translated:
+                            new_payload["bullets_cn"] = translated["bullets_cn"]
+                        
+                        record.raw_payload = new_payload
+                        
+                except Exception as e:
+                    print(f"Auto translation failed for record {record.id}: {e}")
+
+        tasks = [process_record(record) for record in records]
+        
+        chunk_size = 50
+        for i in range(0, len(tasks), chunk_size):
+            chunk = tasks[i : i + chunk_size]
+            await asyncio.gather(*chunk)
+            self.db.commit()

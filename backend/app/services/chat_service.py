@@ -121,7 +121,7 @@ class ChatService:
         import json
         tools_json = json.dumps(tools_schema, ensure_ascii=False, indent=2)
         return (
-            "你是 Sorftime 数据分析助手。你可以使用以下工具来查询数据：\n"
+            "你是产品分析助手。你可以使用以下工具来查询数据：\n"
             f"{tools_json}\n\n"
             "请根据用户问题，决定是否调用工具。\n"
             "如果需要查询数据，请返回 JSON 格式：\n"

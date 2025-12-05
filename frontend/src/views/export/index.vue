@@ -51,6 +51,7 @@
                      class="w-full"
                      :disabled="!form.filters.batch_id"
                      no-data-text="该批次无提取记录"
+                     @change="handleRunChange"
                    >
                      <el-option
                        v-for="run in runs"
@@ -75,6 +76,7 @@
                    default-first-option
                    placeholder="选择要导出的字段"
                    class="w-full"
+                   @change="fetchPreview"
                  >
                    <el-option 
                      v-for="field in availableFields" 
@@ -98,9 +100,8 @@
           <el-col :span="18" class="preview-col">
             <div class="h-full flex flex-col">
               <div class="section-header">
-                <div class="flex justify-between items-center">
+                  <div class="flex justify-between items-center">
                   <h2 class="section-title">数据预览 (全部数据)</h2>
-                  <el-button link type="primary" @click="fetchPreview" :disabled="!canPreview">刷新预览</el-button>
                 </div>
               </div>
               
@@ -133,7 +134,13 @@
           </div>
         </div>
         <el-table :data="jobs" stripe>
-          <el-table-column prop="id" label="ID" width="80" align="center" />
+          <el-table-column prop="id" label="ID" width="100" align="center">
+            <template #default="{ row }">
+              <el-tooltip :content="row.id" placement="top">
+                <span class="font-mono text-xs cursor-help">{{ row.id.substring(0, 8) }}...</span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
           <el-table-column prop="exportType" label="类型" width="150">
             <template #default="{ row }">
               {{ formatExportType(row.exportType) }}
@@ -199,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed, watch } from 'vue'
+import { reactive, ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { http } from '@/utils/http'
@@ -213,7 +220,7 @@ const form = reactive({
   exportType: 'clean_products',
   filters: { 
     batch_id: '' as string | number,
-    run_id: ''
+    run_id: '' as string | number
   },
   selectedFields: [] as string[]
 })
@@ -282,13 +289,14 @@ const formatRunLabel = (run: any) => {
 // 初始化
 onMounted(async () => {
   await fetchBatches()
+  fetchJobs() // Always load export history
   
   // 从 URL 参数初始化
   const { type, batchId, runId, fields } = route.query
   
   if (type === 'extraction') {
     form.exportType = 'extraction_results'
-    if (runId) form.filters.run_id = runId as string
+    if (runId) form.filters.run_id = Number(runId)
     if (batchId) form.filters.batch_id = Number(batchId) // 转换为数字以匹配 select
     if (fields) {
       form.selectedFields = (fields as string).split(',')
@@ -297,15 +305,37 @@ onMounted(async () => {
     
     // 自动刷新预览
     if (batchId) {
-      handleBatchChange() // 触发相关逻辑
+      // 1. 获取运行记录
+      await fetchRuns(Number(batchId))
+      
+      // 2. 恢复 run_id
+      if (runId) {
+        form.filters.run_id = Number(runId)
+      }
+      
+      // 3. 恢复字段 (需要在 run_id 设置后)
+      if (fields) {
+        const fieldList = (fields as string).split(',').filter(Boolean)
+        if (fieldList.length > 0) {
+          form.selectedFields = fieldList
+        }
+      }
+      
+      // 4. 刷新预览
+      fetchPreview()
     }
   } else if (batchId) {
     form.filters.batch_id = Number(batchId)
     handleBatchChange()
   }
-
-  fetchJobs()
 })
+
+const handleRunChange = () => {
+  // 手动切换 run 时，重置字段为默认
+  form.selectedFields = []
+  updateSelectedFields()
+  fetchPreview()
+}
 
 const updateSelectedFields = () => {
   if (form.exportType !== 'extraction_results' || !form.filters.run_id) return
@@ -317,9 +347,7 @@ const updateSelectedFields = () => {
   }
 }
 
-watch(() => form.filters.run_id, () => {
-  updateSelectedFields()
-})
+
 
 const handleTypeChange = () => {
   form.selectedFields = []
@@ -393,25 +421,43 @@ const fetchPreview = async () => {
         const row: any = {}
         
         if (form.exportType === 'extraction_results') {
-          // AI 提取结果模式
-          if (form.selectedFields.length > 0) {
-            // 如果选择了字段,只显示选中的字段
-            form.selectedFields.forEach(field => {
-              // 优先从 ai_features 获取,如果没有则从原始记录获取
-              row[field] = record.ai_features?.[field] ?? record[field] ?? '-'
-            })
+          // AI 提取结果模式: 原始数据 + AI 字段
+          
+          // 1. 基础数据: 优先使用 raw_payload (原始数据), 如果没有则使用标准字段
+          if (record.raw_payload) {
+            Object.assign(row, record.raw_payload)
           } else {
-            // 如果没有选择字段,显示所有原始字段 + AI 字段
             standardFields.forEach(field => {
               row[field] = record[field] ?? '-'
             })
-            // 添加 AI 提取的字段
-            if (record.ai_features) {
-              Object.keys(record.ai_features).forEach(field => {
-                if (!standardFields.includes(field)) {
-                  row[field] = record.ai_features[field]
-                }
+          }
+          
+          // 2. AI 字段: 追加或覆盖
+          if (record.ai_features) {
+            // 如果用户选择了特定字段
+            if (form.selectedFields.length > 0) {
+              // 过滤: 只保留用户选择的字段 (注意: 这里逻辑稍微复杂, 因为用户可能选了原始字段也可能选了AI字段)
+              // 但为了预览简单, 我们展示所有 AI 字段, 或者只展示用户选的?
+              // 用户需求是: 原始数据 + 增加字段. 
+              // 如果用户选了字段, 导出时只会导出选中的. 预览也应该只显示选中的?
+              // 但为了让用户看到效果, 我们还是展示 原始 + AI, 高亮 AI?
+              // 暂且逻辑: 总是展示 原始 + AI. 如果用户选了字段, 可以在列上做过滤?
+              // 不, 预览应该反映最终导出结果.
+              
+              // 重新思考: 预览应该显示最终会导出的列.
+              // 如果 selectedFields 为空, 导出 = 原始 + 所有 AI.
+              // 如果 selectedFields 有值, 导出 = 原始 + 选中的 AI (后端逻辑是: 原始总是保留, AI 只保留选中的).
+              // 让我们匹配后端逻辑:
+              
+              const aiFields = Object.keys(record.ai_features)
+              aiFields.forEach(field => {
+                 if (form.selectedFields.length === 0 || form.selectedFields.includes(field)) {
+                   row[field] = record.ai_features[field]
+                 }
               })
+            } else {
+              // 没选字段, 显示所有 AI 字段
+              Object.assign(row, record.ai_features)
             }
           }
         } else {

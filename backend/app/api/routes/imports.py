@@ -21,6 +21,7 @@ async def create_import(
     file: UploadFile = File(...),
     importStrategy: str = Form(...),
     sheetName: str | None = Form(None),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
 ):
     """
@@ -75,6 +76,8 @@ async def create_import(
             on_missing_required=onMissingRequired,
             column_aliases=columnAliases,
         )
+        # Trigger automatic translation
+        background_tasks.add_task(run_batch_translation_background, batch.id)
     except ValueError as exc:
         raise AppError(str(exc))
     return batch
@@ -133,6 +136,12 @@ async def run_batch_extraction_background(batch_id: int, target_fields: list[str
     with SessionLocal() as db:
         service = ExtractionService(db, DeepseekClient())
         await service.extract_batch_features(batch_id, target_fields)
+
+
+async def run_batch_translation_background(batch_id: int):
+    with SessionLocal() as db:
+        service = ExtractionService(db, DeepseekClient())
+        await service.auto_translate_batch(batch_id)
 
 
 @router.post("/{batch_id}/extract")
