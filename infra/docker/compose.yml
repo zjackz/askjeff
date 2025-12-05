@@ -11,7 +11,7 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sorftime -d sorftime"]
+      test: [ "CMD-SHELL", "pg_isready -U sorftime -d sorftime" ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -24,7 +24,7 @@ services:
       - -lc
       - |
         set -e
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+        pip config set global.index-url https://pypi.org/simple
         pip install --no-cache-dir poetry poetry-plugin-export
         # 使用 Poetry 导出锁定依赖，再用 pip 安装（走镜像源更稳）
         poetry export --without-hashes -f requirements.txt -o /tmp/requirements.txt
@@ -62,7 +62,25 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD-SHELL", "python - <<'PY'\nimport sys,urllib.request\ntry:\n urllib.request.urlopen('http://localhost:8000/health', timeout=2)\n sys.exit(0)\nexcept Exception:\n sys.exit(1)\nPY\n"]
+      test:
+        [
+          "CMD-SHELL",
+          "python - <<'PY'
+
+            import sys,urllib.request
+
+            try:
+
+            \ urllib.request.urlopen('http://localhost:8000/health', timeout=2)
+
+            \ sys.exit(0)
+
+            except Exception:
+
+            \ sys.exit(1)
+
+            PY\n"
+        ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -84,7 +102,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\" "]
+      test: [ "CMD-SHELL", "node -e \"fetch('http://localhost:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\" " ]
       interval: 10s
       timeout: 3s
       retries: 10

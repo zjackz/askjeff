@@ -24,10 +24,12 @@ services:
       - -lc
       - |
         set -e
-        # pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+        # 使用官方PyPI源以避免镜像源超时
         pip install --no-cache-dir poetry poetry-plugin-export
-        poetry export --without-hashes -f requirements.txt -o /tmp/requirements.txt
-        for i in 1 2 3 4 5; do pip install --no-cache-dir -r /tmp/requirements.txt && break || echo "pip install retry $$i" && sleep 3; done
+        # 使用poetry install直接安装依赖,会自动更新锁文件
+        poetry install --no-root --only main
+        # 激活虚拟环境以使用安装的依赖
+        source .venv/bin/activate
         python - <<'PY'
         import os, time
         from sqlalchemy import create_engine, text
@@ -44,6 +46,8 @@ services:
                 time.sleep(2)
         PY
         alembic upgrade head
+        # 自动创建默认用户(admin/admin666, shangu/shangu666)
+        python scripts/init_admin.py || echo "用户初始化失败或已存在,继续启动..."
         uvicorn app.main:app --host 0.0.0.0 --port 8001
     volumes:
       - ../../backend:/app

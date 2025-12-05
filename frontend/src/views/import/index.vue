@@ -146,30 +146,6 @@
     <!-- 导入文件对话框 -->
     <el-dialog v-model="importDialogVisible" title="导入数据" width="500px">
       <el-form label-position="top" class="upload-form">
-        <el-form-item label="导入策略">
-          <el-select v-model="strategy" class="w-full" size="large">
-            <el-option label="仅追加 (Append)" value="append">
-              <div class="flex items-center justify-between">
-                <span>仅追加</span>
-                <el-tag size="small" type="info">Append</el-tag>
-              </div>
-            </el-option>
-            <el-option label="覆盖批次 (Overwrite)" value="overwrite">
-              <div class="flex items-center justify-between">
-                <span>覆盖批次</span>
-                <el-tag size="small" type="warning">Overwrite</el-tag>
-              </div>
-            </el-option>
-            <el-option label="仅更新 (Update Only)" value="update_only">
-              <div class="flex items-center justify-between">
-                <span>仅更新</span>
-                <el-tag size="small" type="success">Update</el-tag>
-              </div>
-            </el-option>
-          </el-select>
-          <div class="form-tip">选择数据导入的处理方式</div>
-        </el-form-item>
-        
         <el-form-item label="选择文件">
           <el-upload
             class="upload-area"
@@ -220,7 +196,7 @@ import { useIntervalFn } from '@vueuse/core'
 import { http, API_BASE } from '@/utils/http'
 
 const router = useRouter()
-const strategy = ref('append')
+const strategy = ref('overwrite') // 默认使用覆盖批次策略
 const submitting = ref(false)
 const loading = ref(false)
 const fileList = ref<UploadUserFile[]>([])

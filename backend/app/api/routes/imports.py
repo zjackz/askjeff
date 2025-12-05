@@ -74,7 +74,6 @@ async def create_import(
             sheet_name=sheetName,
             on_missing_required=onMissingRequired,
             column_aliases=columnAliases,
-            created_by=None,
         )
     except ValueError as exc:
         raise AppError(str(exc))
@@ -114,11 +113,11 @@ def get_import_detail(
 @router.get("/{batch_id}/records")
 async def get_batch_records(
     batch_id: int,
-    limit: int = Query(default=5, le=100),
+    limit: int = Query(default=100, le=10000),
     offset: int = Query(default=0),
     db: Session = Depends(get_db)
 ):
-    """Get records for a batch (preview)."""
+    """Get records for a batch (preview or full data)."""
     from app.models.import_batch import ProductRecord
     records = (
         db.query(ProductRecord)

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from typing import Any
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+import psutil
 
 from app.api.deps import get_db
 from app.services.audit_service import AuditService
@@ -29,3 +31,42 @@ async def get_recent_activities(
         }
         for log in logs
     ]
+
+
+@router.get("/system-stats")
+async def get_system_stats() -> dict[str, Any]:
+    """获取系统运行状态指标。"""
+    # CPU使用率
+    cpu_percent = psutil.cpu_percent(interval=1)
+    cpu_count = psutil.cpu_count()
+    
+    # 内存使用情况
+    memory = psutil.virtual_memory()
+    
+    # 磁盘使用情况
+    disk = psutil.disk_usage('/')
+    
+    # 系统启动时间
+    boot_time = datetime.fromtimestamp(psutil.boot_time())
+    uptime_seconds = (datetime.now() - boot_time).total_seconds()
+    
+    return {
+        "cpu": {
+            "percent": round(cpu_percent, 1),
+            "count": cpu_count,
+        },
+        "memory": {
+            "total": memory.total,
+            "used": memory.used,
+            "percent": round(memory.percent, 1),
+        },
+        "disk": {
+            "total": disk.total,
+            "used": disk.used,
+            "percent": round(disk.percent, 1),
+        },
+        "uptime": {
+            "seconds": int(uptime_seconds),
+            "boot_time": boot_time.isoformat(),
+        }
+    }

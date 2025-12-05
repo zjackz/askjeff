@@ -99,7 +99,7 @@
             <div class="h-full flex flex-col">
               <div class="section-header">
                 <div class="flex justify-between items-center">
-                  <h2 class="section-title">数据预览 (前 10 条)</h2>
+                  <h2 class="section-title">数据预览 (全部数据)</h2>
                   <el-button link type="primary" @click="fetchPreview" :disabled="!canPreview">刷新预览</el-button>
                 </div>
               </div>
@@ -223,7 +223,7 @@ const submitting = ref(false)
 const jobs = ref<any[]>([])
 const previewData = ref<any[]>([])
 const loadingPreview = ref(false)
-const previewMessage = ref('请选择批次以预览数据')
+const previewMessage = ref('请选择批次以加载数据')
 const showDebug = ref(false) // 开发调试用
 const batches = ref<any[]>([]) // 批次列表
 const runs = ref<any[]>([]) // 提取运行列表
@@ -382,9 +382,9 @@ const fetchPreview = async () => {
   previewData.value = []
   
   try {
-    // 获取原始记录
+    // 获取所有记录 (不限制数量)
     const { data } = await http.get(`/imports/${form.filters.batch_id}/records`, {
-      params: { limit: 10 }
+      params: { limit: 10000 } // 设置一个较大的限制值以获取所有数据
     })
     
     if (Array.isArray(data)) {
@@ -392,21 +392,32 @@ const fetchPreview = async () => {
       previewData.value = data.map(record => {
         const row: any = {}
         
-        // 始终显示基础信息方便核对
-        row.asin = record.asin
-        row.title = record.title
-        
         if (form.exportType === 'extraction_results') {
-          // 提取 AI 字段
-          form.selectedFields.forEach(field => {
-            row[field] = record.ai_features?.[field] || '-'
-          })
-        } else {
-          // 标准字段
-          standardFields.forEach(field => {
-            if (field !== 'asin' && field !== 'title') {
-              row[field] = record[field]
+          // AI 提取结果模式
+          if (form.selectedFields.length > 0) {
+            // 如果选择了字段,只显示选中的字段
+            form.selectedFields.forEach(field => {
+              // 优先从 ai_features 获取,如果没有则从原始记录获取
+              row[field] = record.ai_features?.[field] ?? record[field] ?? '-'
+            })
+          } else {
+            // 如果没有选择字段,显示所有原始字段 + AI 字段
+            standardFields.forEach(field => {
+              row[field] = record[field] ?? '-'
+            })
+            // 添加 AI 提取的字段
+            if (record.ai_features) {
+              Object.keys(record.ai_features).forEach(field => {
+                if (!standardFields.includes(field)) {
+                  row[field] = record.ai_features[field]
+                }
+              })
             }
+          }
+        } else {
+          // 标准产品导出模式 - 显示所有标准字段
+          standardFields.forEach(field => {
+            row[field] = record[field] ?? '-'
           })
         }
         return row

@@ -33,7 +33,7 @@
               <template #header>
                 <div class="flex justify-between items-center">
                   <span class="font-semibold text-gray-700">数据预览</span>
-                  <el-tag size="small" type="info">前 5 条记录</el-tag>
+                  <el-tag size="small" type="info">全部数据</el-tag>
                 </div>
               </template>
               
@@ -448,7 +448,7 @@ const fetchBatchDetails = async () => {
 
     // 获取预览记录
     const { data: recordsData } = await http.get(`/imports/${batchId}/records`, {
-      params: { limit: 5 }
+      params: { limit: 10000 }
     })
     
     if (Array.isArray(recordsData)) {
@@ -532,7 +532,7 @@ const loadRunResults = async (runId: number) => {
     
     // 获取该批次的所有记录（API 限制最大 100）
     const { data } = await http.get(`/imports/${run.batch_id}/records`, {
-      params: { limit: 100 }
+      params: { limit: 10000 }
     })
     
     if (Array.isArray(data)) {

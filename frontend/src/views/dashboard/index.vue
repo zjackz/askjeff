@@ -106,42 +106,104 @@
       </el-col>
     </el-row>
     
-    <!-- 最近活动 -->
-    <el-card class="recent-activity slide-in" style="--delay: 0.6s">
+    <!-- 系统状态 -->
+    <el-card class="system-status slide-in" style="--delay: 0.6s">
       <template #header>
         <div class="flex justify-between items-center">
           <span class="font-bold">系统状态</span>
-          <el-tag type="success" effect="dark" round>运行正常</el-tag>
+          <el-tag :type="systemHealthType" effect="dark" round>
+            {{ systemHealthText }}
+          </el-tag>
         </div>
       </template>
       
-      <div v-if="activities.length > 0" class="activity-list">
-        <el-timeline>
-          <el-timeline-item
-            v-for="(activity, index) in activities"
-            :key="index"
-            :type="getActivityType(activity.action)"
-            :color="getActivityColor(activity.action)"
-            :timestamp="formatTime(activity.created_at)"
-            placement="top"
-          >
-            <div class="activity-content">
-              <span class="font-medium">{{ getActivityLabel(activity.action) }}</span>
-              <span class="text-xs text-gray-400 ml-2" v-if="activity.payload?.filename">
-                ({{ activity.payload.filename }})
-              </span>
+      <el-row :gutter="20" v-loading="loadingSystemStats">
+        <!-- CPU使用率 -->
+        <el-col :span="6">
+          <div class="metric-card">
+            <div class="metric-icon cpu-icon">
+              <el-icon><Cpu /></el-icon>
             </div>
-          </el-timeline-item>
-        </el-timeline>
-      </div>
-      <el-empty v-else description="暂无最近活动记录" :image-size="100" />
+            <div class="metric-info">
+              <div class="metric-label">CPU使用率</div>
+              <div class="metric-value">{{ systemStats.cpu.percent }}%</div>
+              <el-progress 
+                :percentage="systemStats.cpu.percent" 
+                :color="getProgressColor(systemStats.cpu.percent)"
+                :show-text="false"
+              />
+              <div class="metric-detail">{{ systemStats.cpu.count }} 核心</div>
+            </div>
+          </div>
+        </el-col>
+        
+        <!-- 内存使用率 -->
+        <el-col :span="6">
+          <div class="metric-card">
+            <div class="metric-icon memory-icon">
+              <el-icon><Memo /></el-icon>
+            </div>
+            <div class="metric-info">
+              <div class="metric-label">内存使用率</div>
+              <div class="metric-value">{{ systemStats.memory.percent }}%</div>
+              <el-progress 
+                :percentage="systemStats.memory.percent"
+                :color="getProgressColor(systemStats.memory.percent)"
+                :show-text="false"
+              />
+              <div class="metric-detail">
+                {{ formatBytes(systemStats.memory.used) }} / 
+                {{ formatBytes(systemStats.memory.total) }}
+              </div>
+            </div>
+          </div>
+        </el-col>
+        
+        <!-- 磁盘使用率 -->
+        <el-col :span="6">
+          <div class="metric-card">
+            <div class="metric-icon disk-icon">
+              <el-icon><FolderOpened /></el-icon>
+            </div>
+            <div class="metric-info">
+              <div class="metric-label">磁盘使用率</div>
+              <div class="metric-value">{{ systemStats.disk.percent }}%</div>
+              <el-progress 
+                :percentage="systemStats.disk.percent"
+                :color="getProgressColor(systemStats.disk.percent)"
+                :show-text="false"
+              />
+              <div class="metric-detail">
+                {{ formatBytes(systemStats.disk.used) }} / 
+                {{ formatBytes(systemStats.disk.total) }}
+              </div>
+            </div>
+          </div>
+        </el-col>
+        
+        <!-- 系统运行时间 -->
+        <el-col :span="6">
+          <div class="metric-card">
+            <div class="metric-icon uptime-icon">
+              <el-icon><Clock /></el-icon>
+            </div>
+            <div class="metric-info">
+              <div class="metric-label">运行时间</div>
+              <div class="metric-value uptime-value">{{ formatUptime(systemStats.uptime.seconds) }}</div>
+              <div class="metric-detail">
+                启动于 {{ formatBootTime(systemStats.uptime.boot_time) }}
+              </div>
+            </div>
+          </div>
+        </el-col>
+      </el-row>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Upload, Box, MagicStick, Search, Download, ArrowRight } from '@element-plus/icons-vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { Upload, Box, MagicStick, Search, Download, ArrowRight, Cpu, Memo, FolderOpened, Clock } from '@element-plus/icons-vue'
 import { http } from '@/utils/http'
 // 简单的数字滚动组件逻辑，实际项目中可以使用 vue-count-to
 import { TransitionPresets, useTransition } from '@vueuse/core'
@@ -153,6 +215,15 @@ const stats = ref({
 })
 
 const activities = ref<any[]>([])
+
+// 系统状态数据
+const systemStats = ref({
+  cpu: { percent: 0, count: 0 },
+  memory: { total: 0, used: 0, percent: 0 },
+  disk: { total: 0, used: 0, percent: 0 },
+  uptime: { seconds: 0, boot_time: '' }
+})
+const loadingSystemStats = ref(false)
 
 // 使用 vueuse 的 useTransition 实现数字滚动
 const CountTo = {
@@ -192,14 +263,77 @@ const loadStats = async () => {
     })
     stats.value.products = productData.total || 0
     
-    // 获取活动日志
-    const { data: activityData } = await http.get('/dashboard/activities')
-    activities.value = activityData || []
-    
   } catch (err) {
     console.error('加载统计数据失败:', err)
   }
 }
+
+// 加载系统状态
+const loadSystemStats = async () => {
+  loadingSystemStats.value = true
+  try {
+    const { data } = await http.get('/dashboard/system-stats')
+    systemStats.value = data
+  } catch (err) {
+    console.error('加载系统状态失败:', err)
+  } finally {
+    loadingSystemStats.value = false
+  }
+}
+
+// 工具函数
+const formatBytes = (bytes: number) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+const formatUptime = (seconds: number) => {
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  
+  if (days > 0) return `${days}天 ${hours}小时`
+  if (hours > 0) return `${hours}小时 ${minutes}分钟`
+  return `${minutes}分钟`
+}
+
+const formatBootTime = (bootTime: string) => {
+  if (!bootTime) return '-'
+  return new Date(bootTime).toLocaleString('zh-CN', { 
+    month: '2-digit', 
+    day: '2-digit', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
+}
+
+const getProgressColor = (percent: number) => {
+  if (percent < 60) return '#67c23a'
+  if (percent < 80) return '#e6a23c'
+  return '#f56c6c'
+}
+
+// 计算属性
+const systemHealthType = computed(() => {
+  const maxPercent = Math.max(
+    systemStats.value.cpu.percent,
+    systemStats.value.memory.percent,
+    systemStats.value.disk.percent
+  )
+  if (maxPercent < 60) return 'success'
+  if (maxPercent < 80) return 'warning'
+  return 'danger'
+})
+
+const systemHealthText = computed(() => {
+  const type = systemHealthType.value
+  if (type === 'success') return '运行正常'
+  if (type === 'warning') return '负载较高'
+  return '负载过高'
+})
 
 const formatTime = (val: string) => {
   if (!val) return ''
@@ -232,8 +366,21 @@ const getActivityLabel = (action: string) => {
   return map[action] || action
 }
 
+// 自动刷新
+let refreshTimer: number | null = null
+
 onMounted(() => {
   loadStats()
+  loadSystemStats()
+  // 每30秒刷新一次系统状态
+  refreshTimer = window.setInterval(loadSystemStats, 30000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 
@@ -384,6 +531,91 @@ onMounted(() => {
 .arrow-icon {
   color: var(--text-tertiary);
   transition: all 0.3s ease;
+}
+
+// 系统状态指标卡片
+.system-status {
+  .metric-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      border-color: var(--primary-light);
+      box-shadow: var(--shadow-sm);
+    }
+  }
+  
+  .metric-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+    
+    &.cpu-icon {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    
+    &.memory-icon {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: #fff;
+    }
+    
+    &.disk-icon {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: #fff;
+    }
+    
+    &.uptime-icon {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+      color: #fff;
+    }
+  }
+  
+  .metric-info {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .metric-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  
+  .metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1;
+    
+    &.uptime-value {
+      font-size: 20px;
+    }
+  }
+  
+  .metric-detail {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 6px;
+  }
+  
+  :deep(.el-progress) {
+    .el-progress-bar__outer {
+      background-color: var(--border-light);
+    }
+  }
 }
 
 // 动画延迟
