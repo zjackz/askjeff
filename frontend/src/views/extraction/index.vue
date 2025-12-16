@@ -671,6 +671,24 @@ const estimateCost = () => {
 const submitExtraction = async () => {
   if (!batchId || targetFields.value.length === 0) return
 
+  // 检查是否超过 50 条记录
+  if (batch.value?.total_rows && batch.value.total_rows > 50) {
+    try {
+      await ElMessageBox.confirm(
+        `当前批次包含 ${batch.value.total_rows} 条记录，超过 50 条。AI 提取将消耗较多 Token，是否继续？`,
+        '高消耗预警',
+        {
+          confirmButtonText: '确认继续',
+          cancelButtonText: '取消',
+          type: 'warning',
+          icon: InfoFilled
+        }
+      )
+    } catch {
+      return
+    }
+  }
+
   const estimate = estimateCost()
   if (estimate) {
     try {

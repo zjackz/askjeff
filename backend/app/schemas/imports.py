@@ -29,8 +29,26 @@ class ImportBatchOut(BaseModel):
     created_by: str | None = Field(default=None, alias="createdBy")
     ai_status: str = Field(default="none", alias="aiStatus")
     ai_summary: dict | None = Field(default=None, alias="aiSummary")
+    
+    # Expose relative path for download
+    storage_path: str = Field(..., alias="filePath")
 
-
+    @field_serializer("storage_path")
+    def _serialize_storage_path(self, value: str, _info) -> str:
+        # Convert absolute path to relative path for API usage
+        # e.g. /app/storage/imports/xxx.csv -> imports/xxx.csv
+        # We look for the 'storage' directory in the path
+        if "/storage/" in value:
+            return value.split("/storage/")[-1]
+        # Fallback for local dev where path might be different
+        if "imports" in value:
+             parts = value.split("/")
+             try:
+                 idx = parts.index("imports")
+                 return "/".join(parts[idx:])
+             except ValueError:
+                 pass
+        return value
 
     @field_serializer("import_strategy")
     def _serialize_strategy(self, value: str) -> str:

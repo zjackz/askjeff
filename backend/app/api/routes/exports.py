@@ -39,6 +39,33 @@ async def create_export(payload: ExportRequest, db: Session = Depends(get_db)):
     return job
 
 
+@router.get("/download")
+async def download_file(path: str):
+    """
+    Download a file from the storage directory.
+    This is used for downloading raw import files or failure logs.
+    """
+    from app.config import settings
+    from pathlib import Path
+    import os
+
+    # Security check: ensure path is within storage directory
+    storage_dir = settings.storage_dir.resolve()
+    requested_path = (storage_dir / path).resolve()
+
+    if not str(requested_path).startswith(str(storage_dir)):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not requested_path.exists() or not requested_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(
+        requested_path, 
+        filename=requested_path.name,
+        media_type="application/octet-stream"
+    )
+
+
 @router.get("/{job_id}", response_model=ExportJobOut)
 async def get_export(job_id: str, db: Session = Depends(get_db)):
     job = service_module.export_service.get_job(db, job_id)

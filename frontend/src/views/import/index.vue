@@ -8,6 +8,9 @@
           <el-button type="primary" :icon="Plus" @click="importDialogVisible = true">
             新建导入
           </el-button>
+          <el-button type="success" :icon="MagicStick" @click="mcpDialogVisible = true">
+            智能抓取（ SORFTIME MCP）
+          </el-button>
         </div>
       </div>
     </div>
@@ -30,7 +33,13 @@
             <div class="flex flex-col gap-1">
               <div class="flex items-center gap-2">
                 <el-icon class="text-gray-400"><Document /></el-icon>
-                <span class="font-medium truncate" :title="row.filename">{{ row.filename }}</span>
+                <a 
+                  class="font-medium truncate hover:text-primary cursor-pointer no-underline text-gray-700" 
+                  :title="row.filename"
+                  @click.prevent="downloadFile(row)"
+                >
+                  {{ row.filename }}
+                </a>
               </div>
               <div class="flex items-center gap-2 pl-6">
                 <el-tag size="small" type="info" effect="plain" class="scale-90 origin-left">
@@ -184,6 +193,48 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- MCP 智能抓取对话框 -->
+    <el-dialog v-model="mcpDialogVisible" title="智能抓取 (MCP)" width="500px">
+      <el-form label-position="top">
+        <el-alert
+          title="输入 ASIN、URL 或关键词，系统将自动抓取 Top 100 数据并导入。"
+          type="info"
+          show-icon
+          :closable="false"
+          class="mb-4"
+        />
+        <el-form-item label="输入内容">
+          <el-input
+            v-model="mcpForm.input"
+            type="textarea"
+            :rows="3"
+            placeholder="例如: B08N5WRWNW 或 https://www.amazon.com/..."
+          />
+        </el-form-item>
+        <el-form-item label="类型">
+          <el-radio-group v-model="mcpForm.type">
+            <el-radio-button label="auto">自动识别</el-radio-button>
+            <el-radio-button label="asin">ASIN</el-radio-button>
+            <el-radio-button label="url">URL</el-radio-button>
+            <el-radio-button label="keyword">关键词</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="mcpDialogVisible = false">取消</el-button>
+          <el-button 
+            type="success" 
+            :loading="mcpSubmitting" 
+            @click="handleMcpSubmit"
+            :disabled="!mcpForm.input"
+          >
+            开始抓取
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -202,6 +253,12 @@ const loading = ref(false)
 const fileList = ref<UploadUserFile[]>([])
 
 const importDialogVisible = ref(false)
+const mcpDialogVisible = ref(false)
+const mcpSubmitting = ref(false)
+const mcpForm = ref({
+  input: '',
+  type: 'auto'
+})
 
 
 // Pagination
@@ -212,6 +269,7 @@ const total = ref(0)
 interface BatchRow {
   id: number
   filename: string
+  filePath?: string // Added
   sheetName?: string
   importStrategy?: string
   status: string
@@ -285,6 +343,32 @@ const submit = async () => {
     // 全局错误处理已接管
   } finally {
     submitting.value = false
+  }
+}
+
+const handleMcpSubmit = async () => {
+  if (!mcpForm.value.input) return
+  
+  mcpSubmitting.value = true
+  try {
+    const { data } = await http.post('/api/mcp/fetch', {
+      input: mcpForm.value.input,
+      type: mcpForm.value.type
+    })
+    
+    ElMessage.success(data.message || '抓取任务已提交')
+    mcpDialogVisible.value = false
+    mcpForm.value.input = '' // Reset
+    
+    // Refresh list
+    currentPage.value = 1
+    await fetchBatches()
+    resume()
+  } catch (err) {
+    // Error handled by global handler, but we can show specific msg if needed
+    console.error(err)
+  } finally {
+    mcpSubmitting.value = false
   }
 }
 
@@ -403,6 +487,18 @@ const downloadFailures = (row: BatchRow) => {
   } else {
     ElMessage.warning('暂无失败记录文件')
   }
+}
+
+const downloadFile = (row: BatchRow) => {
+  if (!row.filePath) {
+    ElMessage.warning('文件路径不存在')
+    return
+  }
+  
+  const baseUrl = API_BASE.startsWith('http') ? API_BASE : window.location.origin + API_BASE
+  // row.filePath is already relative (e.g., imports/xxx.csv)
+  const downloadUrl = `${baseUrl}/exports/download?path=${encodeURIComponent(row.filePath)}`
+  window.open(downloadUrl, '_blank')
 }
 
 const navigateToChat = (row: BatchRow) => {
