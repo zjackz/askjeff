@@ -5,5 +5,6 @@ AI 服务模块
 """
 
 from .deepseek_client import DeepSeekClient
+from .prompts import PromptTemplates
 
-__all__ = ['DeepSeekClient']
+__all__ = ['DeepSeekClient', 'PromptTemplates']
