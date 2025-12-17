@@ -44,6 +44,11 @@ const routes: RouteRecordRaw[] = [
         path: '/admin',
         component: () => import('../views/admin/index.vue'),
         meta: { title: '数据管理', roles: ['admin'] }
+      },
+      {
+        path: '/admin/sorftime-test',
+        component: () => import('../views/admin/SorftimeTest.vue'),
+        meta: { title: 'Sorftime API 测试', roles: ['admin'] }
       }
     ]
   },

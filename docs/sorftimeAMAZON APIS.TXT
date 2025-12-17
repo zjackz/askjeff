@@ -1,0 +1,2804 @@
+Sorftime Aamazon APIs - 标准版
+说明：
+1. 此文档为API接口技术对接文档。由于产品不断迭代升级，文档中内容可能会有所
+变化，以Sorftime最新文档为准
+2. 本文档中提及的“月销量”时，为基于产品近30日销量估算月销量
+3. 如果产品的月销量极低，我们统一返回月销量为5。
+4. 文档中监控相关功能涉及积分消耗，于每月10号凌晨自动清空上期未用完部分并发
+放新积分
+5. 已支持站点
+domain 国家二字码 中文国家名
+1 US 美国
+北美 6 CA 加拿大
+10 MX 墨西哥
+13 BR 巴西 南美
+2 GB 英国
+欧洲
+3 DE 德国
+4 FR 法国
+8 ES 西班牙
+9 IT 意大利
+11 AE 阿联酋
+中东
+14 SA 沙特
+7 JP 日本
+亚洲
+5 IN 印度
+12 AU 澳洲 大洋洲
+权限认证
+Sorftime会颁发秘钥Key，客户通过秘钥Key进行权限认证。接口采用HttpPost
+方式进行数据处理，在发起请求时，需要将Key值设置到请求头参数Authorization
+里面。
+header["Authorization"] = "BasicAuth <Key>"
+这里Key替换成Sorftime颁发给客户的密钥
+并设置ContentType参数类型
+header["ContentType"] = "application/json;charset=UTF-8"
+Sorftime会自动识别请求头内容进行权限认证。
+例如使用Postman调用接口，设置header如下
+传参方式
+参数为JSON格式，使用body传参。
+例如使用Postman请求CategoryRequest接口，设置body如下
+API
+类目市场
+1. 类目树（CategoryTree）
+返回Best Seller类目树结构
+注：这个接口返回数据很大（约为10mb+）建议设置较长请求超时时间。
+请求方式：Post
+每次调用：5 request
+URL：/CategoryTree?domain=<1: us | 2: gb | 3: de | 4: fr |
+5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+gzip 参数为可选参数，有效值为（0 或 1），默认为0。如果设置为1，表示使
+用gzip压缩结果，并转化成base64字符串返回。接收到数据为base64字符串，需要
+先将base64字符串还原成byte[]，然后再gzip解压获得结果
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object Array
+详见数据结构，CategoryTreeObject
+2. 类目Best Sellers（CategoryRequest）
+查询类目Best Seller Top100产品。
+实时类目数据支持14大站点。历史回看支持最长2年数据（暂不支持回看的站点
+5：in | 11: ae | 12: au | 13: br | 14: sa）
+注：我们会排除一些不适合三方卖家做的类目，如：app、音像、书籍、音乐、食
+品、数字游戏等类目。
+组合数据说明：
+数据样本：选定时间范围内每天Top100按ParentAsin去重后组合
+产品销量：取产品在时间范围内的最后一日统计的近30日销量。
+request消耗：每3天跨度消耗10（天跨度向上取整）。例如：查询3天消耗10,查
+询4天消耗20。
+请求方式：Post
+每次调用：5 request
+URL：/CategoryRequest?domain=<1: us | 2: gb | 3: de | 4: fr
+| 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ nodeId： String
+需要查找的NodeId
+ queryStart : String
+选填，格式：yyyy-MM-dd，如需组合历史Top100产品，指定此参数为查询开始
+时间。最长可查近2年数据，天跨度有效范围为3-40天。
+ queryDate ： String
+选填，格式：yyyy-MM-dd，如需组合历史Top100产品，指定此参数为查询结束
+时间。最近至昨日可查距当前日期2日前，天跨度有效范围为3-40天。
+ querydays：Integer
+（老版本兼容）选填，如需组合历史Top100产品，且指定了queryDate但未指定
+queryStart 时，将从指定的queryStart日期开始向前N天组合Top100产品。
+例如查询2023-01-03，3天的数据。那么会返回2023-01-01、2022-12-31、
+2022-12-30三天的数据。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object
+详见数据结构，CategoryObject
+3. 类目全部热销产品（CategoryProducts）
+查询类目下全部热销产品，对于长尾类目可返回1000+产品
+请求方式：Post
+每次调用：5 request
+URL：/CategoryRequest?domain=<1: us | 2: gb | 3: de | 4: fr
+| 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ nodeId： String
+需要查找的NodeId
+ page：Integer
+分页查询，每页最多100个产品。
+默认为1，表示第1页 （全部结果分页从1开始，而非0）
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object
+详见数据结构，ProductListObject
+4. 查询市场历史趋势（CategoryTrend）
+用于查询该类目市场历史趋势。
+请求方式：Post
+每次调用：2 request
+URL：/CategoryTrend?domain=<1: us | 2: gb | 3: de | 4: fr |
+5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ nodeId： String
+需要查找的NodeId
+ trendIndex ： Integer
+所需要查询的历史趋势类型
+0：销量趋势
+1：品牌数量趋势
+2：卖家数量趋势
+3：平均售价趋势
+4：平均评价数趋势
+5：平均星级趋势
+6：1个月新品占比趋势
+7：3个月新品占比趋势
+8：6个月新品占比趋势
+9：亚马逊自营占比趋势
+10：FBM产品数占比趋势
+11：A+产品数占比趋势
+12：平均单次产品利润趋势
+13：平均跟卖数量趋势
+14：top100产品占有率趋势
+15：平均大类排名趋势
+16：1个月新品平均星级趋势
+17：3个月新品平均星级趋势
+18：6个月新品平均星级趋势
+19：1个月新品平均评价数趋势
+20：3个月新品平均评价数趋势
+21：6个月新品平均评价数趋势
+22：1个月新品最高评价数趋势
+23：3个月新品最高评价数趋势
+24：6个月新品最高评价数趋势
+25：1个月新品最低评价数趋势
+26：3个月新品最低评价数趋势
+27：6个月新品最低评价数趋势
+28：前3Listing垄断系数趋势
+29：前5Listing垄断系数趋势
+30：前10Listing垄断系数趋势
+31：前20Listing垄断系数趋势
+32：前3品牌垄断系数趋势
+33：前5品牌垄断系数趋势
+34：前10品牌垄断系数趋势
+35：前20品牌垄断系数趋势
+36：前3卖家垄断系数趋势
+37：前5卖家垄断系数趋势
+38：前10卖家垄断系数趋势
+39：前20卖家垄断系数趋势
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： String Array
+最长自2018年9月起top100类目市场趋势。
+货币趋势时，值的单位为当地货币最小单位（例如：$15.99，返回1599）
+百分比趋势时，单位为百分比（例如：50%，返回50）
+例：[202010,1000,202011,1010,202012,1050,....]
+每个数组：
+<数组下标> % 2 = 0 为月份，例如：202010
+<数组下标> % 2 = 1 为对应数据
+产品
+5. 产品详情（ProductRequest）
+产品（Listing）详情查询
+请求方式：Post
+每次调用：1 request
+URL：/ProductRequest?domain=<1: us | 2: gb | 3: de | 4: fr |
+5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+gzip 参数为可选参数，有效值为（0 或 1），默认为0。如果设置为1，表示使
+用gzip压缩结果，并转化成base64字符串返回。接收到数据为base64字符串，需要
+先将base64字符串还原成byte[]，然后再gzip解压获得结果
+请求参数
+ asin : String
+需要查询的ASIN。多asin查询时，使用逗号分割',' 最多支持10个asin查询
+ trend：Integer
+结果数据中是否包含趋势数据（详见ProductObject中字段名以trend结尾的数
+据）
+1：包含（默认包含），2：不包含
+ queryTrendStartDt：String
+选填，当设置trend !=2时，如果希望查询指定日期过后的趋势数据，请设置此
+值。格式 yyyy-MM-dd
+默认（当启用趋势，且不指定此参数时）趋势仅返回近15天数据，如需更多数据，
+需指定此参数
+当请求历史趋势超过15天时，消耗request=2
+ queryTrendEndDt : String
+选填，当queryTrendStartDt设置值时有效(trend !=2)，表示从查询截止日
+期，格式 yyyy-MM-dd。
+依据queryTrendStartDt 至 queryTrendEndDt的查询实际天数，小于等于
+15天时，消耗request=1，当大于15天时，消耗request=2
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: Object
+单ASIN查询时，返回 ProductObject
+多ASIN查询时，返回 ProductObject Array
+6. 产品搜索（ProductQuery）
+多维度查产品
+支持单条件查询（Query参数设置为1）多条件组合查询（Query参数设置为2）两
+种方式
+请求方式：Post
+每次调用：5 request
+URL：/ProductQuery?domain=<1: us | 2: gb | 3: de | 4: fr |
+5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ query : Integer
+选填，查询方式，1：单条件查询（默认）， 2：多条件组合查询（多条件之间
+为‘且’关系）
+ queryType: Integer
+当query=1时如下，当query=2时，此参数无效（详pattern参数设置）
+查询方式
+1：基于ASIN查询同类产品（注意：并非只查询这个ASIN，如果需要这个产品请调
+用ProductRequest接口）
+2：基于细分类目查询（暂不支持非细分类目查询）
+3：查询品牌热销产品
+4：基于卖家名称查询热销产品（如：AnkerDirect）
+5：基于卖家SellerId查询热销产品
+6: 基于ABA关键词查热销产品（暂仅支持ABA关键词）
+7: 基于产品标题(或产品属性)包含词查产品（将匹配标题/产品属性中包含特定
+词的产品）
+8：限定销售价范围查产品，货币为当地最新单位货币（例如美国最小货币单位为
+美分）
+9：限定月销量范围查产品
+10：限定查询季节性产品，仅返回所查询月份的季节性产品。
+11：限定上架时间在指定范围内的产品，日期格式为yyyy-MM-dd
+12：限定星级范围查产品
+13：限定评论数量范围查产品
+14：限定排名范围查产品
+这个需要组合大小类排名，软件上没有直接对应的功能
+15：限定发货方式查产品
+16：限定子体数范围查产品
+ pattern：String
+当query=1时：
+查询条件对应的值。
+当queryType=1，示例：B0CVM8TXHP
+当queryType=2，示例：3743561
+当queryType=3，示例：Anker
+当queryType=4，示例：AnkerDirect
+当queryType=5，示例：A294P4X9EWVXLJ
+当queryType=6，示例：Power Bank
+当queryType=7，示例：10,000mAh 30W
+当queryType=8，示例：1,1000:表示查询销售价在1到1000美分的产
+品；,1000：表示销售价不高于1000美分的产品
+当queryType=9，示例：100,1000:表示查询月销量在100到1000的产
+品；,1000：表示月销量不高于1000的产品
+当queryType=10，示例：1,2,3 表示查询1,2,3月为销售旺季的季节性产品
+当queryType=11，示例：20240601,20241201 表示查询上架时间在2024-
+06-01 至 20241201 之间的产品；20240601, 表示查询上架时间晚于2024-06-
+01 的产品
+当queryType=12，示例：3,5:表示查询星级在3到5星的产品；4,：表示查询星
+级大于4星的产品
+当queryType=13，示例：10,500:表示查询评论数量在10到500的产
+品；,500：表示查询评论数量少于500的产品
+当queryType=14，示例：500,5000;1,100 :分号之前表示限定大类，表示限定大
+类排名在500-5000，分号之后表示限定小类，表示限定小类排名在1-500。
+当queryType=15，示例：FBA
+当queryType=16，示例：1,50:表示查询子体数量为1-50的产品
+当query=2时：
+json格式，可输入多条件插件，例如：
+[
+{"queryType":1，content:"B0CVM8TXHP"},
+{"queryType":2，content:"3743561"},
+......
+]
+ queryMonth : String
+回看历史月份产品数据，最长支持2024年1月起最多2年内数据
+选填，格式：yyyy-MM，不指定此参数时表示查实时数据，小于当月月份时为回看
+数据。
+AU BR IN暂不支持回看
+US GB DE支持回看全细分类目产品回看（“不限”模式回看）
+其余站点支持Top100产品回看
+ page：Integer
+分页查询，每页最多100个产品。
+默认为1，表示第1页 （全部结果分页从1开始，而非0）
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object
+详见数据结构，ProductListObject
+7. 产品官方公布子体销量（AsinSalesVolume）
+查询产品官方公布的子体销量历史数据，最早自2023-07开始
+请求方式：Post
+每次调用：1 request
+URL：/AsinSalesVolume?domain=<1: us | 2: gb | 3: de | 4: fr
+| 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ asin : String
+需要查询的ASIN
+ queryDate : String
+查询开始时间，格式：yyyy-MM-dd，最早支持2023年09月01日开始。
+默认（当不传该参数，或参数无效时）返回近30日数据
+ queryEndDate ： String
+查询截止时间，格式：yyyy-MM-dd
+默认（当不传该参数，或参数无效时）返回截止当前时间
+ page ：Integer
+分页查询，默认从“1”开始，每页最多返回100条数据
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: two-Dimensional String Array
+值说明
+[
+[
+"2023-10-05" , //记录日期
+100, //销量记录
+1 //1：周销量； 2：月销量
+],
+....
+]
+8. 产品子体变化历史数据查询（ProductVariationHistory）
+查询ASIN所有变体变化历史，最多支持近1个月数据
+请求方式：Post
+每次调用：1 request
+URL：/ProductVariationHistory?domain=<1: us | 2: gb | 3: de
+| 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au | 13:br | 14:sa>
+请求参数
+ asin : String
+需要查询的ASIN
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String Array
+二维数组
+例：
+[
+[
+<记录子体数据时间>,
+<ParentASIN>,
+<子体ASIN1>,
+<子体ASIN2>,
+...
+],
+...
+]
+9. （未开发，还在设计）产品趋势数据查询（ProductTrend）
+查询指定产品历史数据趋势
+请求方式：Post
+每次调用：1 request
+URL：/ProductTrend?domain=<1: us | 2: gb | 3: de | 4: fr |
+5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+注：11：ae，12：au，14：sa 趋势数据密度较低。
+请求参数
+ asin : String
+需要查询的ASIN
+ dateRange：String
+查询时间范围。数据格式为：起始时间,截止时间(日期格式为：yyyyMMdd）
+示例：20240101,20250101 查询20240101 至 20250101的产品趋势数据。
+ trendType：Integer
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+0：在额定时间范围内，该产品已经更新过，无需重复更新。请通过
+ProductRequest获取产品详情。
+99：正在实时抓取该产品信息，预计耗时5分钟。请稍后重新发起请求查询产品信
+息。
+98：采集失败。
+97：Asin不存在。
+4：积分余额不足。
+ message ： String
+响应信息，见数据结构，ResponseObject
+当code=99时：正在实时抓取该产品信息，预计耗时5分钟。请稍后重新发起请求
+查询产品信息。
+10. 产品实时数据查询（ProductRealtimeRequest）
+如果产品设定时间内未更新过，则实时抓取一次产品信息，并消耗1积分（日本站
+消耗2积分）。如果更新过，请通过ProductRequest拉取产品详情数据。
+实时抓取产品信息预计耗时5分钟，抓取成功后，通过ProductRequest接口查询
+这个ASIN。
+请求方式：Post
+每次调用：0 request ， 改为消耗积分
+URL：/ProductRealtimeRequest?domain=<1: us | 2: gb | 3: de |
+4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11:
+ae | 12:au | 13:br | 14:sa>
+请求参数
+ asin : String
+需要查询的ASIN
+ update：Int
+在设定时间内未更新则立即更新，否则直接返回产品。单位：小时。
+默认24，有效值范围 1 - 120
+例如：48，表示在查询时间的48小时内，如果产品未更新，则立即更新。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+0：在额定时间范围内，该产品已经更新过，无需重复更新。请通过
+ProductRequest获取产品详情。
+99：正在实时抓取该产品信息，预计耗时5分钟。请稍后重新发起请求查询产品信
+息。
+98：采集失败。
+97：Asin不存在。
+4：积分余额不足。
+ message ： String
+响应信息，见数据结构，ResponseObject
+当code=99时：正在实时抓取该产品信息，预计耗时5分钟。请稍后重新发起请求
+查询产品信息。
+11. 产品实时数据查询状态查询
+（ProductRealtimeRequestStatusQuery）
+产品实时数据查询状态查询。
+请求方式：Post
+每次调用：0 request
+URL：/ProductRealtimeRequestStatusQuery?domain=<1: us |
+2: gb | 3: de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it
+| 10: mx | 11: ae | 12:au | 13:br | 14:sa>
+请求参数
+ queryDate: String
+基于创建产品实时数据查询任务的日期查询，返回该日期全部任务。
+格式：yyyy-MM-dd
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String Array
+["<asin>:<状态>:<完成时间>","<asin>:<状态>:<完成时间>",......]
+状态：0：查询中，1：完成， 3：采集失败 4：积分不够 5：ASIN不存在
+完成时间：当状态为成功时，为采集完成时间，其他状态下显示为--
+12. 实时采集产品评论（ProductReviewsCollection）
+实时采集产品评论（不会返回采集到的评论内容，需要主动通过ProductReviews
+接口拉取数据。相同产品采集成功后，2小时内不能重复采集）
+评论获取分为两部分：
+第一步为实时采集，这一步仅为采集，不会返回具体的评论内容。实时采集到的评
+论将和我们已经收录的评论合并。如您需要最新的评论建议先进行采集，如您不需要最
+新的评论，可以跳过这步。将根据您的采集要求扣除积分，每采用1页扣除1积分。
+第二步为评论数据拉取，通过ProductReviews接口拉取我们已经收录的全部产品
+评论。
+请求方式：Post
+每次调用：0 request ，改为消耗积分
+URL：/ProductReviewsCollection?domain=<1: us | 2: gb | 3:
+de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au | 13:br | 14:sa>
+请求参数
+ asin : String
+需要查询的ASIN
+ mode : Integer
+采集方式，0：top reviews模式，1：most recent模式
+ star : String
+采集评论时按星级筛选。
+选填，当不传值时表示不使用星级筛选方式采集评论。
+当需要按星级筛选时，请传入需要采集的星级，支持多筛选（使用逗号‘，’分
+割）：
+1：筛选1星评论采集
+2：筛选2星评论采集
+3：筛选3星评论采集
+4：筛选4星评论采集
+5：筛选5星评论采集
+10：消极评论（1-3星）
+11：积极评论（4-5星）
+例如输入：1,2,3,4,5 表示1-5星分别独立采集<page>页数。
+注意：采集时会扣除积分，每页1积分。star参数=1,2,3,4,5 page参数
+=10，则会分别采集1-5星评论，每个评论10页（无论产品是否有这么多评
+论，系统均会执行采集任务），则会消耗5*10=50积分。
+ onlyPurchase : Integer
+是否仅采集购买过产品的用户的评论，0：不限，1：限制仅购买过产品用户的评
+论。
+ page : Integer
+采集页数，可选值：1 - 10
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: string
+查询任务Id，任务Id > 0则表示任务创建成功。
+13. 评论实时查询任务状态查询
+（ProductReviewsCollectionStatusQuery)
+查询实时采集产品评论的任务执行状态。
+请求方式：Post
+每次调用：0 request
+URL：/ProductReviewsCollectionStatusQuery?domain=<1: us |
+2: gb | 3: de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it
+| 10: mx | 11: ae | 12:au | 13:br | 14:sa>
+请求参数
+ asin : String
+采集评论的ASIN
+ update ：Integer
+执行采集任务距今的时间范围（单位：小时）可选值：1 - 240
+例：48。表示检查<asin>在距当前时间48小时内的实时评论采集任务状态
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String
+JSON Array 格式
+例：
+[
+{
+taskId:<ProductReviewsCollection接口返回的任务Id>,
+status:<任务状态0：采集完成，4：积分余额不足，11：没有采集任务，97：
+ASIN不存在，98：采集失败，99：采集中>
+},
+......
+]
+14. 产品评论（ProductReviewsQuery）
+查询我们已经收录的产品评论。如需最新评论内容，请通过
+ProductRealtimeReviews实时抓取一次评论后再查询。
+请求方式：Post
+每次调用：5 request
+URL：/ProductReviewsQuery?domain=<1: us | 2: gb | 3: de |
+4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11:
+ae | 12:au | 13:br | 14:sa>
+请求参数
+ asin : String
+需要查询的ASIN
+ querystartdt：String
+查询reivews起始时间，格式 yyyy-MM-dd
+ star : Integer
+筛选星级,1：筛选1星评论采集；2：筛选2星评论采集；3：筛选3星评论采集；4：
+筛选4星评论采集；5：筛选5星评论采集；10：消极评论（1-3星）；11：积极评
+论（4-5星）。筛选多个使用逗号‘，’分割，例如：1,2,3,4,5 表示1-5星分别独
+立采集<page>页数
+ onlyPurchase : Integer
+是否仅采集购买过产品的用户的评论，0：不限，1：限制仅购买过产品用户的评
+论。
+ pageIndex ： Integer
+查询第几页数据，默认为第1页。每页返回100条数据。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: Object Array
+详见数据结构，ReviewsObject
+15. 图搜相似产品（SimilarProductRealtimeRequest）
+通过产品图片实时搜索亚马逊平台上相似产品，建议搜索的产品在图片中比例大于
+80%，且背景尽量干净。
+实时抓取预计耗时5分钟，抓取成功后，通过
+SimilarProductRealtimeRequestCollection接口查询
+每次查询消耗5积分（日本站消耗6积分），预计返回20+产品。
+请求方式：Post
+每次调用：0 request， 改为消耗积分
+URL：/SimilarProductRealtimeRequest?domain=<1: us | 2: gb |
+3: de | 4: fr | 5: in | 7: jp | 8: es | 9: it >
+请求参数
+ image ： String
+查询的图片，图片使用Base64编码。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String
+查询任务Id，任务Id > 0则表示任务创建成功。
+后续将使用此任务Id查询结果。
+16. 图搜相似产品任务状态查询
+（SimilarProductRealtimeRequestStatusQuery)
+查询图搜相似产品的任务执行状态。
+请求方式：Post
+每次调用：0 request
+URL：/SimilarProductRealtimeRequestStatusQuery?domain=<1: us
+| 2: gb | 3: de | 4: fr | 5: in | 7: jp | 8: es | 9: it >
+请求参数
+ Update : Integer
+数据有效范围 1 - 240；检查在距当前时间1 - 240小时内的图搜相似产品采集
+任务状态
+例：48。表示检查在距当前时间48小时内的实时评论采集任务状态
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String
+JSON Array 格式
+例：
+[
+{
+taskId:<ProductReviewsCollection接口返回的任务Id>,
+status:<任务状态0：采集完成，4：积分余额不足，11：没有采集任务，97：
+ASIN不存在，98：采集失败，99：采集中>
+},
+......
+]
+17. 图搜相似产品结果查询
+（SimilarProductRealtimeRequestCollection）
+图搜产品结果查询。
+请求方式：Post
+每次调用：0 request
+URL：/SimilarProductRealtimeRequestCollection?domain=<1: us |
+2: gb | 3: de | 4: fr | 5: in | 7: jp | 8: es | 9: it >
+请求参数
+ taskId : String
+任务Id
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: string
+如果任务不存在或未完成，返回null。
+否则返回相似产品清单，JSON格式如下：
+[
+{
+"asin":<asin>,
+"brand":<品牌>，
+"star":<星级>,
+"ratings":<评论数>,
+"price":<价格>,
+"listPrice":<划线价>
+},
+......
+]
+关键词
+18. 关键词查询（KeywordQuery）
+当前ABA热搜关键词清单
+请求方式：Post
+每次调用：5 request
+URL：/KeywordQuery?domain=<1: us | 2: gb | 3: de | 4: fr |
+6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae | 12:au |
+13:br | 14:sa>
+请求参数
+ pattern ： Object
+查询模式，见数据结构，KeywordQueryPatternObject
+ pageIndex： Integer
+查询第几页数据，默认为第1页
+ pageSize：Interger
+每页多少条数据，最小20，默认20，最大200
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object Array
+详见数据结构，KeywordSummeryObject
+19. 关键词近15日搜索结果产品（KeywordSearchResults）
+近15日关键词搜索结果产品。仅支持ABA热搜词
+请求方式：Post
+每次调用：5 request
+URL：/KeywordSearchResults?domain=<1: us | 2: gb | 3: de |
+4: fr | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ keyword： String
+关键词（仅支持ABA关键词）
+ pageIndex ： Integer
+查询第几页数据，默认为第1页
+ pageSize：Interger
+每页多少条数据，最小20，默认20，最大200。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object Array
+详见数据结构，ProductListObject
+20. 关键词详情（KeywordRequest）
+关键词详情查询。
+请求方式：Post
+每次调用：1 request
+URL：/KeywordRequest?domain=<1: us | 2: gb | 3: de | 4: fr |
+6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae | 12:au |
+13:br | 14:sa>
+请求参数
+ keyword： String
+关键词
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object
+详见数据结构，KeywordObject
+21. 关键词搜索结果产品趋势（KeywordSearchResultTrend）
+关键词搜索结果前3页产品历史统计数据报告。
+请求方式：Post
+每次调用：10 request
+URL：/KeywordSearchResultTrend?domain=<1: us | 2: gb | 3:
+de | 4: fr | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11:
+ae | 12:au | 13:br | 14:sa>
+请求参数
+ keyword： String
+ABA关键词
+ queryStart：String
+趋势数据查询起始月份，最早支持2024年1月起数据。
+FR、IT 两站支持2025年1月起数据。
+选填，数据格式：yyyy-MM，默认：2024-01
+ queryEnd：String
+趋势数据查询截止月份。
+选填，数据格式：yyyy-MM
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object Array
+详见数据结构 KeywordSearchResultItem
+22. 类目反查关键词（CategoryRequestKeyword）
+按类目查询类目相关ABA关键词。
+请求方式：Post
+每次调用：1 request
+URL：/CategoryRequestKeyword?domain=<1: us | 2: gb | 3: de |
+4: fr | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ nodeid： String
+需要查询的类目nodeid（仅支持底层类目nodeid查询）
+ pageIndex ： Integer
+查询第几页数据，默认为第1页
+ pageSize：Interger
+每页多少条数据，最小20，默认20，最大200。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： KeywordSummeryObject Array
+详见数据结构，KeywordSummeryObject
+23. ASIN反查关键词（ASINRequestKeyword）
+用于查询该ASIN近30天站内在哪些关键词搜索结果的前3页中曝光
+请求方式：Post
+每次调用：1 request
+URL：/ASINRequestKeywordv2?domain=<1: us | 2: gb | 3: de |
+4: fr | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ asin： String
+需要查询的ASIN
+ pageIndex ： Integer
+查询第几页数据，默认为第1页
+ pageSize：Interger
+每页多少条数据，最小20，默认20，最大200。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： Object Array
+详见数据结果，ASINKeywordItemObject
+24. 关键词搜索结果产品排名（KeywordProductRanking）
+关键词历史月份搜索结果产品。仅支持ABA关键词。
+US：最长可查询近两年数据
+其他站点：近30天数据
+请求方式：Post
+每次调用：5 request
+URL：/KeywordProductRanking?domain=<1: us | 2: gb | 3: de |
+4: fr | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au | 13:br | 14:sa>
+请求参数
+ keyword： String
+需要查询的ABA关键词
+ month ： String
+当查询美国站时：查询的月份，格式：yyyy-MM，例如：2024-12
+其他站点时：本参数无效
+ page : Integer
+查询第几页数据，默认为第1页。每页最多200条数据
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： String
+JSON 对象
+示例：
+{
+page: "<x/y，例如：1/100，表示当前查询第1页，共100页>",
+records:[{
+"asin":"<asin>",
+"keyword":"<keyword>",
+"page":"<曝光在第n页>",
+"position":"<所处页面位置：x/y，例如：1/68，表示在第1位，当页共
+68个产品>",
+"positionType":"<0:自然曝光，1：广告曝光>",
+"positionName":"<0：自然位，1：sp广告，2：品牌广告，3：视频广告
+>",
+"adID":"<如果广告，广告Id，通过此字段判断词归属的广告组；否则为
+空。>",
+"campaignID":"<如果是广告，所属的广告活动Id，通过此字段判断词归属
+的广告活动（campaignID+adID可以判断该词属于哪个广告活动的哪个广告
+组）；否则为空;数据自2025-03月起有效>"
+"recordDate":"记录时间，格式：yyyy-MM-dd HH:mm (UTC +8, 北京
+时间)"
+}，
+......
+]
+}
+25. ASIN在关键词下排名趋势（ASINKeywordRanking）
+ASIN在指定关键词下的排名历史记录，最长可查询近两年数据。目前仅支持美国站
+ABA关键词。
+请求方式：Post
+每次调用：2 request
+URL：/ASINKeywordRanking?domain=<1:us>
+请求参数
+ keyword： String
+需要查询的ABA关键词
+ ASIN ： String
+需要查询的Asin
+ queryStart ： String
+选填，查询起始时间。最长支持两年。当为空时，只返回近1个月数据
+ queryEnd ： String
+选填，查询截止时间。
+ page : Integer
+分页查询，当前返回第几页数据，默认为第1页。每页最多200条数据
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ： String Array
+JSON 对象
+示例：
+{
+page: "<x/y，例如：1/100，表示当前查询第1页，共100页>",
+records:[{
+"asin":"<asin>",
+"keyword":"<keyword>",
+"page":"<曝光在第n页>",
+"position":"<所处页面位置：x/y，例如：1/68，表示在第1位，当页共
+68个产品>",
+"positionType":"<0:自然曝光，1：广告曝光>",
+"positionName":"<0：自然位，1：sp广告，2：品牌广告，3：视频广告
+>",
+"adID":"<如果是SP广告，广告Id，通过此字段判断哪些词归属相同广告
+组；否则为空>",
+"recordDate":"记录时间，格式：yyyy-MM-dd HH:mm (UTC +8, 北京
+时间)"
+}，
+......
+]
+}
+数据监控
+26. 关键词监控注册（KeywordBatchSubscription）
+定时监控asin在关键词下的搜索排名。支持使用手机或pc监控搜索排名。
+监控一个关键词，每周7天，每天24小时，每小时监控1次，每次监控搜索结果前3
+页，每周消耗积分=1*7*24*1*3=504。（注：日本站每页面消耗2积分，相同的监控
+频率日本站消耗积分为1008）
+监控任务仅依据关键词扣除积分，与关键词下关注多少ASIN无关。
+关键词监控不受关注类目限制（可监控任意关键词）
+注：关键词监控结果最多保存30日
+请求方式：Post
+每次调用：0 request ，改为消耗积分
+URL：/KeywordBatchSubscription?domain=<1: us | 2: gb | 3: de |
+4: fr | 6: ca | 7: jp | 8: es | 9: it>
+请求参数
+ keyword : String Array
+监控关键词列表
+值说明：["kw1","kw2"....]
+ mode ： Integer
+所使用的监控模式。0：使用电脑浏览器监控；1：使用手机浏览器监控
+ area : String
+当mode=0时：
+用哪个地区（邮编）监控。值为以下几个值之一
+当domain=1时，有效值为 10041（纽约）、60601（芝加哥）、94102（旧金
+山）
+domain=2时，有效值为 N1P 3AA，代表伦敦
+domain=3时，有效值为 10115，代表柏林
+domain=4时，有效值为 75001，代表巴黎
+domain=6时，有效值为 V5K 0A1，代表温哥华
+domain=7时，有效值为 120-0015，代表东京
+domain=8时，有效值为 28001 马德里
+domain=9时，有效值为 66030 罗马
+当mode=1时：
+domain=1时，固定使用 98101，即 西雅图，美西
+domain=2时，固定使用 B10 0AB，代表伯明翰
+domain=3时，固定使用 20095，代表汉堡
+domain=4时，有效值为 13001，代表马赛
+domain=6时，有效值为 V5K 0A1，代表维多利亚
+domain=7时，有效值为 550-0004，代表大阪
+domain=8时，有效值为 08001 巴塞罗那
+domain=9时，有效值为 16100 热那亚
+ page : Integer
+监控关键词搜索结果的前N页，有效值为1，3，5，7。
+分别标志首页，前3页，前5页，前7页
+当手机模式时，页面始终为1，返回约120+产品
+ period : String
+设置关键词监控频率
+表达式：<每周哪几日>|<每天哪些时段>|<监控频率>
+<每周哪几日>（多选时使用逗号分割）有效值：1,2,3,4,5,6,7
+<每天哪些时段>（多选时使用逗号分割）有效值：
+1: 表示任务时间平分到1、2、3、4点，
+2: 表示任务时间平分到5、6、7、8点，
+3: 表示任务时间平分到9、10、11、12点
+4: 表示任务时间平分到13、14、15、16点
+5: 表示任务时间平分到17、18、19、20点
+6: 表示任务时间平分到21、22、23、0点
+注：北京时区对应的时间，系统会将关键词平均分配到指定时间段内的每个小时
+<监控频率>有效值：
+1：时段内（随意一个时间刻度）一次
+11：时段内第一个时间刻度执行 （例如，5-8点时段，第一个时间刻度为5点）
+12：时段内第二个时间刻度执行 （例如，5-8点时段，第二个时间刻度为6点）
+13：时段内第三个时间刻度执行 （例如，5-8点时段，第三个时间刻度为7点）
+14：时段内第四个时间刻度执行 （例如，5-8点时段，第四个时间刻度为8点）
+（注：当设定11-14时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+2：时段内每小时1次
+3：时段内每2小时1次（随机双数时刻或单数）
+31：时段内单数小时执行，共2次（例如，5-8点时段，第5,7两个时刻执行）
+32：时段内双数小时执行，共2次（例如，5-8点时段，第6,8两个时刻执行）
+（注：当设定31-32时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+例如：1,2,3,4,5|2,3|1
+表示每周周一，周二，周三，周四，周五，每天5点-8点时段和9点-12点时段，每
+个时段执行一次。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ：String Array
+值说明
+["<keyword>:<taskId>",....]
+如果注册成功，taskid为大于0的值；当因为注册时段内任务过多而注册失败时，
+taskid显示为-999
+27. 关键词任务查询（KeywordTasks）
+查看全部有效的（非删除的）关键词监控任务。
+请求方式：Post
+每次调用：0 request
+URL：/KeywordTasks?domain=<1: us | 2: gb | 3: de | 4: fr |
+6: ca | 7: jp>
+请求参数
+ pageIndex ： Integer
+查询第几页数据，默认为第1页
+ pageSize：Interger
+每页多少条数据，最小20，默认20，最大200。
+ taskid : String
+选填，如需指定taskid查询，请指定此参数。多个taskid使用逗号分割“,”
+示例<taskid1>,<taskid2>,....
+ keyword ：String
+选填，模糊匹配keyword
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： Object Array
+详见数据结构，keywordTaskObject
+28. 修改关键词监控任务（KeywordBatchTaskUpdate）
+修改关键词任务。
+请求方式：Post
+每次调用：0 request
+URL：/KeywordBatchTaskUpdate?domain=<1: us | 2: gb | 3: de |
+4: fr | 6: ca | 7: jp>
+请求参数
+ taskId：Integer
+关键词监控任务Id
+ update ： Integer
+0：修改任务设置，1：暂停任务 2：启动任务，9：删除任务
+ mode ： Integer
+若update=0时（其他时此值无效），所使用的监控模式。0：使用电脑浏览器监
+控；1：使用手机浏览器监控
+若update ！= 0，值无效
+ area : String
+当mode=0时：
+用哪个地区（邮编）监控。值为以下几个值之一
+当domain=1时，有效值为 10041，代表纽约
+domain=2时，有效值为 N1P 3AA，代表伦敦
+domain=3时，有效值为 10115，代表柏林
+domain=4时，有效值为 75001，代表巴黎
+domain=6时，有效值为 V5K 0A1，代表温哥华
+domain=7时，有效值为 120-0015，代表东京
+domain=8时，有效值为 28001 马德里
+domain=9时，有效值为 66030 罗马
+当mode=1时：
+domain=1时，固定使用 98101，即 西雅图，美西
+domain=2时，固定使用 B10 0AB，代表伯明翰
+domain=3时，固定使用 20095，代表汉堡
+domain=4时，有效值为 13001，代表马赛
+domain=6时，有效值为 V5K 0A1，代表维多利亚
+domain=7时，有效值为 550-0004，代表大阪
+domain=8时，有效值为 08001 巴塞罗那
+domain=9时，有效值为 16100 热那亚
+若update ！= 0，值无效
+ page : Integer
+若update=0（其他时此值无效），监控关键词搜索结果的前N页，有效值为1，3，
+5，7。
+分别标志首页，前3页，前5页，前7页
+若update ！= 0，值无效
+ period : String
+若update=0（其他时此值无效），设置关键词监控频率
+表达式：<每周哪几日>|<每天哪些时段>|<监控频率>
+<每周哪几日>（多选时使用逗号分割）有效值：1,2,3,4,5,6,7
+<每天哪些时段>（多选时使用逗号分割）有效值：
+1: 表示任务时间平分到1、2、3、4点，
+2: 表示任务时间平分到5、6、7、8点，
+3: 表示任务时间平分到9、10、11、12点
+4: 表示任务时间平分到13、14、15、16点
+5: 表示任务时间平分到17、18、19、20点
+6: 表示任务时间平分到21、22、23、0点
+注：北京时区对应的时间，系统会将关键词平均分配到指定时间段内的每个小时
+<监控频率>有效值：
+1：时段内（随意一个时间刻度）一次
+11：时段内第一个时间刻度执行 （例如，5-8点时段，第一个时间刻度为5点）
+12：时段内第二个时间刻度执行 （例如，5-8点时段，第二个时间刻度为6点）
+13：时段内第三个时间刻度执行 （例如，5-8点时段，第三个时间刻度为7点）
+14：时段内第四个时间刻度执行 （例如，5-8点时段，第四个时间刻度为8点）
+（注：当设定11-14时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+2：时段内每小时1次
+3：时段内每2小时1次（随机双数时刻或单数）
+31：时段内单数小时执行，共2次（例如，5-8点时段，第5,7两个时刻执行）
+32：时段内双数小时执行，共2次（例如，5-8点时段，第6,8两个时刻执行）
+（注：当设定31-32时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+例如：1,2,3,4,5|2,3|1
+表示每周周一，周二，周三，周四，周五，每天5点-8点时段和9点-12点时段，每
+个时段执行一次。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ：String
+所修改任务的 taskId
+如果修改成功时，taskid为大于0的值；当因为注册时段内任务过多而修改失败
+时，taskid显示为-999 （原任务修改失败）
+29. 查询关键词监控任务执行批次（KeywordBatchScheduleList）
+查询关键词监控全部执行任务批次
+请求方式：Post
+每次调用：0 request
+URL：/KeywordBatchScheduleList?domain=<1: us | 2: gb | 3:
+de | 4: fr | 6: ca | 7: jp>
+请求参数
+ TaskId：Integer
+关键词监控任务Id
+ queryDate ： String
+选填，格式：yyyy-MM-dd，默认查询全部执行任务批次
+如果指定日期，用于查询指定日期到最近的数据。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： String Array
+任务批次
+值说明：
+["<执行任务时间 （格式：yyyyMMddHHmm）>:<批次任务Id>:<批次任务状
+态:0:执行中，1:执行完成>:<批次任务完成时间>",....]
+30. 提取关键词监控产品列表详细数据（KeywordBatchScheduleDetail）
+提取某次关键词监控搜索结果全部ASIN列表数据
+请求方式：Post
+每次调用：0 request
+URL：/KeywordBatchScheduleDetail?domain=<1: us | 2: gb | 3:
+de | 4: fr | 6: ca | 7: jp>
+请求参数
+ ScheduelId：String
+批次任务Id，通过KeywordBatchScheduleList接口获得
+支持多任务Id查询，多任务Id之间使用逗号分割，最多支持20个任务Id查询。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： String Array
+本次任务搜索结果全部ASIN列表数据
+值说明：
+[
+"<asin>,<主图链接>,<产品标题>,<曝光类型 (0：自然曝光，1：广告曝光 )>,
+<标志（AC，BS，Deal，Lowest）>,<曝光排名 （第x页，第y/z位）>,<曝光位
+置（品牌广告，视频广告，....）>,<coupon>,<星级>,<评价数量>,<销售价
+（当地货币最小单位。例如 $15.99，记作1599）>,<跟卖数量>,
+<sellerName>,<sellerId>,<shipsFrom>,<配送费>,<品牌>,<变体数>,
+<prime标志>,<scheduleId>",
+...
+]
+注：
+跟卖数量：一些搜索结果页并未展示此数据，当未读取到数据时均展示为0。
+SellerName、SellerId、shipsFrom：于搜索结果页并未暂时此数据，此数据
+来至Sorftime库。
+品牌：如果搜索结果页未暂时此数据，此数据来至Sorftime库；如果展示了，则
+来至搜索页
+变体数：由于搜索结果页并未暂时此数据，此数据来至Sorftime库。
+31. 榜单监控任务注册（BestSellerListSubscription）
+注册榜单监控任务。所注册的类目需先为关注类目
+监控频率：每天1次。监控top100每天消耗10积分，top200每天消耗20积分，监
+控top300每天消耗30积分，top400每天消耗40积分
+注：监控结果最多保存30日
+请求方式：Post
+每次调用：0 request，改为消耗积分
+URL：/BestSellerListSubscription?domain=<1: us | 2: gb | 3:
+de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au>
+请求参数
+ nodeid：String
+需要监控的nodeid
+当重复设置已监控类目相同榜单（BestSellerListType）时，为修改任务
+ Range ： Integer
+最多监控的榜单数据范围。
+有些类目在对应榜单并没有足量的数据。扣取积分时候按任务设置扣取，而非按实
+际数量扣取。
+1：监控top100
+ Period : Integer
+监控频率
+100：每天1次，（北京时间）每天0点
+106：每天1次，（北京时间）每天6点
+112：每天1次，（北京时间）每天12点
+118：每天1次，（北京时间）每天18点
+200：每天12次，双数小时执行（0,2,4,6,8,10,12,14,16,18,20,22）
+201：每天12次，单数小时执行（1,3,5,7,9,11,13,15,17,19,21,23）
+ BestSellerListType ： Integer
+榜单类型
+1： New Realeases
+3：Most Wished For
+4： Gift Ideas
+5：Best Sellers
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： String
+taskId：Integer
+32. 榜单监控任务查询（ BestSellerListTask）
+查看全部榜单监控任务。
+请求方式：Post
+每次调用：0 request
+URL：/BestSellerListTask?domain=<1: us | 2: gb | 3: de | 4:
+fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae
+| 12:au>
+请求参数
+ pageIndex ： Integer
+查询第几页数据，默认为第1页
+ pageSize：Interger
+每页多少条数据，最小20，默认20，最大200。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： String Array
+二位数组
+值说明：[["<nodeid>","<BestSellerListType>","<taskId>","
+<Period>","<status>","<监控开始日期>","<监控结束时间>"],......]
+当任务被删除时才有监控结束时间，否则结束时间显示为空；如果相同榜单被多次
+创建/删除任务，那么会有多条记录。
+status=1：正常；2：已停止；9：榜单不存在
+33. 榜单监控任务删除（BestSellerListDelete）
+删除已注册的榜单监控任务
+请求方式：Post
+每次调用：0 request
+URL：/BestSellerListDelete?domain=<1: us | 2: gb | 3: de |
+4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au>
+请求参数
+ nodeid：String
+需要监控的nodeid
+当重复设置已监控类目相同榜单类似（BestSellerListType）时，为修改任务
+ BestSellerListType ： Integer
+榜单类型
+1： New Realeases
+3：Most Wished For
+4： Gift Ideas
+5：Best Sellers
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： String
+如果删除成功，返回原始 taskId；否则返回 -1
+34. 榜单监控数据提取（BestSellerListDataCollect）
+查询已监控榜单的数据
+请求方式：Post
+每次调用：0 request
+URL：/BestSellerListDataCollect?domain=<1: us | 2: gb | 3:
+de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au>
+请求参数
+ nodeid：String
+需要监控的nodeid
+当重复设置已监控类目相同榜单类似（BestSellerListType）时，为修改任务
+ BestSellerListType ： Integer
+榜单类型
+1： New Realeases
+3：Most Wished For
+4： Gift Ideas
+5：Best Sellers
+ queryDate：String
+提取监控榜单日期，最早支持从监控日期开始（最长支持2年）
+格式：yyyy-MM-dd HH
+当不输入查询小数数时，默认返回当日的第一批数据；
+当输入查询小时数时，根据当前任务设置的频率：
+当任务为每天1次时，则返回自查询小时数开始6个小时内的第一批数据；
+当任务为每天12次时，则返回自查询小时数开始2个小时内的第一批数据；
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： Object Array
+详见数据结构，BestSellerListItemObject
+35. 跟卖&库存监控（ProductSellerSubscription）
+定时监控asin的跟卖卖家（最多前30个卖家）
+每个asin，每次监控消耗2积分（日本站消耗4积分）
+注：监控结果最多保存30日
+请求方式：Post
+每次调用：0 request
+URL：/ProductSellerSubscription?domain=<1: us | 2: gb | 3:
+de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au>
+请求参数
+ asin: String
+ checkstock : Integer
+0:不检查库存 （默认），1：检查库存
+当启用检查库存时，每个asin每次监控额外消耗1积分（日本站时，额外消耗2积
+分）.
+ period : String
+设置监控频率
+表达式：<每周哪几日>|<每天哪些时段>|<监控频率>
+<每周哪几日>（多选时使用逗号分割）有效值：1,2,3,4,5,6,7
+<每天哪些时段>（多选时使用逗号分割）有效值：
+1: 表示任务时间平分到1、2、3、4点，
+2: 表示任务时间平分到5、6、7、8点，
+3: 表示任务时间平分到9、10、11、12点
+4: 表示任务时间平分到13、14、15、16点
+5: 表示任务时间平分到17、18、19、20点
+6: 表示任务时间平分到21、22、23、0点
+注：北京时区对应的时间，系统会将任务平均分配到指定时间段内的每个小时
+<监控频率>有效值：
+1：时段内（随意一个时间刻度）一次
+11：时段内第一个时间刻度执行 （例如，5-8点时段，第一个时间刻度为5点）
+12：时段内第二个时间刻度执行 （例如，5-8点时段，第二个时间刻度为6点）
+13：时段内第三个时间刻度执行 （例如，5-8点时段，第三个时间刻度为7点）
+14：时段内第四个时间刻度执行 （例如，5-8点时段，第四个时间刻度为8点）
+（注：当设定11-14时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+2：时段内每小时1次
+3：时段内每2小时1次（随机双数时刻或单数）
+31：时段内单数小时执行，共2次（例如，5-8点时段，第5,7两个时刻执行）
+32：时段内双数小时执行，共2次（例如，5-8点时段，第6,8两个时刻执行）
+（注：当设定31-32时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+例如：1,2,3,4,5|2,3|1
+表示每周周一，周二，周三，周四，周五，每天5点-8点时段和9点-12点时段，每
+个时段执行一次。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ：String Array
+值说明
+["<asin>:<taskId>",....]
+36. 跟卖&库存监控任务查询（ProductSellerTasks）
+查看全部有效的（非删除的）跟卖监控任务。
+请求方式：Post
+每次调用：0 request
+URL：/ProductSellerTasks?domain=<1: us | 2: gb | 3: de | 4:
+fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae
+| 12:au>
+请求参数
+ pageIndex ： Integer
+查询第几页数据，默认为第1页
+ pageSize：Interger
+每页多少条数据，最小20，默认20，最大200。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： Object Array
+详见数据结构，ProductSellerTaskObject
+37. 修改跟卖&库存监控任务（ProductSellerTaskUpdate）
+修改跟卖监控任务。
+请求方式：Post
+每次调用：0 request
+URL：/ProductSellerTaskUpdate?domain=<1: us | 2: gb | 3: de
+| 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11:
+ae | 12:au>
+请求参数
+ taskId：Integer
+关键词监控任务Id
+ update ： Integer
+0：修改任务设置，1：暂停任务 2：启动任务，9：删除任务
+ period : String
+设置监控频率
+表达式：<每周哪几日>|<每天哪些时段>|<监控频率>
+<每周哪几日>（多选时使用逗号分割）有效值：1,2,3,4,5,6,7
+<每天哪些时段>（多选时使用逗号分割）有效值：
+1: 表示任务时间平分到1、2、3、4点，
+2: 表示任务时间平分到5、6、7、8点，
+3: 表示任务时间平分到9、10、11、12点
+4: 表示任务时间平分到13、14、15、16点
+5: 表示任务时间平分到17、18、19、20点
+6: 表示任务时间平分到21、22、23、0点
+注：北京时区对应的时间，系统会将任务平均分配到指定时间段内的每个小时
+<监控频率>有效值：
+1：时段内（随意一个时间刻度）一次
+11：时段内第一个时间刻度执行 （例如，5-8点时段，第一个时间刻度为5点）
+12：时段内第二个时间刻度执行 （例如，5-8点时段，第二个时间刻度为6点）
+13：时段内第三个时间刻度执行 （例如，5-8点时段，第三个时间刻度为7点）
+14：时段内第四个时间刻度执行 （例如，5-8点时段，第四个时间刻度为8点）
+（注：当设定11-14时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+2：时段内每小时1次
+3：时段内每2小时1次（随机双数时刻或单数）
+31：时段内单数小时执行，共2次（例如，5-8点时段，第5,7两个时刻执行）
+32：时段内双数小时执行，共2次（例如，5-8点时段，第6,8两个时刻执行）
+（注：当设定31-32时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+例如：1,2,3,4,5|2,3|1
+表示每周周一，周二，周三，周四，周五，每天5点-8点时段和9点-12点时段，每
+个时段执行一次。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data ：String
+所修改任务的 taskId
+如果修改成功时，taskid为大于0的值；当因为注册时段内任务过多而修改失败
+时，taskid显示为-999 （原任务修改失败）
+38. 查询跟卖&库存监控任务执行批次
+（ProductSellerTaskScheduleList）
+查询跟卖监控全部执行任务批次
+请求方式：Post
+每次调用：0 request
+URL：/ProductSellerTaskScheduleList?domain=<1: us | 2: gb |
+3: de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx
+| 11: ae | 12:au>
+请求参数
+ TaskId：Integer
+关键词监控任务Id
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： String Array
+任务批次
+值说明：
+[
+"<执行任务时间 （格式：yyyyMMddHHmm）>:<批次任务Id>",
+"<执行任务时间（格式：yyyyMMddHHmm）>:<批次任务Id>",....
+]
+39. 提取跟卖&库存监控执行结果详细数据
+（ProductSellerTaskScheduleDetail）
+提取某次跟卖监控结果数据
+请求方式：Post
+每次调用：0 request
+URL：/ProductSellerTaskScheduleDetail?domain=<1: us |
+2: gb | 3: de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it
+| 10: mx | 11: ae | 12:au>
+请求参数
+ ScheduelId：String
+批次任务Id
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data： String Array
+本次任务搜索结果全部ASIN列表数据
+值说明：
+[
+"<采集时间>,<asin>,<卖家名称>,<卖家ID>,<是否获得buybox，1：是，0：否>,
+<发货方式>,<类型（New、Used.....）>,<售价（当地货币，例$19.99， 记做
+1999）>,<库存，当启用checkstock时，返回库存，否则返回-1>,<是否限购（1：
+限购，0：不限）>",
+....
+]
+40. ASIN更新订阅（ASINSubscription）
+订阅ASIN更新，我们会保证在设定时间范围内，所订阅的ASIN至少更新一次。
+根据更新评率扣除积分，每成功更新1个ASIN 1积分（日本站为2积分）。单次创
+建不超过100个（多asin请发起多个请求）。
+回收数据请通过 ASINSubscriptionRequest 接口
+请求方式：Post
+每次调用：0 request，改为消耗积分
+URL：/ASINSubscription?domain=<1: us | 2: gb | 3: de | 4: fr |
+5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au >
+请求参数
+ asins ： String Array
+值说明：<+|->,<asin>,<时间范围>
+第一个参数<+|->： +表示添加订阅asin，-表示删除订阅asin
+第二个参数<asin>：表示添加/删除订阅的asin
+第三个参数<时间范围>：有效值为1，表示每天更新。目前仅支持每天1次方式。
+示例："+,B081P4LF73,1|+,B083V76MM7,1|...."
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String Array
+已订阅的ASIN清单
+41. ASIN订阅查询（ASINSubscriptionQuery）
+已订阅的ASIN 清单。
+请求方式：Post
+每次调用：0 request
+URL：/ASINSubscriptionQuery?domain=<1: us | 2: gb | 3: de |
+4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au >
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String Array
+已订阅的ASIN清单
+42. ASIN订阅结果数据查询（ASINSubscriptionCollection）
+回收订阅的ASIN 产品数据（仅能回收当前有效的订阅ASIN数据）。
+请求方式：Post
+每次调用：0 request
+URL：/ASINSubscriptionCollection?domain=<1: us | 2: gb | 3:
+de | 4: fr | 5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx |
+11: ae | 12:au >
+请求参数
+ asins ： String
+已订阅的asin数据，单次查询最多100个asin
+值说明："<asin1>","<asin2>",...
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String
+json array格式，见数据结构：AsinSummaryObject
+其他
+43. 本月剩余积分查询（CoinQuery）
+查询本月剩余积分，积分于每月10号凌晨发放（上月未用完的自动扣除）。
+注：积分余额不区分站点和平台。通过各站点各平台查询获得的积分均为总积分余
+额。
+请求方式：Post
+每次调用：1 request
+URL：/CoinQuery?domain=<1: us | 2: gb | 3: de | 4: fr | 5:
+in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae | 12:au >
+请求参数
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: Object
+响应信息，见数据结构，CoinQueryObject
+44. 积分使用明细查询（CoinStream）
+积分在查询站点的使用明细查询
+请求方式：Post
+每次调用：1 request
+URL：/CoinStream?domain=<1: us | 2: gb | 3: de | 4: fr | 5:
+in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae | 12:au >
+请求参数
+ Platform ： Integer
+查询在指定平台使用的积分明细。
+0：亚马逊（默认），1：Shopee，2：Walmart
+ QueryDate：String Array
+长度为2个数组，第0个值的查询起始时间，第1个值为查询结束时间。格式为
+yyyy-MM-dd
+查询时间周期，默认为近6个月，最长不超过近12个月
+ PageIndex ： Integer
+查询第几页数据，默认为第1页
+ PageSize：Interger
+每页多少条数据，最小20，默认20，最大200。
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: String Array
+积分消耗明细
+例：
+[6,202010010300,-1000,190000,6,202010010400,-1010,180000,6,202010010530,
+-1050,170000,.....] 
+<数组下标> % 4 = 0 为任务类型，1：关键词监控；3：跟卖&库存监控；9：asin
+实时采集；10：评论实时采集；12：榜单监控；15：asin订阅更新；27：图搜相似产
+品
+<数组下标> % 4 = 1 为日期，例如：20201001 ，格式yyyyMMddHHmm
+<数组下标> % 4 = 2 为消耗积分
+<数组下标> % 4 = 3 为剩余积分
+45. 月度Request使用明细查询（RequestStream）
+查询剩余request数，及其购买request包使用情况。
+注：request查询不区分站点。通过各站点查询获得的均为总request余额。
+请求方式：Post
+每次调用：1 request
+URL：/RequestStream?domain=<1: us | 2: gb | 3: de | 4: fr |
+5: in | 6: ca | 7: jp | 8: es | 9: it | 10: mx | 11: ae |
+12:au >
+请求参数
+ Platform ： Integer
+查询在指定平台使用的积分明细。
+0：亚马逊（默认），1：Shopee，2：Walmart
+返回结果
+ requestLeft : Integer
+当月剩余请求数
+ requestConsumed : Integer
+本次请求消耗请求数
+ requestCount : Integer
+本分钟内请求计数
+ code ： Integer
+响应代码，见数据结构，ResponseObject
+ message ： String
+响应信息，见数据结构，ResponseObject
+ data: Object
+request使用明细。见数据结构，RequestStreamObject
+数据结构
+CategoryTreeObject
+ id：Integer
+类目Id
+ ParentId：Integer
+父级类目id，为0表示第一级
+ nodeid：String
+类目nodeid
+ Name：String
+类目名称
+ CNName：String
+类目中文名称
+ URL：String
+类目URL地址
+CategoryObject
+ products ：ProductSummeryObject Array
+类目best seller榜单产品列表
+ProductListObject
+ page ： Integer
+当前页码
+ pageCount：Integer
+共有多少页
+ products ：ProductSummeryObject Array
+产品列表
+ProductSummeryObject
+ title : String
+产品名称
+ photo : String Array
+此产品的主图，URL格式。
+ EBCPhoto ： String Array
+此产品的A+中的图片
+ StoreName：String
+店铺名称
+ listingSalesVolumeOfDaily：Integer
+listing日销量（不区分子体）。当值为-1时表示销量无法预估，原因可能是缺少
+所属大类，或大类变为非常规大类（如Our Brands、Amazon Renewed）
+例：1000
+ listingSalesOfDaily： Integer
+listing日销售额。当值为-1时表示销额无法预估，原因可能是缺少所属大类，或
+大类变为非常规大类（如Our Brands、Amazon Renewed）
+例：500000，单位为当地货币最小单位
+ listingSalesVolumeOfMonth : Integer
+listing预估月销量（不区分子体）。评估产品销量时建议使用这个值
+当值为-1时表示销量无法预估，原因可能是缺少所属大类，或大类变为非常规大类
+（如Our Brands、Amazon Renewed）
+例：1000
+ listingSalesOfMonth ：Integer
+listing预估月销售额。当值为-1时表示销额无法预估，原因可能是缺少所属大
+类，或大类变为非常规大类（如Our Brands、Amazon Renewed）
+例：500000，单位为当地货币最小单位
+ asin ：String
+此产品的ASIN
+ parentAsin ： String
+父ASIN。
+如果产品有子体时，表示此产品的父级ASIN；如果没有子体时，此字段为null。
+当Listing有多子体时，每个子体的ParentASIN相同，而ASIN不同。
+ price : Integer
+ASIN的销售价（未扣除coupon）
+例：1999，单位为当地货币最小单位
+ listPrice : Integer
+ASIN的原价（划线价）
+例：2399，单位为当地货币最小单位、
+ coupon ：Integer
+在我们采集此产品时，产品一次性购买（one-time purchase）应用的coupon政
+策
+当值大于0时候，代表具体的抵扣金额，单位为当地货币最小单位（例如美国站，单
+位为美分），例如：500，表示coupon抵扣 5美元
+当值小于0时候，代表抵扣百分比，例如-10，表示10%折扣
+ salesPrice ： Integer
+在我们采集此产品时的实际销售价（扣除coupon后的价格）
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999
+ DealType: String
+ 产品促销标签，有Deal我们会记录Deal标签
+ 例如：Limited time deal
+ brand ：String
+当前产品的品牌
+ buyboxSeller ： String
+在我们采集此产品时，获得黄金购物车（buybox）的卖家
+ buyboxSellerId ： String
+在我们采集此产品时，获得黄金购物车（buybox）的卖家Id
+ buyboxSellerAddress ： String
+在我们采集此产品时，获得黄金购物车（buybox）卖家的国籍/地区。
+当卖家为亚马逊时，此字段为null
+国家二字码。例如 中国：CN，美国：US，英国：GB
+ isFBA ：Boolean
+在我们采集此产品时，获得黄金购物车（buybox）卖家的物流方式是否为FBA
+ fbaFee ：Integer
+如果此产品的物流方式为FBA，此产品的FBA费用。
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999
+ fbaDetetail ： String Array
+如果此产品的物流方式为FBA，此产品的FBA费用组成明细。
+单位为当地货币最小单位
+美国站例：["475","1-9:5","10-12:15"]。表示：配送费$ 4.75，1-9月仓
+储费$0.05，10-12月仓储费$0.15。
+第一个数值为配送费，后续数值冒号':'之前为月份、之后为对应月份的仓储费
+-1：不予计算
+ shipCost ： Integer
+当为FBM时，显示配送费 （当没页面没显示配送费时显示为0）
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999 
+ platformFee : Integer
+平台佣金
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999
+ profit : Integer
+产品毛利， 实际价格 - FBA费用 - 平台佣金。如果此产品非FBA物流方式，FBA
+费用记做0
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999
+ profitRate： Number
+毛利率，（毛利 / 实际价格） *100
+例：25.83 表示利润率为25.83%
+ onlineDate ： String
+此产品的上架日期，格式：yyyy-MM-dd
+ onlineDays ：Integer
+此产品的上架日期距今天的天数
+ ratingsCount ： Integer
+此产品的ratings数量
+ category : String Array
+此产品的所属大类
+值为长度为2的字符串数字，第一个值为大类名称，第二个值为大类的nodeid
+例如：['Clothing, Shoes & Jewelry','fashion']
+ bsrCategory: String Array
+此产品的所属细分类目
+值为二维数组[["类目名称","NodeId","细分类目排名"],......]
+例如：[["Baby","baby-products","1"],....]
+ rank : Integer
+在我们采集此产品时，此产品的大类排名
+例如：1467
+ ratings ： Number
+此产品的评分星级
+例如：4.8
+ variationASINCount：Integer
+ 子体数量
+ sellerCount ：Integer
+此产品有多少个卖家
+ hasVideo ： Boolean
+此产品是否有主图视频
+ APlus： Boolean
+此产品是否有做A+页面
+ hasBrandStore ： Boolean
+此产品是否有做品牌旗舰店
+ size ： String Array
+此产品的外包装尺寸 ["最长边","第二长边","最短边"]
+例如：["11.10","7.91","2.56"]
+ weight ： Integer
+此产品的重量，单位：g
+例如：1500
+ refreshAsin ： String
+当访问ASIN详情时，亚马逊自动调整到另一个ASIN，则回记录跳转目标ASIN为当
+前ASIN的刷新ASIN。当前的产品数据均为刷新ASIN的数据。
+当未出现刷新状态，此数据为空
+ ExtraSavings : String Array
+记录产品关联促销的内容，以及内容中的关联ASIN
+例如：[ {"Asin": "B0BZS461JG", "Text": "Save 5% on
+Waterdrop WD-G3-CF Filter when you purchase 1 or more
+Qualifying items offered by WaterdropDirect. Select “Add both
+to Cart“ to automatically apply promo code WDG32CFF. Here‘s
+how (restrictions apply)" } ,....]
+ProductObject
+ title : String 
+产品名称
+ photo : String Array 
+此产品的主图，URL格式，只提供主图；
+ EBCPhoto ： String Array
+此产品的A+中的图片
+ StoreName：String
+店铺名称
+ Description ： String
+五点描述
+ ProductBadge : String Array
+产品的标志
+例如：["Amazon Choice", "Best Seller", "New Release"]
+ updateDate ：String
+当前ASIN更新时间，如需要更新数据，可以通过ProductRealtimeRequest实时更
+新。
+ listingSalesVolumeOfDailyTrend ： Integer Array
+最长自2021年1月1日起listing日销量历史趋势，通用类目此字段结果为 null 
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。
+当值为-1时表示销量无法预估，原因可能是缺少所属大类，或大类变为非常规大类（如
+Our Brands、Amazon Renewed）
+例：[20210101,1000,20210102,1010,20210103,1050,.....] 
+<数组下标> % 2 = 0 为日期，例如：20210101
+<数组下标> % 2 = 1 为预计日销量，例如：1000，当值为'-1'时表示该日无预计销 
+量。 
+ listingSalesOfDailyTrend： Integer Array
+最长自2020年10月1日起listing日销售额历史趋势 
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。
+当值为-1时表示销额无法预估，原因可能是缺少所属大类，或大类变为非常规大类（如
+Our Brands、Amazon Renewed）
+例：[20201001,500000,20201002,600000,20201003,700000,.....] 
+<数组下标> % 2 = 0 为日期，例如：20201001 
+<数组下标> % 2 = 1 为预计日销售额，单位为当地货币最小单位（例如美国站，单位
+为美分），例如： 600000 
+当值为'-1'时表示该日无预计销售额。 
+ listingSalesVolumeOfMonthTrend : Integer Array
+最长自2020年10月起Listing月销量历史趋势 
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。 
+当值为-1时表示销量无法预估，原因可能是缺少所属大类，或大类变为非常规大类（如
+Our Brands、Amazon Renewed）
+例：[202010,1000,202011,1010,202012,1050,.....] 
+<数组下标> % 2 = 0 为日期，例如：20201001 
+<数组下标> % 2 = 1 为预计月销量，例如：1000，当值为'-1'时表示该月无预计销 
+量。 
+ listingSalesOfMonthTrend：Integer Array
+最长自2020年10月1日起Listing月销售额历史趋势 
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。
+当值为-1时表示销额无法预估，原因可能是缺少所属大类，或大类变为非常规大类（如
+Our Brands、Amazon Renewed）
+例：[202010,500000,202011,600000,202012,700000,.....] 
+<数组下标> % 2 = 0 为日期，例如：20201001 
+<数组下标> % 2 = 1 为预计Listing月销售额，单位为当地货币最小单位（例如美国
+站，单位为美分），例如：600000 
+当值为'-1'时表示该日无预计销售额。 
+ RankTrend : String Array
+此产品大类变化历史记录
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。
+值说明["日期","大类NodeId:大类排名","日期","大类NodeId:大类排名",....]
+ BsrRankTrend : String
+产品所属小类排名历史记录
+JSON格式，示例：
+[
+{
+"nodeid":"3743561", //所属小类
+"rank":["20250101","1","20250102","10",......] //格式："日期","排名","日期","排
+名",......
+},
+{
+"nodeid":"510114",
+"rank":["20250301","1","20250302","10",......]
+},
+......
+]
+ DealType: String
+ 产品促销标签，有Deal我们会记录Deal标签
+例如：Limited time deal
+ DealTrend: String Array
+Deal状态历史记录，基于Asin更新频率，当我们更新Asin数据时，如果有Deal我们会
+记录Deal状态。如果希望更准确Deal趋势数据，请通过AsinSubscription接口订阅更
+新。
+例：[20240501,1,20240502,1,20250503,0,.....] 
+<数组下标> % 2 = 0 为日期，例如：20201001 
+<数组下标> % 2 = 1 为Deal状态标志，1：有Deal，0：无Deal
+ OffSale ： Integer
+当前产品是否为不可售
+值=1表示不可售，否则为0
+ asin ：String
+此产品的ASIN 
+ parentAsin ： String
+父ASIN。 
+如果产品有子体时，表示此产品的父级ASIN；如果没有子体时，此字段为null。 
+当Listing有多子体时，每个子体的ParentASIN相同，而ASIN不同。 
+ variationASIN ： String Array
+子体ASIN列表。 
+如果产品有子体：此产品的子体ASIN列表；如果产品没有子体，此字段为null 
+ attribute : String
+产品的属性，如果产品有子体，表示子体的属性。如果没有，此数据为null
+值说明：[["<子体asin>","Style","1.2 Cu. Ft.-Smart Sensor","Color","Black 
+Stainless Steel"],[...]]
+ variationASINCount：Integer
+ 子体数量
+ priceTrend : Integer Array
+最长自2020年10月1日起ASIN的销售价格历史趋势（未扣除coupon） 
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。
+例：[20201001,1999,20201002,1999,20201003,1899,.....] 
+<数组下标> % 2 = 0 为日期，例如：20201001 
+<数组下标> % 2 = 1 为ASIN销售价格，单位为当地货币最小单位（例如美国站，单位 
+为美分）例如：1999 
+当值为'-1'时表示该日无可用价格。
+ listPriceTrend : Integer Array
+最长自2020年10月1日起ASIN的原价（划线价）历史趋势 
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。
+例：[20201001,1999,20201002,1999,20201003,1899,.....] 
+<数组下标> % 2 = 0 为日期，例如：20201001 
+<数组下标> % 2 = 1 为ASIN原价，单位为当地货币最小单位（例如美国站，单位为美 
+分）例如：1999 
+当值为'-1'时表示该日无可用价格。 
+ couponTrend : Integer Array 
+最长自2024年06月15日起ASIN的coupon历史趋势 
+中东（ae），澳洲（au），沙特（sa），巴西（br）四站最长自2024年4月起，数据密
+度可能较低。
+例：[20240615,1000,20240616,1500,.....] 
+<数组下标> % 2 = 0 为日期，例如：20240615 
+<数组下标> % 2 = 1 coupont，
+- 值大于0时为折扣的金额（单位为当地货币最小单位，例如：1000，在美国站表示折
+扣10美元）；
+- 值小于0时为折扣的百分比（例如：-10，表示折扣10%） ；
+- 值为'-1'时表示该日无coupon。 
+ coupon ：Integer
+在我们采集此产品时，产品一次性购买（one-time purchase）应用的coupon政策 
+当值大于0时候，代表具体的抵扣金额，单位为当地货币最小单位（例如美国站，单位 
+为美分），例如：500，表示coupon抵扣 5美元 
+当值小于0时候，代表抵扣百分比，例如-10，表示10%折扣 
+ salesPrice ： Integer
+在我们采集此产品时的实际销售价（扣除coupon后的价格） 
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999 
+ brand ：String
+当前产品的品牌 
+ buyboxSeller ： String
+在我们采集此产品时，获得黄金购物车（buybox）的卖家 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ buyboxSellerId ： String
+在我们采集此产品时，获得黄金购物车（buybox）的卖家Id 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ buyboxSellerAddress ： String
+在我们采集此产品时，获得黄金购物车（buybox）卖家的国籍/地区。当卖家为亚马逊
+时，此字段为null 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+国家二字码。例如 中国：CN，美国：US，英国：GB 
+ isFBA ：Boolean
+在我们采集此产品时，获得黄金购物车（buybox）卖家的物流方式是否为FBA 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ shipCost ： Integer
+当为FBM时，显示配送费 （当没页面没显示配送费时显示为0）
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999 
+ shipsFrom：String
+发货方名称
+ fbaFee ：Integer
+如果此产品的物流方式为FBA，此产品的FBA费用。 
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ fbaDetetail ： String Array
+如果此产品的无论方式为FBA，此产品的FBA费用组成明细。
+单位为当地货币最小单位
+美国站例：["475","1-9:5","10-12:15"]。表示：配送费$ 4.75，1-9月仓储费
+$0.05，10-12月仓储费$0.15。
+第一个数值为配送费，后续数值冒号':'之前为月份、之后为对应月份的仓储费
+-1：不予计算
+ platformFee : Integer
+平台佣金 
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ profit : Integer
+产品毛利， 实际价格 - FBA费用 - 平台佣金。如果此产品非FBA物流方式，FBA费用记 
+做0 
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ profitRate： Number
+毛利率，（毛利 / 实际价格） *100 
+例：25.83 表示利润率为25.83% 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ onlineDate ： String
+此产品的上架日期，格式：yyyy-MM-dd 
+ onlineDays ：Integer
+此产品的上架日期距今天的天数 
+ ratings : Number
+此产品的星级
+ ratingsCount ： Integer
+此产品的ratings数量 
+ oneStartRatings ：Number
+亚马逊为此产品统计的全部ratings中，1星ratings占比 
+例：80.57 表示利润率为80.57% 
+ twoStartRatings：Number
+亚马逊为此产品统计的全部ratings中，2星ratings占比 
+例：80.57 表示利润率为80.57% 
+ threeStartRatings：Number
+亚马逊为此产品统计的全部ratings中，3星ratings占比 
+例：80.57 表示利润率为80.57% 
+ fourStartRatings：Number
+亚马逊为此产品统计的全部ratings中，4星ratings占比 
+例：80.57 表示利润率为80.57% 
+ fiveStartRatings：Number
+亚马逊为此产品统计的全部ratings中，5星ratings占比 
+例：80.57 表示利润率为80.57% 
+ category : String Array
+此产品的所属大类 
+值为长度为2的字符串数字，第一个值为大类名称，第二个值为大类的nodeid 
+例如：['Clothing, Shoes & Jewelry','fashion'] 
+ bsrCategory: String Array
+此产品的所属细分类目
+值为二维数组[["类目名称","NodeId","细分类目排名","最后一次上榜时
+间"],......]
+例如：[["Baby","baby-products","1","20221001"],....]
+ rank : Integer
+此产品的大类排名 
+例如：1467
+ sellerCount ：Integer
+此产品有多少个卖家 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ hasVideo ： Boolean
+此产品是否有主图视频 
+ APlus： Boolean
+此产品是否有做A+页面 
+ hasBrandStore ： Boolean
+此产品是否有做品牌旗舰店 
+ size ： String Array
+此产品的外包装尺寸 ["最长边","第二长边","最短边"] 
+例如：["11.10","7.91","2.56"] 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ weight ： Integer
+此产品的重量，单位：g 
+例如：1500 
+如果ASIN近7天未进入过Best Seller榜单，则不提供此数据（对于多子体情况，如果某
+些子体曾经没有出现在Best Seller榜单中时，此数据不显示）
+ refreshAsin ： String
+当访问ASIN详情时，亚马逊自动调整到另一个ASIN，则回记录跳转目标ASIN为当
+前ASIN的刷新ASIN。当前的产品数据均为刷新ASIN的数据。
+当未出现刷新状态，此数据为空
+ ExtraSavings : String Array
+记录产品关联促销的内容，以及内容中的关联ASIN
+例如：[ {"Asin": "B0BZS461JG", "Text": "Save 5% on Waterdrop
+WD-G3-CF Filter when you purchase 1 or more Qualifying items
+offered by WaterdropDirect. Select “Add both to Cart“ to
+automatically apply promo code WDG32CFF. Here‘s how
+(restrictions apply)" } ,....]
+ feature ：String Array
+亚马逊为此产品统计的具备哪些特性，以及每个特性的星级 
+例如：["<FromAsin>","Easy to clean":"4.6","Easy to use":"4.4","Value for 
+money":"4.4","Noise 
+level":"4.3","For small spaces":"4.2","Alexa integration":"3.4"] 
+注：第一个元素为更新来源ASIN （当存在多子体关系时，为Listing下我们最新更新的
+ASIN；当无多子体关系时，ASIN为当前请求ASIN本身）
+ productInfo：String Array
+产品Listing详情页中部Product Infomation中的产品描述
+例如：
+["Manufacturer","Amazon Basics","Country of Origin","China","Item model numb
+er","1702"]
+ property：String Array
+此产品的属性列表，包含变体的可选属性以及五点描述上方的属性说明 。
+例如：["<FromAsin>","Style":"1.2 Cu. Ft.-Smart Sensor","Model Name":"ML2- 
+EM12EA(BS)","Brand":"Toshiba","Color":"Black Stainless 
+Steel","Material":"Metal","Human Interface Input":"Buttons, Numeric 
+Keypad","Installation Type":"Countertop","Capacity":"1.2 Cubic Feet","Item 
+Dimensions LxWxH":"17.1 x 20.5 x 12.8 inches","Item Weight":"33.5 
+Pounds","Lock Type":"Child Lock Available"]
+注：第一个元素为更新来源ASIN （当存在多子体关系时，为Listing下我们最新更新的
+ASIN；当无多子体关系时，ASIN为当前请求ASIN本身）
+AsinSummaryObject
+ title : String
+产品名称
+ photo : String Array
+此产品的主图，URL格式。
+ EBCPhoto ： String Array
+此产品的A+中的图片
+ StoreName：String
+店铺名称
+ ListingSaleCount ： Integer
+Listing月销量
+ ListingSaleCountOfDaily ： String
+估算Listing日销量。Json格式，数据格式：["yyyy-MM-dd","<估算Listing
+日销量>"]
+ AsinSalesCount：Integer
+如果有公布ASIN月销量，则显示页面公布的月销量
+ asin ：String
+此产品的ASIN
+ parentAsin ： String
+父ASIN。
+如果产品有子体时，表示此产品的父级ASIN；如果没有子体时，此字段为null。
+当Listing有多子体时，每个子体的ParentASIN相同，而ASIN不同。
+ price : Integer
+ASIN的销售价（未扣除coupon）
+例：1999，单位为当地货币最小单位
+ listPrice : Integer
+ASIN的原价（划线价）
+例：2399，单位为当地货币最小单位、
+ coupon ：Integer
+在我们采集此产品时，产品一次性购买（one-time purchase）应用的coupon政
+策
+当值大于0时候，代表具体的抵扣金额，单位为当地货币最小单位（例如美国站，单
+位为美分），例如：500，表示coupon抵扣 5美元
+当值小于0时候，代表抵扣百分比，例如-10，表示10%折扣
+ salesPrice ： Integer
+在我们采集此产品时的实际销售价（扣除coupon后的价格）
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999
+ brand ：String
+当前产品的品牌
+ description： String
+产品五点描述
+ buyboxSeller ： String
+在我们采集此产品时，获得黄金购物车（buybox）的卖家
+ buyboxSellerId ： String
+在我们采集此产品时，获得黄金购物车（buybox）的卖家Id
+ isFBA ：Boolean
+在我们采集此产品时，获得黄金购物车（buybox）卖家的物流方式是否为FBA
+ shipCost ： Integer
+当为FBM时，显示配送费 （当没页面没显示配送费时显示为0）
+单位为当地货币最小单位（例如美国站，单位为美分）例如：1999 
+ onlineDate ： String
+此产品的上架日期，格式：yyyy-MM-dd
+ onlineDays ：Integer
+此产品的上架日期距今天的天数
+ ratingsCount ： Integer
+此产品的ratings数量
+ category : String Array
+此产品的所属大类
+值为长度为2的字符串数字，第一个值为大类名称，第二个值为大类的nodeid
+例如：['Clothing, Shoes & Jewelry','fashion']
+ bsrCategory: String Array
+此产品的所属细分类目
+值为二维数组[["类目名称","NodeId","细分类目排名"],......]
+例如：[["Baby","baby-products","1"],....]
+ rank : Integer
+在我们采集此产品时，此产品的大类排名
+例如：1467
+ ratings ： Number
+此产品的评分星级
+例如：4.8
+ variationASINCount：Integer
+ 子体数量
+ sellerCount ：Integer
+此产品有多少个卖家
+ hasVideo ： Boolean
+此产品是否有主图视频
+ APlus： Boolean
+此产品是否有做A+页面
+ hasBrandStore ： Boolean
+此产品是否有做品牌旗舰店
+ size ： String Array
+此产品的外包装尺寸 ["最长边","第二长边","最短边"]
+例如：["11.10","7.91","2.56"]
+ weight ： Integer
+此产品的重量，单位：g
+例如：1500
+ FrequentlyReturned : Boolean
+此产品是否出现高退货率标志
+ ExtraSavings : String Array
+记录产品关联促销的内容，以及内容中的关联ASIN
+例如：[ {"Asin": "B0BZS461JG", "Text": "Save 5% on Waterdrop
+WD-G3-CF Filter when you purchase 1 or more Qualifying items
+offered by WaterdropDirect. Select “Add both to Cart“ to
+automatically apply promo code WDG32CFF. Here‘s how
+(restrictions apply)" } ,....]
+ property：String Array
+此产品的属性列表，包含变体的可选属性以及五点描述上方的属性说明 。
+例如：["Style":"1.2 Cu. Ft.-Smart Sensor","Model Name":"ML2- 
+EM12EA(BS)","Brand":"Toshiba","Color":"Black Stainless 
+Steel","Material":"Metal","Human Interface Input":"Buttons, Numeric 
+Keypad","Installation Type":"Countertop","Capacity":"1.2 Cubic Feet","Item 
+Dimensions LxWxH":"17.1 x 20.5 x 12.8 inches","Item Weight":"33.5 
+Pounds","Lock Type":"Child Lock Available"]
+ BulkDescription : String
+KeywordQueryPatternObject
+ keyword：String
+查询的关键词
+ history：String
+选填，默认查询实时数据（ABA上一个周的周词）。当指定有效值时，查询历史榜
+单数据。
+数据格式:"<queryType>,<date>"
+ queryType： 0 查周词；1：查月词
+ date：格式：yyyy-MM-dd
+ 当查周词时，查询指定日期所在周的数据。例如 2025-04-10查询 2025-
+04-06 ~ 2025-04-12周的数据。最早可查询2024-03-10周数据。
+ 当查月词时，查询指定日期做在月的数据。例如 2025-04-10查询 2025-
+04月的数据。最早可查询2024-04月数据，最新数据为当前日期上个月数
+据。
+ nodeId：String Array
+指定nodeId搜索类目相关关键词，nodeid仅支持细分类目
+ rankCondition：Sting Array
+如需要设定周排名搜索关键词，设置此参数。
+值为长度为2的String数组，第0个值为筛选条件最小值，第1个值为筛选条件最大
+值。
+例如，筛选排名1-5000名的关键词：[1,5000]
+筛选小于排名10000的关键词：[0,10000]
+筛选大于10000的关键词：[10000]
+ searchVolumeCondition：String Array
+如需要设定近30日搜索量搜索关键词，设置此参数。
+值为长度为2的String数组，第0个值为筛选条件最小值，第1个值为筛选条件最大
+值。
+ rankChangeOfWeeklyCondition：String Array
+如需要设定周搜索排名变化搜索关键词，设置此参数。
+值为长度为3的String数组，第0个值为筛选条件最小值，第1个值为筛选条件最大
+值，第三个值为排序方式[1：上升 2：下降]。
+ASINKeywordItemObject
+ ShowType：String
+曝光形式
+ ShowShare：Number
+在此asin的反查关键词中，此词贡献的流量占比
+ PositionType ：String Array
+曝光位置形式
+例：["自然流量","平台推荐"]
+ AdPosition ：String
+广告曝光位
+ AdPositionDate : String
+最近广告曝光时间（格式：yyyy-MM-dd HH:mm），如果无广告曝光，此字段返
+回空。
+ SearchPosition ：String
+自然曝光位
+ searchPositionDate : String
+最近自然曝光时间（格式：yyyy-MM-dd HH:mm），如果无自然曝光，此字段返
+回空。
+ keyword：Object
+数据结构见KeywordSummeryObject
+KeywordSummeryObject
+ keyword：String
+关键词
+ keywordCNName：String
+关键词中文名称
+ Images ： String Array
+某次搜索结果前10个产品图片，仅用以快速识别关键词。
+ ImagesFromAsin : String Array
+某次搜索结果前10个产品图片所来源的ASIN（顺序与Images字段保持一致）。
+ update : String
+当查询周词时，该词最新更新ABA排名的时间。通常为更新的前一周的词。例如：
+更新时间为20250421，更新的是20250413 ~ 20250419的词。
+当查月词时，此值返回空。
+ rank：Integer
+周搜索排名
+ Department : String
+该词与哪些细分相关相关，数据来源亚马逊前台在搜索词时显示的相关类目。JSON
+格式。
+例：["17659096011","289937",....]
+ searchVolume：Integer
+近30天搜索量
+ searchVolumeTrend：String Array
+关键词搜索量趋势
+例：[202201,1000,202202,1010,202203,1050,.....]
+<数组下标> % 2 = 0 为日期，例如：20201001
+<数组下标> % 2 = 1 为预计月搜索量，
+ searchRankTrend : String
+关键词搜索排名趋势
+例：[202201,10,202202,15,202203,20,.....]
+<数组下标> % 2 = 0 为日期，例如：20201001
+<数组下标> % 2 = 1 为搜索排名，
+ ClickOf90D : Integer
+近90日点击量
+暂仅支持美国站，数据来至亚马逊后台。亚马逊大约仅公布90万左右词数据。未公
+布的词词数据显示为 -1.
+ SalesVolumeOf90D : Integer
+近90日购买量
+ wordCount : Integer
+单词数量
+ searchConversionRateD90 : Number
+近90天搜索转化比
+例如：18.44，表示18.44%
+暂仅支持美国站，数据来至亚马逊后台。亚马逊大约仅公布90万左右词数据。未公
+布的词词数据显示为 -1
+ ClickConversionRateD90 : Number
+近90天点击转化比
+例如：18.44，表示18.44%
+暂仅支持美国站，数据来至亚马逊后台。亚马逊大约仅公布90万左右词数据。未公
+布的词词数据显示为 -1.
+ searchConversionRate：Number
+过去360天搜索转化比
+例如：18.44，表示18.44%
+ ProductCount：Integer
+竞品数量，关键词搜索页亚马逊提示的竞品数量
+ rankChangeOfWeekly：Number
+关键词相较上一周排名变化
+例如：20，表示变化20，负数为下降
+ cpc ： Integer
+cpc精准竞价
+例：936，单位为当地货币最小单位
+ cpcRange : String
+cpc精准竞价范围
+值说明：<最小值>,<最大值>
+单位为当地货币最小单位
+ searchVolumeGrowthRateTrend ： Number Array
+关键词近3个月/6个月/12个月搜索量复合增长率。
+例如[22.26,-19.76,17.00] 表示近3个月搜索量复合增长率 22.26%，近6
+个月搜索量复合增长率为-19.86%，近12个月搜索量复合增长率17.00%
+ shareClickRate：Number
+买家在搜索该关键后点击最多的前3个产品获得的点击率占比
+例如：20.00，表示20.00%
+ shareConversionRate：Number
+买家在搜索该关键后点击最多的前3个产品获得的转化率占比（搜索此关键词后在
+前3个产品上获得转化占在所有产品上获得转化的比例）
+例如：20.00，表示20.00%
+ top3asin：String
+获得点击率最多的前3个asin,JSON String Array格式
+数据格式：
+[
+"<top1Asin>,<点击份额>,<转化份额>",
+"<top2Asin>,<点击份额>,<转化份额>",
+"<top2Asin>,<点击份额>,<转化份额>"
+]
+ top3Brand：String
+点击最高的前3个品牌，JSON String Array格式。
+周词自2024-04-28日后调用返回有效值；
+月词自2024-04月后调用返回有效值
+数据格式：["top1Brand","top2Brand","top3Brand"]
+ top3Category：String
+点击最高的前3个类目名称，JSON String Array格式。
+周词自2024-04-28日后调用返回有效值；
+月词自2024-04月后调用返回有效值
+数据格式：["top1类目名称","top2类目名称","top3类目名称"]
+ season ：String
+旺季
+KeywordObject
+ keyword：String
+关键词
+ keywordCNName：String
+关键词中文名称
+ Images ： String Array
+某次搜索结果前10个产品图片，仅用以快速识别关键词。
+ ImagesFromAsin : String Array
+某次搜索结果前10个产品图片所来源的ASIN（顺序与Images字段保持一致）。
+ update : String
+当查询周词时，该词最新更新ABA排名的时间。通常为更新的前一周的词。例如：
+更新时间为20250421，更新的是20250413 ~ 20250419的词。
+当查月词时，此值返回空。
+ season ：String
+旺季
+ wordCount : Integer
+单词数量
+ salesVolumeOf90d：Integer
+近90天购买量
+ rank：Integer
+周搜索排名
+ searchVolume：Integer
+近30天搜索量
+ searchVolumeTrend：String Array
+关键词搜索量趋势
+例：[202201,1000,202202,1010,202203,1050,.....]
+<数组下标> % 2 = 0 为日期，例如：20201001
+<数组下标> % 2 = 1 为预计月搜索量，
+ searchConversionRate：Number
+过去360天搜索转化比
+例如：15.70，表示15.70%
+ productCount：Integer
+竞品数量，关键词搜索页亚马逊提示的竞品数量
+ rankChangeOfWeekly：Number
+关键词相较上一周排名变化
+例如：15.70，表示15.70%
+ searchVolumeGrowthTrend：String Array
+未来12个月（每个月相较前一个月）搜索量增长趋势
+例：[202201,9612,202202,-4217,20203,-226,.....]
+<数组下标> % 2 = 0 为月份，例如：202201表示2022-01月
+<数组下标> % 2 = 1 为关键词在当月相较前一个月搜索量增长幅度。9612表示
+增长96.12%，-226表示下降2.26%
+ cpc ： Integer
+关键cpc精准竞价
+例：936，单位为当地货币最小单位
+ cpcRange : String
+cpc精准竞价范围
+值说明：<最小值>,<最大值>
+单位为当地货币最小单位
+ cpcTrend : String Array
+cpc精准竞价历史趋势
+例：[202201,112,96,195,202202,194,115,207,.....]
+<数组下标> % 4 = 0 为月份，例如：202201表示2022-01月
+<数组下标> % 4 = 1 cpc精准竞价
+<数组下标> % 4 = 2 cpc精准竞价最小值
+<数组下标> % 4 = 3 cpc精准竞价最大值
+ searchVolumeGrowthRateTrend ： Number Array
+关键词近3个月/6个月/12个月搜索量复合增长率。
+例如[22.26,-19.76,17.00] 表示近3个月搜索量复合增长率 22.26%，近6
+个月搜索量复合增长率为-19.86%，近12个月搜索量复合增长率17.00%
+ searchResultOfFP ： String Array
+关键词搜索首页产品数据报告
+数组下标
+0：产品数量
+1：自然位产品数量
+2：广告位产品数量
+3：自然位非Top100产品数量占比
+4：自然位评价数低于100/300/500的产品数量占比 （例如：
+2500|6350|7115）
+5：广告位评价数低于100/300/500的产品数量占比
+6：无星级产品数量
+7：平均星级
+8：平均评价数
+9：coupon产品数量/占比 （例如：2/588，表示有2个产品做了coupon，产品
+数量占比为5.88%）
+10：被跟卖产品数量/占比（例如：2/588，表示有2个产品被跟卖，产品数量占比
+为5.88%）
+11：30日最低价产品数量/占比（例如：2/588，表示有2个产品被标记为30日价
+格最低，产品数量占比为5.88%）
+ searchResultOfFPTrend ： String Array
+搜索结果首页产品历史趋势
+例：[202201,470,9875,2516,0,202202,450,11194,3115,2,.....]
+<数组下标> % 5 = 0 为月份，例如：202201表示2022-01月
+<数组下标> % 5 = 1 首页产品平均星级
+<数组下标> % 5 = 2 首页产品平均评价数
+<数组下标> % 5 = 3 首页产品平均价格
+<数组下标> % 5 = 4 首页无星级产品数量
+ shareClickRate：Number
+买家在搜索该关键后点击最多的前3个产品获得的点击率占比
+例如：20.00，表示20.00%
+ shareConversionRate：Number
+买家在搜索该关键后点击最多的前3个产品获得的转化率占比（搜索此关键词后在前
+3个产品上获得转化占在所有产品上获得转化的比例）
+例如：20.00，表示20.00%
+ top3asin：String
+获得点击率最多的前3个asin,JSON String Array格式
+数据格式：
+[
+"<top1Asin>,<点击份额>,<转化份额>",
+"<top2Asin>,<点击份额>,<转化份额>",
+"<top2Asin>,<点击份额>,<转化份额>"
+]
+ top3Brand：String
+点击最高的前3个品牌，JSON String Array格式。
+周词自2024-04-28日后调用返回有效值；
+月词自2024-04月后调用返回有效值
+数据格式：["top1Brand","top2Brand","top3Brand"]
+ top3Category：String
+点击最高的前3个类目名称，JSON String Array格式。
+周词自2024-04-28日后调用返回有效值；
+月词自2024-04月后调用返回有效值
+数据格式：["top1类目名称","top2类目名称","top3类目名称"]
+ associatedWithCategory：String Array
+相关联细分类目nodeid
+ associatedWithCategoryDetail：String Array
+相关联细分类目top100数据
+值说明：
+[
+[<nodeid>,<类目名称>,<top100月销量>,<平均价格>,<平均评价数>,<小于等
+于100评价数asin数量占比>,<小于等于100评价数asin销量占比>,<平均星级>,<
+小于等于三星asin数量占比>,<小于等于三星asin销量占比>,<品牌数量>,<前3品
+牌垄断性>,<卖家数量>,<前3卖家垄断性>,<上架3个月新品数量占比>,<上架3个
+月新品销量占比>,<亚马逊自营占比>,<FBA数量占比>],
+......
+]
+KeywordSearchResultItem
+ RecordDate：String
+记录时间，格式：yyyy-MM-dd
+ Top100SalesVolume：Integer
+搜索页前3页产品中，销量前100的产品的月销量之和
+ Top100Sales：Integer
+搜索页前3页产品中，销量前100的产品的月销售额之和
+ ProductCount：Integer
+竞品数量，基于搜索结果展示的竞品数
+ BrandCount：Integer
+搜索页前3页产品中，销量前100的产品的品牌数量
+ SellerCount：Integer
+搜索页前3页产品中，销量前100的产品的卖家数量
+ AvgStar：Integer
+搜索页前3页产品中，销量前100的产品的平均星级
+ AvgPrice：Integer
+搜索页前3页产品中，销量前100的产品的平均价格
+ AvgRatings：Integer
+搜索页前3页产品中，销量前100的产品的平均评价数量
+ NoRatingProductCount:Intger
+搜索页前3页产品中，无星级产品数量。
+ReviewsObject
+ reviewsLink：String
+评论详情链接
+ consumerName : String
+评论人昵称
+ consumerURL : String
+评论人主页链接
+ consumerBadge : String Array
+评论人的标志
+例如：["Top Contributor： Pets","Top 10 Reviewer"]
+ star : Number
+评论人给予的评分星级
+ title : String
+评论标题
+ ReviewedCountry：String
+留评国籍/地区
+ reviewsDate：String
+评论时间
+ isVP ：Boolean
+是否为Verified Purchase 评论
+ asin：String
+这条评论指向哪个变体ASIN 。如果没有变体，则数据为空
+ asinProperty：String
+这条评论指向哪个变体ASIN属性
+ helpful ： Integer
+多人认为这条评论有用（helpful）
+ content ： String
+评论原文
+ resource ： String
+如果评论有图片。 多个图片使用 || 分割（双竖线）
+ videos：String
+如果评论有视频，这里显示视频链接
+ itemIndex：string
+数据序号。 值说明 <当前数据序号>/总数据条数
+例如：156/5000 表示一共有5000条数据，当前第156条
+KeywordTaskObject
+ taskId : String
+ status：Integer
+任务状态。1：正常，2：暂停
+ createDate：String
+ keyword：String
+监控的关键词
+ mode ： Integer
+所使用的监控模式。0：使用电脑浏览器监控；1：使用手机浏览器监控
+ area : String
+使用的监控地区（邮编）
+ page : Integer
+监控关键词搜索结果的前N页，有效值为1，3，5，7。
+分别标志首页，前3页，前5页，前7页
+ period : String
+设置关键词监控频率
+表达式：<每周哪几日>|<每天哪些时段>|<监控频率>
+<每周哪几日>（多选时使用逗号分割）有效值：1,2,3,4,5,6,7
+<每天哪些时段>（多选时使用逗号分割）有效值：
+1: 表示任务时间平分到1、2、3、4点，
+2: 表示任务时间平分到5、6、7、8点，
+3: 表示任务时间平分到9、10、11、12点
+4: 表示任务时间平分到13、14、15、16点
+5: 表示任务时间平分到17、18、19、20点
+6: 表示任务时间平分到21、22、23、0点
+注：北京时区时间，系统会将关键词平均分配到指定时间段内的每个小时
+<监控频率>有效值：
+1：时段内（随意一个时间刻度）一次
+11：时段内第一个时间刻度执行 （例如，5-8点时段，第一个时间刻度为5点）
+12：时段内第二个时间刻度执行 （例如，5-8点时段，第二个时间刻度为6点）
+13：时段内第三个时间刻度执行 （例如，5-8点时段，第三个时间刻度为7点）
+14：时段内第四个时间刻度执行 （例如，5-8点时段，第四个时间刻度为8点）
+（注：当设定11-14时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+2：时段内每小时1次
+3：时段内每2小时1次（随机双数时刻或单数）
+31：时段内单数小时执行，共2次（例如，5-8点时段，第5,7两个时刻执行）
+32：时段内双数小时执行，共2次（例如，5-8点时段，第6,8两个时刻执行）
+（注：当设定31-32时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+例如：1,2,3,4,5|2,3|1
+表示每周周一，周二，周三，周四，周五，每天5点-8点时段和9点-12点时段，每
+个时段执行一次。
+ProductSellerTaskObject
+ taskId : String
+ status：Integer
+任务状态。1：正常，2：暂停
+ createDate：String
+ asin : String
+ period : String
+设置监控频率
+表达式：<每周哪几日>|<每天哪些时段>|<监控频率>
+<每周哪几日>（多选时使用逗号分割）有效值：1,2,3,4,5,6,7
+<每天哪些时段>（多选时使用逗号分割）有效值：
+1: 表示任务时间平分到1、2、3、4点，
+2: 表示任务时间平分到5、6、7、8点，
+3: 表示任务时间平分到9、10、11、12点
+4: 表示任务时间平分到13、14、15、16点
+5: 表示任务时间平分到17、18、19、20点
+6: 表示任务时间平分到21、22、23、0点
+注：北京时区时间，系统会将任务平均分配到指定时间段内的每个小时
+<监控频率>有效值：
+1：时段内（随意一个时间刻度）一次
+11：时段内第一个时间刻度执行 （例如，5-8点时段，第一个时间刻度为5点）
+12：时段内第二个时间刻度执行 （例如，5-8点时段，第二个时间刻度为6点）
+13：时段内第三个时间刻度执行 （例如，5-8点时段，第三个时间刻度为7点）
+14：时段内第四个时间刻度执行 （例如，5-8点时段，第四个时间刻度为8点）
+（注：当设定11-14时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+2：时段内每小时1次
+3：时段内每2小时1次（随机双数时刻或单数）
+31：时段内单数小时执行，共2次（例如，5-8点时段，第5,7两个时刻执行）
+32：时段内双数小时执行，共2次（例如，5-8点时段，第6,8两个时刻执行）
+（注：当设定31-32时，可能由于该时段内（全部注册在我们系统的）任务量过多
+而任务注册失败）
+例如：1,2,3,4,5|2,3|1
+表示每周周一，周二，周三，周四，周五，每天5点-8点时段和9点-12点时段，每
+个时段执行一次。
+CoinQueryObject
+ coin: Integer
+本月剩余积分
+BestSellerListItemObject
+ title : String
+产品名称
+ photo : String Array
+此产品的主图，URL格式
+ listingSalesVolumeOfMonth : Integer
+listing预估月销量（不区分子体）。
+当值为-1时表示销量无法预估，原因可能是缺少所属大类，或大类变为非常规大类
+（如Our Brands、Amazon Renewed）
+例：1000
+ listingSalesOfMonth ：Integer
+listing预估月销售额。当值为-1时表示销额无法预估，原因可能是缺少所属大
+类，或大类变为非常规大类（如Our Brands、Amazon Renewed）
+例：500000，单位为当地货币最小单位
+ asin ：String
+此产品的ASIN
+ parentAsin ： String
+父ASIN。
+如果产品有子体时，表示此产品的父级ASIN；如果没有子体时，此字段为null。
+当Listing有多子体时，每个子体的ParentASIN相同，而ASIN不同。
+ price : Integer
+ASIN的销售价（未扣除coupon）
+例：1999，单位为当地货币最小单位
+ brand ：String
+当前产品的品牌
+ onlineDate ： String
+此产品的上架日期，格式：yyyy-MM-dd
+ ratingsCount ： Integer
+此产品的ratings数量
+ ratings ： Number
+此产品的评分星级
+例如：4.8
+ bsrCategory: String Array
+此产品的所属细分类目
+值为二维数组[["类目名称","NodeId","细分类目排名"],......]
+例如：[["Baby","baby-products","1"],....]
+ Category: String Array
+此产品的所属大类
+值为二维数组[["类目名称","NodeId","细分类目排名"],......]
+例如：[["Baby","baby-products","1"],....]
+RequestStreamObject
+ purchase : two-Dimensional String Array
+购买明细
+值说明：
+[
+[
+"20241001", //购买时间
+"420000", //购买获得request数量
+"0", //当前剩余可用request数
+"20240930" //到期时间
+],
+...
+]
+ consume : two-Dimensional String Array
+月度消耗明细
+值说明：
+[
+[
+"202411", //购买时间
+"1000" //本月使用request数量
+],
+[
+"202410", //购买时间
+"1000" //本月使用request数量
+]
+]
+ResponseObject
+code message
+0 成功
+9 访问资源受限
+10 请求参数错误
+11 - 399 业务定义内容，详见message
+400 非认证ip
+401 请求的接口未开放
+500 本月请求数量已达限额
+501 一分钟内请求已达限额

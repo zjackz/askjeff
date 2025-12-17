@@ -46,6 +46,11 @@
           <el-icon><Delete /></el-icon>
           <template #title>数据管理</template>
         </el-menu-item>
+
+        <el-menu-item index="/admin/sorftime-test" v-if="userStore.role === 'admin'">
+          <el-icon><Connection /></el-icon>
+          <template #title>API 测试</template>
+        </el-menu-item>
       </el-menu>
       
       <!-- 侧边栏底部 -->
@@ -103,9 +108,6 @@
           </transition>
         </router-view>
         
-        <div class="layout-footer">
-          <p>深圳拓芽 @2025</p>
-        </div>
       </el-main>
     </el-container>
     <ChatBot />
@@ -118,7 +120,7 @@ import { computed, ref } from 'vue'
 import { 
   Odometer, Upload, ChatDotRound, Download, 
   Document, InfoFilled, User, Setting, 
-  SwitchButton, Delete, Expand, Fold
+  SwitchButton, Delete, Expand, Fold, Connection
 } from '@element-plus/icons-vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { ElMessage } from 'element-plus'
