@@ -177,7 +177,7 @@ function getUserFriendlyMessage(code: string, message: string, details?: any): s
 
   // 优先使用映射的用户友好消息
   if (errorMessages[code]) {
-    return errorMessages[code]
+    return errorMessages[code]!
   }
 
   // 如果后端已经提供了用户友好的消息,直接使用

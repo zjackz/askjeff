@@ -96,7 +96,7 @@ interface AnalysisResult {
   usedAi: boolean
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const API_BASE = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:8000'
 const logs = ref<LogRow[]>([])
 const total = ref(0)
 const page = ref(1)

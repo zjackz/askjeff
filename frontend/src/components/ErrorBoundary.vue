@@ -28,7 +28,7 @@ const router = useRouter()
 const hasError = ref(false)
 const errorMessage = ref('')
 const errorDetails = ref('')
-const showDetails = ref(import.meta.env.DEV) // 仅在开发环境显示详情
+const showDetails = ref((import.meta as any).env.DEV) // 仅在开发环境显示详情
 
 onErrorCaptured((err: Error) => {
   hasError.value = true

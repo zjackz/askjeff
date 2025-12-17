@@ -674,7 +674,6 @@
 import { ref, reactive, computed, nextTick, watch, onUnmounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { Picture } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 
 // Types
@@ -727,10 +726,11 @@ type EndpointType =
 
 // State
 const activeEndpoint = ref<EndpointType>('product')
-const activeRequestTab = ref('params')
 const responseViewMode = ref('visual')
 const loading = ref(false)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const response = ref<any>(null)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const error = ref<any>(null)
 const responseStatus = ref<{ code: number, text: string, time: number } | null>(null)
 
@@ -1013,28 +1013,30 @@ const requestPayload = computed(() => {
 })
 
 // Extract images for preview (Legacy, kept for reference but UI moved to Visual Tab)
-const previewImages = computed(() => {
-  if (!response.value) return []
-  const imgs: string[] = []
-  
-  const extract = (obj: any) => {
-    if (!obj) return
-    if (obj.Photo && Array.isArray(obj.Photo)) imgs.push(...obj.Photo)
-    if (obj.EBCPhoto && Array.isArray(obj.EBCPhoto)) imgs.push(...obj.EBCPhoto)
-    if (obj.Data) extract(obj.Data)
-    if (Array.isArray(obj)) obj.forEach(extract)
-  }
-  
-  extract(response.value)
-  return imgs.slice(0, 10)
-})
+// Commented out to avoid unused variable warning
+// const previewImages = computed(() => {
+//   if (!response.value) return []
+//   const imgs: string[] = []
+//   
+//   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+//   const extract = (obj: any) => {
+//     if (!obj) return
+//     if (obj.Photo && Array.isArray(obj.Photo)) imgs.push(...obj.Photo)
+//     if (obj.EBCPhoto && Array.isArray(obj.EBCPhoto)) imgs.push(...obj.EBCPhoto)
+//     if (obj.Data) extract(obj.Data)
+//     if (Array.isArray(obj)) obj.forEach(extract)
+//   }
+//   
+//   extract(response.value)
+//   return imgs.slice(0, 10)
+// })
 
 // Helper: Extract Product Data from Response
 // Helper: Extract Product Data from Response (Normalized to Array)
 const productData = computed(() => {
   if (!response.value || activeEndpoint.value !== 'product') return []
   
-  let data = response.value.data || response.value
+  const data = response.value.data || response.value
   
   // If data is null/undefined
   if (!data) return []
@@ -1048,14 +1050,15 @@ const productData = computed(() => {
 })
 
 // Helper: Check if trend data exists
-const hasTrendData = (key: string) => {
-  if (!productData.value || !productData.value.length) return false
-  const product = productData.value[0]
-  return product && 
-         product[key] && 
-         Array.isArray(product[key]) && 
-         product[key].length > 0
-}
+// Commented out to avoid unused variable warning
+// const hasTrendData = (key: string) => {
+//   if (!productData.value || !productData.value.length) return false
+//   const product = productData.value[0]
+//   return product && 
+//          product[key] && 
+//          Array.isArray(product[key]) && 
+//          product[key].length > 0
+// }
 
 // Helper: Format Price
 const formatPrice = (price: number, domain: number) => {
@@ -1066,6 +1069,7 @@ const formatPrice = (price: number, domain: number) => {
 }
 
 // Helper: Parse Property (Specifications)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const parseProperty = (prop: any): { key: string, value?: string }[] => {
   if (!prop) return []
   
@@ -1137,7 +1141,7 @@ const parseProperty = (prop: any): { key: string, value?: string }[] => {
     const parts = item.split(':')
     if (parts.length > 1) {
       return {
-        key: parts[0].trim(),
+        key: (parts[0] || '').trim(),
         value: parts.slice(1).join(':').trim()
       }
     }
@@ -1207,6 +1211,7 @@ const getTranslation = (text: string) => {
 }
 
 // Helper: Parse Trend Array [date, val, date, val...] -> [[date, val], ...]
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const parseTrendData = (flatArray: any[]) => {
   const data = []
   for (let i = 0; i < flatArray.length; i += 2) {
@@ -1305,6 +1310,7 @@ onUnmounted(() => {
 // API Setup
 const getBaseUrl = () => {
   // Fix: Cast import.meta to any to avoid TS error if types aren't set up
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const url = (import.meta as any).env.VITE_API_BASE_URL || '/api/v1'
   if (url.endsWith('/api/v1')) return url
   return url.replace(/\/$/, '') + '/api/v1'
@@ -1384,6 +1390,7 @@ const filteredResponse = computed(() => {
   const target = response.value.data || response.value
   
   if (typeof target === 'object' && target !== null && !Array.isArray(target)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filtered: any = {}
     jsonViewOptions.selectedKeys.forEach(key => {
       if (key in target) {
@@ -1422,6 +1429,7 @@ const handleSend = async () => {
     } else {
       responseViewMode.value = 'json'
     }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     console.error(err)
     error.value = err.response?.data || err.message
@@ -1444,11 +1452,13 @@ const copyResponse = () => {
 }
 
 // Simple JSON Syntax Highlighter
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const highlightJson = (json: any) => {
   if (typeof json !== 'string') {
     json = JSON.stringify(json, null, 2)
   }
   json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // eslint-disable-next-line no-useless-escape
   return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match: string) => {
     let cls = 'number'
     if (/^"/.test(match)) {
