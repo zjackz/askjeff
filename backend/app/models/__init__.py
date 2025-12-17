@@ -9,4 +9,20 @@ from app.models.user import User
 from .extraction import ExtractionTask, ExtractionItem
 from .extraction_run import ExtractionRun
 
-__all__ = ["AuditLog", "ImportBatch", "ProductRecord", "QuerySession", "ExportJob", "SystemLog", "User", "ExtractionTask", "ExtractionItem", "ExtractionRun"]
+from .ai import ProductSelectionReport, KeywordOptimization, AIAnalysisCache
+
+__all__ = [
+    "AuditLog", 
+    "ImportBatch", 
+    "ProductRecord", 
+    "QuerySession", 
+    "ExportJob", 
+    "SystemLog", 
+    "User", 
+    "ExtractionTask", 
+    "ExtractionItem", 
+    "ExtractionRun",
+    "ProductSelectionReport",
+    "KeywordOptimization",
+    "AIAnalysisCache"
+]
