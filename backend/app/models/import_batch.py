@@ -26,6 +26,7 @@ class ImportBatch(Base):
     filename: Mapped[str] = mapped_column(Text, nullable=False)
     file_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    source_type: Mapped[str] = mapped_column(String(20), default='file')  # file, api
     import_strategy: Mapped[str] = mapped_column(Enum(*IMPORT_STRATEGIES, name='import_strategy'), nullable=False)
     status: Mapped[str] = mapped_column(Enum(*IMPORT_STATUS, name='import_status'), default='pending')
     total_rows: Mapped[int] = mapped_column(Integer, default=0)
@@ -37,6 +38,7 @@ class ImportBatch(Base):
     created_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
     failure_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     columns_seen: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    import_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # API 导入元数据
     
     # AI Extraction Status for the Batch
     ai_status: Mapped[str] = mapped_column(String(20), default='none') # none, pending, processing, completed, failed
@@ -66,6 +68,11 @@ class ProductRecord(Base):
     normalized_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     validation_status: Mapped[str] = mapped_column(Enum(*VALIDATION_STATUS, name='validation_status'), default='valid')
     validation_messages: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    
+    # 新增：扩展数据字段（存储额外信息如 brand, image, launch_date 等）
+    extended_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # 新增：数据来源标识
+    data_source: Mapped[str] = mapped_column(String(20), default='file')  # file, api
     
     # AI Extraction Fields
     ai_features: Mapped[dict | None] = mapped_column(JSON, nullable=True)

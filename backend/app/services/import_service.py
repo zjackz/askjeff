@@ -280,29 +280,68 @@ class ImportService:
                     raise ImportAbort(reason)
                 continue
 
-            # ASIN Validation
-            asin_val = str(mapped_payload.get("asin", "")).strip()
-            if asin_val and not re.match(r"^B0[A-Z0-9]{8}$", asin_val):
-                validation_status = "warning"
-                validation_messages["asin"] = "ASIN 格式不正确 (应为 B0 开头的 10 位字符)"
-                warnings_count += 1
-
-            record = ProductRecord(
-                batch_id=batch_id,
-                asin=asin_val,
-                title=str(mapped_payload.get("title")),
-                category=mapped_payload.get("category"),
-                price=self._to_decimal(normalized_payload.get("price")),
-                currency=self._normalize_currency(mapped_payload.get("currency"), config),
-                sales_rank=self._to_int(normalized_payload.get("sales_rank")),
-                reviews=self._to_int(normalized_payload.get("reviews")),
-                rating=self._to_decimal(normalized_payload.get("rating"), scale=2),
-                raw_payload=row_dict,
-                normalized_payload=normalized_payload,
-                validation_status=validation_status,
-                validation_messages=validation_messages or None,
-            )
-            records.append(record)
+            # 使用统一标准化器
+            from app.services.product_normalizer import ProductDataNormalizer
+            from app.core.logger import logger
+            
+            try:
+                # 1. 标准化数据
+                normalized = ProductDataNormalizer.normalize_product(
+                    raw_data=row_dict,
+                    source="file"
+                )
+                
+                # 2. 验证数据
+                validation_status, validation_messages = ProductDataNormalizer.validate_product(
+                    normalized
+                )
+                
+                # 统计警告
+                if validation_status == "warning":
+                    warnings_count += 1
+                elif validation_status == "error":
+                    if config.on_missing_required == "abort":
+                        raise ImportAbort(f"数据验证失败: {validation_messages}")
+                    failures.append({
+                        "rowNumber": idx,
+                        "asin": normalized.get("asin"),
+                        "reason": f"验证失败: {validation_messages}",
+                        "rawValues": row_dict,
+                    })
+                    continue
+                
+                # 3. 创建 normalized_payload
+                normalized_payload = ProductDataNormalizer.create_normalized_payload(normalized)
+                
+                # 4. 创建记录
+                record = ProductRecord(
+                    batch_id=batch_id,
+                    asin=normalized["asin"],
+                    title=normalized["title"],
+                    category=normalized["category"],
+                    price=normalized["price"],
+                    currency=normalized["currency"],
+                    sales_rank=normalized["sales_rank"],
+                    reviews=normalized["reviews"],
+                    rating=normalized["rating"],
+                    raw_payload=normalized["raw_payload"],
+                    normalized_payload=normalized_payload,
+                    extended_data=normalized.get("extended_data"),  # 新增
+                    data_source=normalized.get("data_source", "file"),  # 新增
+                    validation_status=validation_status,
+                    validation_messages=validation_messages,
+                )
+                records.append(record)
+                
+            except Exception as e:
+                logger.error(f"处理行 {idx} 失败: {e}", exc_info=True)
+                failures.append({
+                    "rowNumber": idx,
+                    "asin": row_dict.get("asin") or row_dict.get("ASIN"),
+                    "reason": f"处理失败: {str(e)}",
+                    "rawValues": row_dict,
+                })
+                continue
 
         return ParsedResult(
             records=records,

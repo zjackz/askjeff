@@ -1,4 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+from app.api.deps import get_db
+from app.config import settings
 from app.services.sorftime.client import SorftimeClient
 from app.services.sorftime.models import (
     TestProductRequest, TestCategoryRequest, SorftimeResponse,
@@ -8,8 +11,8 @@ from app.services.sorftime.models import (
 
 router = APIRouter()
 
-def get_client():
-    return SorftimeClient()
+def get_client(db: Session = Depends(get_db)):
+    return SorftimeClient(account_sk=settings.sorftime_api_key, db=db)
 
 @router.post("/test/product", response_model=SorftimeResponse)
 async def test_product_request(
@@ -17,14 +20,13 @@ async def test_product_request(
     client: SorftimeClient = Depends(get_client)
 ):
     try:
-        # Convert comma-separated string back to list for the client method
-        asins_list = [x.strip() for x in request.ASIN.split(',') if x.strip()]
-        return await client.fetch_product_details(asins_list, request.domain)
+        # Call product_request with comma-separated ASINs
+        return await client.product_request(
+            asin=request.ASIN,  # 直接传递逗号分隔的字符串
+            trend=0,  # 不需要趋势数据
+            domain=request.domain
+        )
     except Exception as e:
-        # If client returns a dict (mock error), return it directly
-        if isinstance(e, dict):
-             return e
-        # Otherwise log and raise
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/test/category", response_model=SorftimeResponse)
@@ -33,7 +35,10 @@ async def test_category_request(
     client: SorftimeClient = Depends(get_client)
 ):
     try:
-        return await client.fetch_category_best_sellers(request.nodeId, request.domain)
+        return await client.category_request(
+            node_id=request.nodeId,
+            domain=request.domain
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -43,7 +48,7 @@ async def test_category_tree(
     client: SorftimeClient = Depends(get_client)
 ):
     try:
-        return await client.fetch_category_tree(request.domain)
+        return await client.category_tree(domain=request.domain)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -53,7 +58,11 @@ async def test_category_trend(
     client: SorftimeClient = Depends(get_client)
 ):
     try:
-        return await client.fetch_category_trend(request.nodeId, request.trendIndex, request.domain)
+        return await client.category_trend(
+            node_id=request.nodeId,
+            trend_index=request.trendIndex,
+            domain=request.domain
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -63,7 +72,12 @@ async def test_product_query(
     client: SorftimeClient = Depends(get_client)
 ):
     try:
-        return await client.search_products(request.queryType, request.pattern, request.page, request.domain)
+        return await client.product_query(
+            query_type=request.queryType,
+            pattern=request.pattern,
+            page=request.page,
+            domain=request.domain
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -73,7 +87,11 @@ async def test_keyword_query(
     client: SorftimeClient = Depends(get_client)
 ):
     try:
-        return await client.search_keywords(request.keyword, request.page, request.domain)
+        return await client.keyword_query(
+            pattern={"keyword": request.keyword},
+            page_index=request.page,
+            domain=request.domain
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -83,6 +101,9 @@ async def test_keyword_detail(
     client: SorftimeClient = Depends(get_client)
 ):
     try:
-        return await client.fetch_keyword_details(request.keyword, request.domain)
+        return await client.keyword_request(
+            keyword=request.keyword,
+            domain=request.domain
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

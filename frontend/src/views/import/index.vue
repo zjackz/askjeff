@@ -1,21 +1,24 @@
 <template>
   <div class="import-page">
-    <div class="page-header">
+    <div class="page-header hover-card">
       <div class="flex justify-between items-center">
-        <h2 class="text-lg font-bold my-0">导入批次</h2>
-        <div class="flex gap-2">
-          <el-button :icon="Refresh" circle @click="fetchBatches" :loading="loading" />
-          <el-button type="primary" :icon="Plus" @click="importDialogVisible = true">
+        <div class="header-title">
+          <h2 class="text-lg font-bold my-0">导入批次</h2>
+          <span class="text-gray-400 text-sm ml-2">管理和监控数据导入任务</span>
+        </div>
+        <div class="flex gap-3">
+          <el-button :icon="Refresh" circle @click="fetchBatches" :loading="loading" class="action-btn" />
+          <el-button type="primary" :icon="Plus" @click="importDialogVisible = true" class="action-btn shadow-btn">
             新建导入
           </el-button>
-          <el-button type="success" :icon="MagicStick" @click="mcpDialogVisible = true">
-            智能抓取（ SORFTIME MCP）
+          <el-button type="primary" plain :icon="MagicStick" @click="mcpDialogVisible = true" class="action-btn">
+            Sorftime API 导入
           </el-button>
         </div>
       </div>
     </div>
 
-    <div class="table-container">
+    <div class="table-container hover-card">
       <el-table 
         :data="batches" 
         height="100%" 
@@ -42,12 +45,15 @@
                 </a>
               </div>
               <div class="flex items-center gap-2 pl-6">
-                <el-tag size="small" type="info" effect="plain" class="scale-90 origin-left">
+                <!-- <el-tag size="small" type="info" effect="plain" class="scale-90 origin-left">
                   {{ getStrategyLabel(row.importStrategy) }}
-                </el-tag>
+                </el-tag> -->
                 <span class="text-xs text-gray-400" v-if="row.sheetName">
                   Sheet: {{ row.sheetName }}
                 </span>
+                <el-tag v-if="row.importMetadata" size="small" type="warning" effect="plain" class="scale-90 origin-left">
+                  {{ row.importMetadata.input_type || 'API' }}: {{ row.importMetadata.input_value }}
+                </el-tag>
               </div>
             </div>
           </template>
@@ -194,60 +200,231 @@
       </template>
     </el-dialog>
 
-    <!-- MCP 智能抓取对话框 -->
-    <el-dialog v-model="mcpDialogVisible" title="智能抓取 (MCP)" width="500px">
-      <el-form label-position="top">
-        <el-alert
-          title="输入 ASIN、URL 或关键词，系统将自动抓取 Top 100 数据并导入。"
-          type="info"
-          show-icon
-          :closable="false"
-          class="mb-4"
-        />
-        <el-form-item label="输入内容">
-          <el-input
-            v-model="mcpForm.input"
-            type="textarea"
-            :rows="3"
-            placeholder="例如: B08N5WRWNW 或 https://www.amazon.com/..."
-          />
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-radio-group v-model="mcpForm.type">
-            <el-radio-button label="auto">自动识别</el-radio-button>
-            <el-radio-button label="asin">ASIN</el-radio-button>
-            <el-radio-button label="url">URL</el-radio-button>
-            <el-radio-button label="keyword">关键词</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
+    <!-- Sorftime API 导入对话框 -->
+    <el-dialog v-model="mcpDialogVisible" title="一键抓取亚马逊数据" width="900px" destroy-on-close>
+      <div class="flex gap-6" style="height: 600px;">
+        <!-- 左侧：操作区 -->
+        <div class="flex-1 flex flex-col">
+          <div class="bg-blue-50 text-blue-600 p-3 rounded-lg mb-4 text-sm flex items-start leading-relaxed">
+            <el-icon class="mt-0.5 mr-2 text-base"><InfoFilled /></el-icon>
+            <span>只需粘贴 <strong>亚马逊链接</strong> 或 <strong>ASIN</strong>，系统将自动识别并为您抓取 Top 100 数据。</span>
+          </div>
+
+          <el-form :model="mcpForm" label-position="top" size="default" class="flex-1 flex flex-col">
+            <el-form-item label="粘贴内容" class="!mb-4">
+              <el-input 
+                v-model="mcpForm.input" 
+                type="textarea" 
+                :rows="4"
+                placeholder="例如：https://www.amazon.com/dp/B08N5WRWNW 或 B08N5WRWNW"
+                resize="none"
+                @input="handleInputPreview"
+              />
+            </el-form-item>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <el-form-item label="抓取数量 (Top N)" class="!mb-0">
+                 <div class="flex flex-col w-full">
+                   <el-input-number v-model="mcpForm.limit" :min="1" :max="500" :step="1" controls-position="right" class="!w-full" />
+                   <span class="text-xs text-gray-400 mt-1.5 leading-none">限制获取详情的产品数，节省额度</span>
+                 </div>
+              </el-form-item>
+              
+              <el-form-item label="高级选项" class="!mb-0">
+                 <div class="flex items-center h-[32px]">
+                   <el-checkbox v-model="mcpForm.test_mode" border class="!mr-0 !w-full">
+                     <span class="text-gray-600 text-sm">仅试抓取 (Mock 数据)</span>
+                   </el-checkbox>
+                 </div>
+                 <span class="text-xs text-gray-400 mt-1.5 leading-none block">不消耗 API 额度，用于测试流程</span>
+              </el-form-item>
+            </div>
+            
+            <!-- 说明文字 -->
+            <div class="flex-1 bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <h4 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <el-icon><InfoFilled /></el-icon>
+                功能说明
+              </h4>
+              <div class="text-sm text-gray-600 space-y-2">
+                <div class="flex items-start gap-2">
+                  <span class="text-blue-500">•</span>
+                  <span>支持粘贴亚马逊商品链接或 ASIN 码</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="text-blue-500">•</span>
+                  <span>自动识别类目并抓取 Best Sellers</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="text-blue-500">•</span>
+                  <span>批量获取产品详情（标题、价格、评分等）</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <span class="text-blue-500">•</span>
+                  <span>自动生成 Excel 文件供下载</span>
+                </div>
+              </div>
+            </div>
+          </el-form>
+        </div>
+        
+        <!-- 右侧：状态区 -->
+        <div class="w-80 bg-gray-50 rounded-xl p-4 flex flex-col border border-gray-200 overflow-hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-700 flex items-center gap-2">
+              <el-icon><DataAnalysis /></el-icon>
+              实时状态
+            </h3>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto space-y-4">
+            <!-- 智能预览 -->
+            <div>
+              <div class="text-xs font-medium text-gray-500 mb-2">智能识别</div>
+              <transition name="el-fade-in">
+                <div v-if="previewLoading" class="p-4 bg-white rounded-lg border border-gray-200 flex flex-col items-center justify-center text-gray-400 gap-2">
+                  <el-icon class="is-loading text-xl"><Loading /></el-icon>
+                  <span class="text-xs">识别中...</span>
+                </div>
+                
+                <div v-else-if="previewData && previewData.valid" class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <!-- Image -->
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="rounded bg-gray-50 border border-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center" style="width: 60px; height: 60px;">
+                       <el-image 
+                         v-if="previewData.image" 
+                         :src="previewData.image" 
+                         class="w-full h-full"
+                         fit="contain"
+                       >
+                         <template #error>
+                           <el-icon class="text-gray-300"><Picture /></el-icon>
+                         </template>
+                       </el-image>
+                       <el-icon v-else class="text-gray-300 text-xl"><Picture /></el-icon>
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                      <el-tag size="small" effect="dark" :type="previewData.type === 'asin' ? 'warning' : 'primary'" class="mb-1">
+                        {{ previewData.type === 'asin' ? 'ASIN' : 'CATEGORY' }}
+                      </el-tag>
+                      <div class="text-xs font-mono text-gray-600 truncate">{{ previewData.value }}</div>
+                    </div>
+                  </div>
+                  
+                  <!-- Title -->
+                  <div class="text-xs font-medium text-gray-800 mb-2 line-clamp-2" :title="previewData.title">
+                    {{ previewData.title || '暂无标题' }}
+                  </div>
+                  
+                  <!-- Meta -->
+                  <div v-if="previewData.category_id" class="text-xs text-gray-500 flex items-center gap-1">
+                    <el-icon><Menu /></el-icon>
+                    <span>类目: <span class="font-medium">{{ previewData.category_id }}</span></span>
+                  </div>
+                </div>
+                
+                <div v-else-if="previewData && !previewData.valid" class="p-3 bg-red-50 rounded-lg border border-red-100 flex items-center gap-2 text-red-600">
+                   <el-icon class="text-base"><Warning /></el-icon>
+                   <div class="text-xs">{{ previewData.error || '无法识别' }}</div>
+                </div>
+                
+                <div v-else class="p-4 bg-white rounded-lg border border-gray-200 border-dashed flex flex-col items-center justify-center text-gray-400">
+                  <el-icon class="text-2xl mb-2"><Document /></el-icon>
+                  <span class="text-xs">等待输入...</span>
+                </div>
+              </transition>
+            </div>
+            
+            <!-- 进度显示 -->
+            <div v-if="importProgress.visible">
+              <div class="text-xs font-medium text-gray-500 mb-2">抓取进度</div>
+              <div class="bg-white rounded-lg p-3 border border-gray-200">
+                <div class="flex items-center gap-2 mb-3">
+                  <el-icon 
+                    v-if="importProgress.status === 'processing'" 
+                    class="is-loading text-blue-500 text-xl"
+                  >
+                    <Loading />
+                  </el-icon>
+                  <el-icon 
+                    v-else-if="importProgress.status === 'succeeded'" 
+                    class="text-green-500 text-xl"
+                  >
+                    <CircleCheckFilled />
+                  </el-icon>
+                  <el-icon 
+                    v-else-if="importProgress.status === 'failed'" 
+                    class="text-red-500 text-xl"
+                  >
+                    <Warning />
+                  </el-icon>
+                  
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-gray-800 text-xs">{{ importProgress.message }}</div>
+                    <div v-if="importProgress.detail" class="text-xs text-gray-500 mt-0.5 truncate">
+                      {{ importProgress.detail }}
+                    </div>
+                  </div>
+                </div>
+                
+                <el-progress 
+                  v-if="importProgress.status === 'processing'" 
+                  :percentage="importProgress.percentage" 
+                  :status="importProgress.percentage === 100 ? 'success' : undefined"
+                  :stroke-width="6"
+                  striped
+                  striped-flow
+                />
+              </div>
+            </div>
+            
+            <!-- 提示信息 -->
+            <div class="text-xs text-gray-500 space-y-2 bg-white rounded-lg p-3 border border-gray-200">
+              <div class="flex items-start gap-2">
+                <el-icon class="text-blue-500 mt-0.5 flex-shrink-0"><InfoFilled /></el-icon>
+                <span>抓取过程中请勿关闭窗口</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <el-icon class="text-green-500 mt-0.5 flex-shrink-0"><CircleCheckFilled /></el-icon>
+                <span>完成后将自动跳转到列表</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="mcpDialogVisible = false">取消</el-button>
-          <el-button 
-            type="success" 
-            :loading="mcpSubmitting" 
-            @click="handleMcpSubmit"
-            :disabled="!mcpForm.input"
-          >
-            开始抓取
+        <div class="dialog-footer">
+          <el-button @click="handleCancelImport" :disabled="importProgress.status === 'processing'">
+            {{ importProgress.status === 'processing' ? '进行中...' : '取消' }}
           </el-button>
-        </span>
+          <el-button 
+            type="primary" 
+            :loading="mcpSubmitting" 
+            @click="handleMcpSubmit" 
+            class="px-8" 
+            round
+            :disabled="importProgress.status === 'processing'"
+          >
+            {{ importProgress.status === 'processing' ? '抓取中...' : '开始抓取' }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { UploadFilled, Document, Refresh, User, MagicStick, Plus, Loading, Warning } from '@element-plus/icons-vue'
+import { UploadFilled, Document, Refresh, User, MagicStick, Plus, Loading, Warning, InfoFilled, CircleCheckFilled, Picture, Menu, DataAnalysis } from '@element-plus/icons-vue'
 import { ElMessage, type UploadUserFile, type UploadFile } from 'element-plus'
-import { useIntervalFn } from '@vueuse/core'
+import { useIntervalFn, useDebounceFn } from '@vueuse/core'
 import { http, API_BASE } from '@/utils/http'
 
 const router = useRouter()
-const strategy = ref('overwrite') // 默认使用覆盖批次策略
+const strategy = ref('append')
 const submitting = ref(false)
 const loading = ref(false)
 const fileList = ref<UploadUserFile[]>([])
@@ -257,11 +434,57 @@ const mcpDialogVisible = ref(false)
 const mcpSubmitting = ref(false)
 const mcpForm = ref({
   input: '',
-  type: 'auto'
+  test_mode: false,
+  limit: 5
 })
 
+const previewData = ref<any>(null)
+const previewLoading = ref(false)
 
-// Pagination
+// 进度状态
+const importProgress = ref({
+  visible: false,
+  status: 'idle' as 'idle' | 'processing' | 'succeeded' | 'failed',
+  message: '',
+  detail: '',
+  percentage: 0,
+  batchId: null as number | null
+})
+
+const handleInputPreview = useDebounceFn(async (val: string) => {
+  if (!val.trim()) {
+    previewData.value = null
+    return
+  }
+  
+  // 简单的本地预判，避免无效请求
+  if (val.length < 5) return
+
+  previewLoading.value = true
+  try {
+    const { data } = await http.post('/imports/preview-api', {
+      input: val,
+      test_mode: mcpForm.value.test_mode
+    })
+    previewData.value = data
+  } catch (err) {
+    console.error(err)
+    // 不显示错误，以免打断用户输入
+    previewData.value = null
+  } finally {
+    previewLoading.value = false
+  }
+}, 800)
+
+const getTypeName = (type: string) => {
+  const map: Record<string, string> = {
+    'asin': '商品 (ASIN)',
+    'category_id': '类目 (ID)',
+    'url': '链接'
+  }
+  return map[type] || type
+}
+
 const currentPage = ref(1)
 const pageSize = ref(50)
 const total = ref(0)
@@ -269,7 +492,7 @@ const total = ref(0)
 interface BatchRow {
   id: number
   filename: string
-  filePath?: string // Added
+  filePath?: string
   sheetName?: string
   importStrategy?: string
   status: string
@@ -282,38 +505,33 @@ interface BatchRow {
   createdBy?: string
   startedAt?: string
   finishedAt?: string
-  duration?: string // 前端计算
+  duration?: string
   failureSummary?: { failed_rows_path: string, total_failed: number }
+  importMetadata?: { input_value: string, input_type: string, test_mode: boolean }
 }
 
 const batches = ref<BatchRow[]>([])
 
-// 自动轮询：每 5 秒刷新一次列表
 const { pause, resume, isActive: isPolling } = useIntervalFn(() => {
   fetchBatches(true)
 }, 5000)
 
 const handleFileChange = (uploadFile: UploadFile) => {
-  // 文件大小验证 (50MB = 50 * 1024 * 1024 bytes)
   const maxSize = 50 * 1024 * 1024
   if (uploadFile.size && uploadFile.size > maxSize) {
     ElMessage.error('文件大小超过 50MB 限制,请压缩后重试')
     fileList.value = []
     return
   }
-  
-  // 文件格式验证
   const fileName = uploadFile.name || ''
   const validExtensions = ['.csv', '.xlsx', '.xls']
   const hasValidExtension = validExtensions.some(ext => fileName.toLowerCase().endsWith(ext))
-  
   if (!hasValidExtension) {
     ElMessage.error('文件格式不正确,仅支持 CSV 和 XLSX 格式')
     fileList.value = []
     return
   }
-  
-  fileList.value = [uploadFile] // 限制单文件
+  fileList.value = [uploadFile]
 }
 
 const handleFileRemove = () => {
@@ -322,54 +540,153 @@ const handleFileRemove = () => {
 
 const submit = async () => {
   if (fileList.value.length === 0) return
-  
   const file = fileList.value[0]?.raw
   if (!file) return
-
   const form = new FormData()
   form.append('file', file)
   form.append('importStrategy', strategy.value)
-  
   submitting.value = true
   try {
     await http.post('/imports', form)
     ElMessage.success('导入任务已提交，正在处理...')
-    fileList.value = [] // 清空选择
-    importDialogVisible.value = false // 关闭弹窗
-    currentPage.value = 1 // 重置到第一页
+    fileList.value = []
+    importDialogVisible.value = false
+    currentPage.value = 1
     await fetchBatches()
-    resume() // 确保开启轮询
+    resume()
   } catch (err) {
-    // 全局错误处理已接管
   } finally {
     submitting.value = false
   }
 }
 
+
+
 const handleMcpSubmit = async () => {
-  if (!mcpForm.value.input) return
+  if (!mcpForm.value.input) {
+    ElMessage.warning('请输入内容')
+    return
+  }
+  
+  // 重置进度
+  importProgress.value = {
+    visible: true,
+    status: 'processing',
+    message: '正在提交任务...',
+    detail: '',
+    percentage: 0,
+    batchId: null
+  }
   
   mcpSubmitting.value = true
   try {
-    const { data } = await http.post('/api/mcp/fetch', {
-      input: mcpForm.value.input,
-      type: mcpForm.value.type
-    })
+    const payload = {
+      ...mcpForm.value,
+      input_type: 'auto' 
+    }
     
-    ElMessage.success(data.message || '抓取任务已提交')
-    mcpDialogVisible.value = false
-    mcpForm.value.input = '' // Reset
+    const { data } = await http.post('/imports/from-api', payload)
+    const batchId = data.batch_id
     
-    // Refresh list
-    currentPage.value = 1
-    await fetchBatches()
-    resume()
-  } catch (err) {
-    // Error handled by global handler, but we can show specific msg if needed
-    console.error(err)
-  } finally {
+    importProgress.value.batchId = batchId
+    importProgress.value.message = '任务已提交，正在抓取数据...'
+    importProgress.value.percentage = 10
+    
+    // 开始轮询状态
+    pollImportStatus(batchId)
+    
+  } catch (err: any) {
+    console.error('API import failed:', err)
+    importProgress.value.status = 'failed'
+    importProgress.value.message = '提交失败'
+    importProgress.value.detail = err.response?.data?.detail || '未知错误'
     mcpSubmitting.value = false
   }
+}
+
+// 轮询导入状态
+const pollImportStatus = async (batchId: number) => {
+  const maxAttempts = 60 // 最多轮询60次 (5分钟)
+  let attempts = 0
+  
+  const poll = async () => {
+    if (attempts >= maxAttempts) {
+      importProgress.value.status = 'failed'
+      importProgress.value.message = '抓取超时'
+      importProgress.value.detail = '请检查日志或重试'
+      mcpSubmitting.value = false
+      return
+    }
+    
+    attempts++
+    
+    try {
+      const { data } = await http.get(`/imports/${batchId}`)
+      const batch = data
+      
+      // 更新进度
+      if (batch.status === 'processing') {
+        const progress = Math.min(10 + (attempts * 1.5), 90)
+        importProgress.value.percentage = Math.round(progress)
+        importProgress.value.message = '正在抓取数据...'
+        
+        // 根据 metadata 显示详细信息
+        if (batch.import_metadata) {
+          const meta = batch.import_metadata
+          importProgress.value.detail = `输入: ${meta.input_value || ''}`
+        }
+        
+        // 继续轮询
+        setTimeout(poll, 3000)
+        
+      } else if (batch.status === 'succeeded') {
+        importProgress.value.status = 'succeeded'
+        importProgress.value.percentage = 100
+        importProgress.value.message = `抓取成功！获取数据 ${batch.success_rows || 0} 条`
+        importProgress.value.detail = `总计: ${batch.total_rows || 0} 条 | 成功: ${batch.success_rows || 0} 条`
+        
+        mcpSubmitting.value = false
+        ElMessage.success('数据抓取完成')
+        
+        // 3秒后关闭对话框并刷新列表
+        setTimeout(() => {
+          mcpDialogVisible.value = false
+          importProgress.value.visible = false
+          fetchBatches()
+        }, 3000)
+        
+      } else if (batch.status === 'failed') {
+        importProgress.value.status = 'failed'
+        importProgress.value.message = '抓取失败'
+        importProgress.value.detail = batch.failure_summary?.error || '未知错误'
+        mcpSubmitting.value = false
+        
+      } else {
+        // pending 状态，继续轮询
+        importProgress.value.percentage = 5
+        setTimeout(poll, 3000)
+      }
+      
+    } catch (err) {
+      console.error('Poll status failed:', err)
+      // 继续轮询，可能是临时网络问题
+      setTimeout(poll, 3000)
+    }
+  }
+  
+  // 开始轮询
+  poll()
+}
+
+// 取消导入
+const handleCancelImport = () => {
+  if (importProgress.value.status === 'processing') {
+    return // 进行中不允许取消
+  }
+  mcpDialogVisible.value = false
+  importProgress.value.visible = false
+  mcpForm.value.input = ''
+  previewData.value = null
 }
 
 const fetchBatches = async (silent = false) => {
@@ -386,7 +703,6 @@ const fetchBatches = async (silent = false) => {
       duration: calculateDuration(item.startedAt, item.finishedAt)
     }))
     total.value = data.total || 0
-    
     const hasActiveTasks = batches.value.some(b => 
       (b.status && ['pending', 'processing'].includes(b.status.toLowerCase())) ||
       (b.aiStatus && ['pending', 'processing'].includes(b.aiStatus.toLowerCase()))
@@ -413,9 +729,6 @@ const handleSizeChange = (val: number) => {
   fetchBatches()
 }
 
-
-
-
 const getStrategyLabel = (strategy?: string) => {
   const map: Record<string, string> = {
     append: '追加',
@@ -435,14 +748,11 @@ const calculateDuration = (start?: string, end?: string) => {
 const calculateProgress = (row: BatchRow) => {
   if (row.status === 'completed' || row.status === 'succeeded') return 100
   if (row.status === 'pending') return 0
-  
   const total = row.totalRows || 0
   if (total === 0) {
-    // 如果总行数为 0 但有成功或失败记录，说明可能是后端未正确更新 totalRows，或者正在处理中
     const processed = (row.successRows || 0) + (row.failedRows || 0)
-    return processed > 0 ? 50 : 0 // 临时显示 50%
+    return processed > 0 ? 50 : 0
   }
-  
   const processed = (row.successRows || 0) + (row.failedRows || 0)
   return Math.min(Math.round((processed / total) * 100), 100)
 }
@@ -494,9 +804,7 @@ const downloadFile = (row: BatchRow) => {
     ElMessage.warning('文件路径不存在')
     return
   }
-  
   const baseUrl = API_BASE.startsWith('http') ? API_BASE : window.location.origin + API_BASE
-  // row.filePath is already relative (e.g., imports/xxx.csv)
   const downloadUrl = `${baseUrl}/exports/download?path=${encodeURIComponent(row.filePath)}`
   window.open(downloadUrl, '_blank')
 }
@@ -516,33 +824,68 @@ onMounted(() => {
   fetchBatches()
 })
 </script>
-
 <style scoped lang="scss">
 .import-page {
   height: calc(100vh - 84px);
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 24px; // Increase padding
   box-sizing: border-box;
   background-color: var(--bg-secondary);
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
   background: #fff;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 20px 24px;
+  border-radius: 16px; // Larger radius
   box-shadow: var(--shadow-sm);
-  margin-bottom: 12px;
+  margin-bottom: 20px; // Increase margin
   flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.02);
+}
+
+.header-title {
+  display: flex;
+  align-items: baseline;
 }
 
 .table-container {
   flex: 1;
   background: #fff;
-  border-radius: 8px;
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
-  padding: 1px;
+  padding: 0;
+  border: none; // Remove border to avoid double border with el-table
+}
+
+// Hover card effect
+.hover-card {
+  transition: all 0.3s ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.action-btn {
+  transition: all 0.2s;
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.shadow-btn {
+  box-shadow: 0 4px 14px 0 rgba(102, 126, 234, 0.3);
+  &:hover {
+    box-shadow: 0 6px 20px 0 rgba(102, 126, 234, 0.4);
+  }
 }
 
 .pager-container {
@@ -685,13 +1028,27 @@ onMounted(() => {
 
 .custom-table {
   :deep(th) {
-    background: transparent;
+    background: #f9fafb;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--text-primary);
+    height: 56px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
   
   :deep(td) {
     padding: 16px 0;
+    height: 72px; // Taller rows
+  }
+
+  :deep(.el-table__row) {
+    transition: background-color 0.2s;
+  }
+
+  // Remove outer borders
+  :deep(.el-table__inner-wrapper::before) {
+    display: none;
   }
 }
 
