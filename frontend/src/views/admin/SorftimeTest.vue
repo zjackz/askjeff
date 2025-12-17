@@ -22,8 +22,32 @@
               </el-option-group>
             </el-select>
           </div>
+          <div class="toolbar-actions">
+            <el-tooltip content="加载示例 (Ctrl+L)" placement="bottom">
+              <el-button size="small" @click="loadExample" :icon="MagicStick">
+                示例
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="请求历史 (Ctrl+H)" placement="bottom">
+              <el-button size="small" @click="historyDrawerVisible = true" :icon="Clock">
+                历史
+                <el-badge v-if="requestHistory.length" :value="requestHistory.length" class="history-badge" />
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="快捷键帮助 (Ctrl+/)" placement="bottom">
+              <el-button size="small" @click="shortcutsDialogVisible = true" :icon="QuestionFilled">
+                快捷键
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="请求统计" placement="bottom">
+              <el-button size="small" @click="statsDrawerVisible = true" :icon="DataAnalysis">
+                统计
+              </el-button>
+            </el-tooltip>
+          </div>
           <el-button type="primary" @click="handleSend" :loading="loading" size="small" class="send-btn">
-            Send Request
+            <span v-if="!loading">发送请求</span>
+            <span v-else>请求中...</span>
           </el-button>
         </div>
 
@@ -667,14 +691,137 @@
         </div>
       </div>
     </div>
+
+    <!-- History Drawer -->
+    <el-drawer
+      v-model="historyDrawerVisible"
+      title="请求历史"
+      direction="rtl"
+      size="500px"
+    >
+      <div class="history-drawer">
+        <div class="history-header">
+          <el-button size="small" type="danger" :icon="Delete" @click="clearHistory" v-if="requestHistory.length">
+            清空历史
+          </el-button>
+        </div>
+        
+        <el-empty v-if="!requestHistory.length" description="暂无历史记录" />
+        
+        <el-timeline v-else>
+          <el-timeline-item
+            v-for="item in requestHistory"
+            :key="item.id"
+            :timestamp="formatTime(item.timestamp)"
+            placement="top"
+          >
+            <el-card shadow="hover">
+              <div class="history-item">
+                <div class="history-item-header">
+                  <el-tag :type="item.success ? 'success' : 'danger'" size="small">
+                    {{ item.success ? '成功' : '失败' }}
+                  </el-tag>
+                  <el-tag type="info" size="small">{{ item.endpoint }}</el-tag>
+                  <span class="history-time">{{ item.responseTime }}ms</span>
+                </div>
+                <div class="history-item-params">
+                  <div v-if="item.params.asins" class="param-line">
+                    <strong>ASIN:</strong> {{ item.params.asins }}
+                  </div>
+                  <div v-if="item.params.keyword" class="param-line">
+                    <strong>Keyword:</strong> {{ item.params.keyword }}
+                  </div>
+                  <div v-if="item.params.nodeId" class="param-line">
+                    <strong>NodeId:</strong> {{ item.params.nodeId }}
+                  </div>
+                </div>
+                <div class="history-item-actions">
+                  <el-button size="small" type="primary" @click="loadHistoryItem(item)">
+                    加载配置
+                  </el-button>
+                  <el-button size="small" type="danger" :icon="Delete" @click="deleteHistoryItem(item.id)" />
+                </div>
+              </div>
+            </el-card>
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+    </el-drawer>
+
+    <!-- Keyboard Shortcuts Dialog -->
+    <el-dialog
+      v-model="shortcutsDialogVisible"
+      title="键盘快捷键"
+      width="500px"
+    >
+      <el-table :data="shortcuts" :show-header="false">
+        <el-table-column prop="key" width="200">
+          <template #default="{ row }">
+            <el-tag>{{ row.key }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" />
+      </el-table>
+    </el-dialog>
+
+    <!-- Stats Drawer -->
+    <el-drawer
+      v-model="statsDrawerVisible"
+      title="请求统计"
+      direction="rtl"
+      size="400px"
+    >
+      <div class="stats-drawer">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-statistic title="总请求数" :value="sessionStats.total" />
+          </el-col>
+          <el-col :span="12">
+            <el-statistic title="成功率" :value="successRate" suffix="%" />
+          </el-col>
+        </el-row>
+        
+        <el-divider />
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-statistic title="成功" :value="sessionStats.success">
+              <template #suffix>
+                <el-icon color="#67C23A"><SuccessFilled /></el-icon>
+              </template>
+            </el-statistic>
+          </el-col>
+          <el-col :span="12">
+            <el-statistic title="失败" :value="sessionStats.failed">
+              <template #suffix>
+                <el-icon color="#F56C6C"><CircleCloseFilled /></el-icon>
+              </template>
+            </el-statistic>
+          </el-col>
+        </el-row>
+        
+        <el-divider />
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-statistic title="平均响应" :value="avgResponseTime" suffix="ms" />
+          </el-col>
+          <el-col :span="12">
+            <el-statistic title="预估消耗" :value="sessionStats.estimatedCost" suffix=" requests" />
+          </el-col>
+        </el-row>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, watch, onUnmounted } from 'vue'
+import { ref, reactive, computed, nextTick, watch, onUnmounted, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { MagicStick, Clock, QuestionFilled, DataAnalysis, Delete, Download, SuccessFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import { API_EXAMPLES } from './sorftime-examples'
 
 // Types
 type EndpointType = 
@@ -724,6 +871,15 @@ type EndpointType =
   | 'coin-stream' // 44
   | 'request-stream' // 45
 
+// Keyboard Shortcuts Data
+const shortcuts = [
+  { key: 'Ctrl/Cmd + Enter', description: '发送请求' },
+  { key: 'Ctrl/Cmd + K', description: '清空表单' },
+  { key: 'Ctrl/Cmd + H', description: '打开/关闭历史记录' },
+  { key: 'Ctrl/Cmd + L', description: '加载示例数据' },
+  { key: 'Ctrl/Cmd + /', description: '显示快捷键帮助' }
+]
+
 // State
 const activeEndpoint = ref<EndpointType>('product')
 const responseViewMode = ref('visual')
@@ -733,6 +889,31 @@ const response = ref<any>(null)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const error = ref<any>(null)
 const responseStatus = ref<{ code: number, text: string, time: number } | null>(null)
+
+// UX Enhancement States
+const historyDrawerVisible = ref(false)
+const shortcutsDialogVisible = ref(false)
+const statsDrawerVisible = ref(false)
+
+// Request History
+interface RequestHistoryItem {
+  id: string
+  timestamp: number
+  endpoint: EndpointType
+  params: Record<string, any>
+  success: boolean
+  responseTime: number
+  statusCode: number
+}
+
+const requestHistory = ref<RequestHistoryItem[]>([])
+const sessionStats = reactive({
+  total: 0,
+  success: 0,
+  failed: 0,
+  totalTime: 0,
+  estimatedCost: 0
+})
 
 // Chart Refs
 const salesChartRef = ref<HTMLElement | null>(null)
@@ -1441,8 +1622,175 @@ const handleSend = async () => {
     responseViewMode.value = 'json' // Always show JSON on error
   } finally {
     loading.value = false
+    
+    // Save to history
+    saveToHistory(startTime, responseStatus.value?.code === 200)
   }
 }
+
+// UX Enhancement Functions
+
+// Load Example Data
+const loadExample = () => {
+  const example = API_EXAMPLES[activeEndpoint.value as keyof typeof API_EXAMPLES]
+  if (example) {
+    Object.assign(form, example)
+    ElMessage.success(`已加载 ${currentDoc.value.title} 的示例数据`)
+  } else {
+    ElMessage.warning('该 API 暂无示例数据')
+  }
+}
+
+// Save Request to History
+const saveToHistory = (startTime: number, success: boolean) => {
+  const historyItem: RequestHistoryItem = {
+    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    timestamp: Date.now(),
+    endpoint: activeEndpoint.value,
+    params: { ...form },
+    success,
+    responseTime: Date.now() - startTime,
+    statusCode: responseStatus.value?.code || 0
+  }
+  
+  requestHistory.value.unshift(historyItem)
+  if (requestHistory.value.length > 20) {
+    requestHistory.value = requestHistory.value.slice(0, 20)
+  }
+  
+  // Save to localStorage
+  try {
+    localStorage.setItem('sorftime_history', JSON.stringify(requestHistory.value))
+  } catch (e) {
+    console.warn('Failed to save history to localStorage:', e)
+  }
+  
+  // Update session stats
+  sessionStats.total++
+  if (success) {
+    sessionStats.success++
+  } else {
+    sessionStats.failed++
+  }
+  sessionStats.totalTime += historyItem.responseTime
+  
+  // Estimate cost based on API
+  const cost = parseInt(currentDoc.value.cost.match(/\d+/)?.[0] || '0')
+  sessionStats.estimatedCost += cost
+}
+
+// Load History Item
+const loadHistoryItem = (item: RequestHistoryItem) => {
+  activeEndpoint.value = item.endpoint
+  Object.assign(form, item.params)
+  historyDrawerVisible.value = false
+  ElMessage.success('已加载历史请求配置')
+}
+
+// Delete History Item
+const deleteHistoryItem = (id: string) => {
+  const index = requestHistory.value.findIndex(item => item.id === id)
+  if (index !== -1) {
+    requestHistory.value.splice(index, 1)
+    localStorage.setItem('sorftime_history', JSON.stringify(requestHistory.value))
+    ElMessage.success('已删除')
+  }
+}
+
+// Clear All History
+const clearHistory = () => {
+  requestHistory.value = []
+  localStorage.removeItem('sorftime_history')
+  ElMessage.success('历史记录已清空')
+}
+
+// Format Time
+const formatTime = (timestamp: number) => {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
+  
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// Computed Stats
+const successRate = computed(() => {
+  if (sessionStats.total === 0) return 0
+  return Math.round((sessionStats.success / sessionStats.total) * 100)
+})
+
+const avgResponseTime = computed(() => {
+  if (sessionStats.total === 0) return 0
+  return Math.round(sessionStats.totalTime / sessionStats.total)
+})
+
+// Keyboard Shortcuts Handler
+const handleKeyboard = (e: KeyboardEvent) => {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const modifier = isMac ? e.metaKey : e.ctrlKey
+  
+  if (!modifier) return
+  
+  switch(e.key.toLowerCase()) {
+    case 'enter':
+      e.preventDefault()
+      if (!loading.value) handleSend()
+      break
+    case 'k':
+      e.preventDefault()
+      Object.assign(form, {
+        asins: '',
+        nodeId: '',
+        keyword: '',
+        pattern: '',
+        queryStart: '',
+        queryEnd: ''
+      })
+      ElMessage.info('表单已清空')
+      break
+    case 'h':
+      e.preventDefault()
+      historyDrawerVisible.value = !historyDrawerVisible.value
+      break
+    case 'l':
+      e.preventDefault()
+      loadExample()
+      break
+    case '/':
+      e.preventDefault()
+      shortcutsDialogVisible.value = true
+      break
+  }
+}
+
+// Load History from localStorage on mount
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('sorftime_history')
+    if (saved) {
+      requestHistory.value = JSON.parse(saved)
+    }
+  } catch (e) {
+    console.warn('Failed to load history from localStorage:', e)
+  }
+  
+  // Register keyboard shortcuts
+  document.addEventListener('keydown', handleKeyboard)
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyboard)
+})
 
 const copyResponse = () => {
   if (response.value) {
@@ -2295,6 +2643,78 @@ const highlightJson = (json: any) => {
   
   .charts-container {
     grid-template-columns: 1fr;
+  }
+}
+
+/* UX Enhancement Styles */
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+  margin-right: 12px;
+  
+  .el-button {
+    font-size: 13px;
+  }
+  
+  .history-badge {
+    margin-left: 4px;
+  }
+}
+
+.history-drawer {
+  .history-header {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .history-item {
+    .history-item-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      
+      .history-time {
+        margin-left: auto;
+        font-size: 12px;
+        color: #909399;
+      }
+    }
+    
+    .history-item-params {
+      margin-bottom: 12px;
+      font-size: 13px;
+      
+      .param-line {
+        margin: 4px 0;
+        color: #606266;
+        
+        strong {
+          color: #303133;
+          margin-right: 8px;
+        }
+      }
+    }
+    
+    .history-item-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+  }
+}
+
+.stats-drawer {
+  .el-statistic {
+    text-align: center;
+  }
+  
+  .el-divider {
+    margin: 24px 0;
   }
 }
 </style>
