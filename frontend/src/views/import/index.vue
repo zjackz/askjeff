@@ -201,216 +201,173 @@
     </el-dialog>
 
     <!-- Sorftime API 导入对话框 -->
-    <el-dialog v-model="mcpDialogVisible" title="一键抓取亚马逊数据" width="900px" destroy-on-close>
-      <div class="flex gap-6" style="height: 600px;">
+    <el-dialog 
+      v-model="mcpDialogVisible" 
+      title="" 
+      width="900px" 
+      destroy-on-close 
+      class="premium-dialog-wide"
+      :show-close="true"
+      align-center
+    >
+      <div class="mcp-layout">
         <!-- 左侧：操作区 -->
-        <div class="flex-1 flex flex-col">
-          <div class="bg-blue-50 text-blue-600 p-3 rounded-lg mb-4 text-sm flex items-start leading-relaxed">
-            <el-icon class="mt-0.5 mr-2 text-base"><InfoFilled /></el-icon>
-            <span>只需粘贴 <strong>亚马逊链接</strong> 或 <strong>ASIN</strong>，系统将自动识别并为您抓取 Top 100 数据。</span>
+        <div class="mcp-left-panel">
+          <!-- 标题 -->
+          <div class="mcp-header">
+            <div class="mcp-icon-wrapper">
+              <el-icon><MagicStick /></el-icon>
+            </div>
+            <div class="mcp-title-group">
+              <h2>一键抓取</h2>
+              <p>只需粘贴 Amazon 商品链接或 ASIN，AI 将自动识别并提取 Top 100 数据。</p>
+            </div>
           </div>
 
-          <el-form :model="mcpForm" label-position="top" size="default" class="flex-1 flex flex-col">
-            <el-form-item label="粘贴内容" class="!mb-4">
-              <el-input 
-                v-model="mcpForm.input" 
-                type="textarea" 
-                :rows="4"
-                placeholder="例如：https://www.amazon.com/dp/B08N5WRWNW 或 B08N5WRWNW"
-                resize="none"
-                @input="handleInputPreview"
-              />
-            </el-form-item>
-            
-            <div class="grid grid-cols-2 gap-4 mb-4">
-              <el-form-item label="抓取数量 (Top N)" class="!mb-0">
-                 <div class="flex flex-col w-full">
-                   <el-input-number v-model="mcpForm.limit" :min="1" :max="500" :step="1" controls-position="right" class="!w-full" />
-                   <span class="text-xs text-gray-400 mt-1.5 leading-none">限制获取详情的产品数，节省额度</span>
-                 </div>
-              </el-form-item>
-              
-              <el-form-item label="高级选项" class="!mb-0">
-                 <div class="flex items-center h-[32px]">
-                   <el-checkbox v-model="mcpForm.test_mode" border class="!mr-0 !w-full">
-                     <span class="text-gray-600 text-sm">仅试抓取 (Mock 数据)</span>
-                   </el-checkbox>
-                 </div>
-                 <span class="text-xs text-gray-400 mt-1.5 leading-none block">不消耗 API 额度，用于测试流程</span>
-              </el-form-item>
-            </div>
-            
-            <!-- 说明文字 -->
-            <div class="flex-1 bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h4 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <el-icon><InfoFilled /></el-icon>
-                功能说明
-              </h4>
-              <div class="text-sm text-gray-600 space-y-2">
-                <div class="flex items-start gap-2">
-                  <span class="text-blue-500">•</span>
-                  <span>支持粘贴亚马逊商品链接或 ASIN 码</span>
-                </div>
-                <div class="flex items-start gap-2">
-                  <span class="text-blue-500">•</span>
-                  <span>自动识别类目并抓取 Best Sellers</span>
-                </div>
-                <div class="flex items-start gap-2">
-                  <span class="text-blue-500">•</span>
-                  <span>批量获取产品详情（标题、价格、评分等）</span>
-                </div>
-                <div class="flex items-start gap-2">
-                  <span class="text-blue-500">•</span>
-                  <span>自动生成 Excel 文件供下载</span>
-                </div>
+          <!-- 表单 -->
+          <div class="mcp-form">
+            <div class="form-group">
+              <label>输入内容</label>
+              <div class="input-wrapper">
+                <el-input
+                  v-model="mcpForm.input"
+                  type="textarea"
+                  :rows="6"
+                  resize="none"
+                  class="premium-textarea"
+                  placeholder="在此粘贴链接或 ASIN..."
+                  @input="handleInputPreview"
+                />
+                <el-icon class="input-icon"><Link /></el-icon>
               </div>
             </div>
-          </el-form>
-        </div>
-        
-        <!-- 右侧：状态区 -->
-        <div class="w-80 bg-gray-50 rounded-xl p-4 flex flex-col border border-gray-200 overflow-hidden">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-gray-700 flex items-center gap-2">
-              <el-icon><DataAnalysis /></el-icon>
-              实时状态
-            </h3>
-          </div>
-          
-          <div class="flex-1 overflow-y-auto space-y-4">
-            <!-- 智能预览 -->
-            <div>
-              <div class="text-xs font-medium text-gray-500 mb-2">智能识别</div>
-              <transition name="el-fade-in">
-                <div v-if="previewLoading" class="p-4 bg-white rounded-lg border border-gray-200 flex flex-col items-center justify-center text-gray-400 gap-2">
-                  <el-icon class="is-loading text-xl"><Loading /></el-icon>
-                  <span class="text-xs">识别中...</span>
+
+            <div class="options-box">
+              <div class="option-item">
+                <div class="label-with-icon">
+                  <span>抓取数量</span>
+                  <el-tooltip content="限制获取详情的产品数量" placement="top">
+                    <el-icon><InfoFilled /></el-icon>
+                  </el-tooltip>
                 </div>
-                
-                <div v-else-if="previewData && previewData.valid" class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <!-- Image -->
-                  <div class="flex items-center gap-3 mb-3">
-                    <div class="rounded bg-gray-50 border border-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center" style="width: 60px; height: 60px;">
-                       <el-image 
-                         v-if="previewData.image" 
-                         :src="previewData.image" 
-                         class="w-full h-full"
-                         fit="contain"
-                       >
-                         <template #error>
-                           <el-icon class="text-gray-300"><Picture /></el-icon>
-                         </template>
-                       </el-image>
-                       <el-icon v-else class="text-gray-300 text-xl"><Picture /></el-icon>
-                    </div>
-                    
-                    <div class="flex-1 min-w-0">
-                      <el-tag size="small" effect="dark" :type="previewData.type === 'asin' ? 'warning' : 'primary'" class="mb-1">
+                <el-input-number v-model="mcpForm.limit" :min="1" :max="500" size="small" controls-position="right" />
+              </div>
+              <div class="option-item">
+                <span>测试模式 (Mock)</span>
+                <el-switch v-model="mcpForm.test_mode" size="small" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部按钮 -->
+          <div class="mcp-footer">
+            <el-button 
+              type="primary" 
+              class="start-btn"
+              :loading="mcpSubmitting"
+              @click="handleMcpSubmit"
+              :disabled="!mcpForm.input || (previewData && !previewData.valid)"
+            >
+              {{ mcpSubmitting ? '正在抓取...' : '开始抓取' }}
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 右侧：展示区 -->
+        <div class="mcp-right-panel">
+          <div class="panel-bg"></div>
+
+          <div class="panel-header">
+            <h3>
+              <el-icon><DataAnalysis /></el-icon>
+              实时预览 & 状态
+            </h3>
+            <el-tag v-if="previewLoading" size="small" type="warning" effect="light">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              AI 识别中...
+            </el-tag>
+          </div>
+
+          <div class="panel-content">
+            <!-- 空状态 -->
+            <div v-if="!previewData && !importProgress.visible" class="empty-state">
+              <div class="empty-icon">
+                <el-icon><Document /></el-icon>
+              </div>
+              <p class="main-text">等待输入...</p>
+              <p class="sub-text">在左侧输入内容以开始预览</p>
+            </div>
+
+            <!-- 预览卡片 -->
+            <div v-else-if="previewData && !importProgress.visible" class="preview-card">
+              <div class="status-bar" :class="{ valid: previewData.valid }"></div>
+              <div class="card-body">
+                <div v-if="previewData.valid" class="valid-content">
+                  <div class="product-image">
+                     <el-image v-if="previewData.image" :src="previewData.image" fit="contain">
+                       <template #error><el-icon><Picture /></el-icon></template>
+                     </el-image>
+                     <el-icon v-else><Picture /></el-icon>
+                  </div>
+                  <div class="product-info">
+                    <div class="tags-row">
+                      <el-tag size="small" effect="dark" :type="previewData.type === 'asin' ? 'warning' : 'primary'">
                         {{ previewData.type === 'asin' ? 'ASIN' : 'CATEGORY' }}
                       </el-tag>
-                      <div class="text-xs font-mono text-gray-600 truncate">{{ previewData.value }}</div>
+                      <span class="id-text">{{ previewData.value }}</span>
+                    </div>
+                    <div class="product-title" :title="previewData.title">
+                      {{ previewData.title || '暂无标题' }}
+                    </div>
+                    <div v-if="previewData.category_id" class="category-info">
+                      <el-icon><Menu /></el-icon>
+                      <span>类目 ID: <b>{{ previewData.category_id }}</b></span>
                     </div>
                   </div>
-                  
-                  <!-- Title -->
-                  <div class="text-xs font-medium text-gray-800 mb-2 line-clamp-2" :title="previewData.title">
-                    {{ previewData.title || '暂无标题' }}
-                  </div>
-                  
-                  <!-- Meta -->
-                  <div v-if="previewData.category_id" class="text-xs text-gray-500 flex items-center gap-1">
-                    <el-icon><Menu /></el-icon>
-                    <span>类目: <span class="font-medium">{{ previewData.category_id }}</span></span>
-                  </div>
                 </div>
                 
-                <div v-else-if="previewData && !previewData.valid" class="p-3 bg-red-50 rounded-lg border border-red-100 flex items-center gap-2 text-red-600">
-                   <el-icon class="text-base"><Warning /></el-icon>
-                   <div class="text-xs">{{ previewData.error || '无法识别' }}</div>
+                <div v-else class="error-content">
+                  <div class="error-icon"><el-icon><Warning /></el-icon></div>
+                  <div>
+                    <div class="error-title">无法识别内容</div>
+                    <div class="error-desc">{{ previewData.error || '请输入有效的 Amazon 链接或 ASIN' }}</div>
+                  </div>
                 </div>
-                
-                <div v-else class="p-4 bg-white rounded-lg border border-gray-200 border-dashed flex flex-col items-center justify-center text-gray-400">
-                  <el-icon class="text-2xl mb-2"><Document /></el-icon>
-                  <span class="text-xs">等待输入...</span>
-                </div>
-              </transition>
+              </div>
             </div>
-            
-            <!-- 进度显示 -->
-            <div v-if="importProgress.visible">
-              <div class="text-xs font-medium text-gray-500 mb-2">抓取进度</div>
-              <div class="bg-white rounded-lg p-3 border border-gray-200">
-                <div class="flex items-center gap-2 mb-3">
-                  <el-icon 
-                    v-if="importProgress.status === 'processing'" 
-                    class="is-loading text-blue-500 text-xl"
-                  >
-                    <Loading />
-                  </el-icon>
-                  <el-icon 
-                    v-else-if="importProgress.status === 'succeeded'" 
-                    class="text-green-500 text-xl"
-                  >
-                    <CircleCheckFilled />
-                  </el-icon>
-                  <el-icon 
-                    v-else-if="importProgress.status === 'failed'" 
-                    class="text-red-500 text-xl"
-                  >
-                    <Warning />
-                  </el-icon>
-                  
-                  <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-800 text-xs">{{ importProgress.message }}</div>
-                    <div v-if="importProgress.detail" class="text-xs text-gray-500 mt-0.5 truncate">
-                      {{ importProgress.detail }}
-                    </div>
-                  </div>
-                </div>
-                
+
+            <!-- 进度状态 -->
+            <div v-if="importProgress.visible" class="progress-state">
+              <div class="progress-card">
                 <el-progress 
-                  v-if="importProgress.status === 'processing'" 
+                  type="dashboard" 
                   :percentage="importProgress.percentage" 
-                  :status="importProgress.percentage === 100 ? 'success' : undefined"
-                  :stroke-width="6"
-                  striped
-                  striped-flow
-                />
-              </div>
-            </div>
-            
-            <!-- 提示信息 -->
-            <div class="text-xs text-gray-500 space-y-2 bg-white rounded-lg p-3 border border-gray-200">
-              <div class="flex items-start gap-2">
-                <el-icon class="text-blue-500 mt-0.5 flex-shrink-0"><InfoFilled /></el-icon>
-                <span>抓取过程中请勿关闭窗口</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <el-icon class="text-green-500 mt-0.5 flex-shrink-0"><CircleCheckFilled /></el-icon>
-                <span>完成后将自动跳转到列表</span>
+                  :status="getProgressStatus(importProgress.status)"
+                  :width="100"
+                  :stroke-width="8"
+                >
+                  <template #default="{ percentage }">
+                    <div class="progress-label">
+                      <span class="percentage">{{ percentage }}%</span>
+                      <span class="text">Progress</span>
+                    </div>
+                  </template>
+                </el-progress>
+                
+                <h4>{{ importProgress.message }}</h4>
+                <p>{{ importProgress.detail }}</p>
+                
+                <div v-if="importProgress.status === 'failed'" class="action-row">
+                  <el-button size="small" @click="importProgress.visible = false">返回修改</el-button>
+                </div>
+                <div v-if="importProgress.status === 'succeeded'" class="action-row">
+                  <el-button type="success" size="small" plain @click="mcpDialogVisible = false">完成并查看</el-button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="handleCancelImport" :disabled="importProgress.status === 'processing'">
-            {{ importProgress.status === 'processing' ? '进行中...' : '取消' }}
-          </el-button>
-          <el-button 
-            type="primary" 
-            :loading="mcpSubmitting" 
-            @click="handleMcpSubmit" 
-            class="px-8" 
-            round
-            :disabled="importProgress.status === 'processing'"
-          >
-            {{ importProgress.status === 'processing' ? '抓取中...' : '开始抓取' }}
-          </el-button>
-        </div>
-      </template>
     </el-dialog>
   </div>
 </template>
@@ -418,7 +375,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { UploadFilled, Document, Refresh, User, MagicStick, Plus, Loading, Warning, InfoFilled, CircleCheckFilled, Picture, Menu, DataAnalysis } from '@element-plus/icons-vue'
+import { UploadFilled, Document, Refresh, User, MagicStick, Plus, Loading, Warning, InfoFilled, CircleCheckFilled, Picture, Menu, DataAnalysis, Link } from '@element-plus/icons-vue'
 import { ElMessage, type UploadUserFile, type UploadFile } from 'element-plus'
 import { useIntervalFn, useDebounceFn } from '@vueuse/core'
 import { http, API_BASE } from '@/utils/http'
@@ -1059,5 +1016,438 @@ onMounted(() => {
 .slide-in {
   animation: slideInRight 0.5s ease-out backwards;
   animation-delay: var(--delay, 0s);
+}
+
+// Premium Dialog Styles (Wide)
+.premium-dialog-wide {
+  :deep(.el-dialog__header) {
+    display: none;
+  }
+  :deep(.el-dialog__body) {
+    padding: 0;
+  }
+}
+
+.premium-textarea {
+  :deep(.el-textarea__inner) {
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    background-color: #f9fafb;
+    border-color: #e5e7eb;
+    font-size: 14px;
+    line-height: 1.6;
+    
+    &:focus {
+      background-color: #fff;
+      box-shadow: 0 0 0 1px var(--el-color-primary), 0 4px 12px rgba(var(--el-color-primary-rgb), 0.1);
+      border-color: var(--el-color-primary);
+    }
+  }
+}
+
+// MCP Dialog Layout
+.mcp-layout {
+  display: flex;
+  height: 520px;
+  background: #fff;
+}
+
+.mcp-left-panel {
+  width: 360px;
+  padding: 32px;
+  border-right: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  z-index: 10;
+  position: relative;
+}
+
+.mcp-right-panel {
+  flex: 1;
+  padding: 32px;
+  background: #f8fafc;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Left Panel Styles
+.mcp-header {
+  margin-bottom: 32px;
+  
+  .mcp-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    background: #eff6ff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563eb;
+    font-size: 20px;
+    margin-bottom: 12px;
+    display: inline-flex;
+    margin-right: 12px;
+    vertical-align: middle;
+  }
+  
+  .mcp-title-group {
+    display: inline-block;
+    vertical-align: middle;
+    
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1f2937;
+      margin: 0 0 4px 0;
+    }
+    
+    p {
+      font-size: 13px;
+      color: #6b7280;
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+}
+
+.mcp-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  
+  .form-group {
+    label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 8px;
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .input-wrapper {
+      position: relative;
+      
+      .input-icon {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+        color: #d1d5db;
+        pointer-events: none;
+      }
+    }
+  }
+  
+  .options-box {
+    background: #f9fafb;
+    border: 1px solid #f3f4f6;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    
+    .option-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #4b5563;
+      
+      .label-with-icon {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        
+        .el-icon {
+          color: #9ca3af;
+          cursor: help;
+        }
+      }
+    }
+  }
+}
+
+.mcp-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  
+  .start-btn {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+    
+    &:hover {
+      box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+    }
+  }
+}
+
+// Right Panel Styles
+.panel-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(219, 234, 254, 0.4) 0%, rgba(243, 232, 255, 0.4) 100%);
+  border-radius: 50%;
+  filter: blur(60px);
+  transform: translate(30%, -30%);
+  pointer-events: none;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+  
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.panel-content {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  
+  .empty-icon {
+    width: 80px;
+    height: 80px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    border: 1px solid #f3f4f6;
+    font-size: 32px;
+    color: #e5e7eb;
+  }
+  
+  .main-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+    margin: 0 0 4px 0;
+  }
+  
+  .sub-text {
+    font-size: 12px;
+    margin: 0;
+  }
+}
+
+.preview-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  
+  .status-bar {
+    height: 6px;
+    width: 100%;
+    background: #ef4444; // default red
+    
+    &.valid {
+      background: #10b981; // green
+    }
+  }
+  
+  .card-body {
+    padding: 20px;
+  }
+  
+  .valid-content {
+    display: flex;
+    gap: 20px;
+    
+    .product-image {
+      width: 80px;
+      height: 80px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      
+      .el-image {
+        width: 100%;
+        height: 100%;
+      }
+      
+      .el-icon {
+        font-size: 24px;
+        color: #d1d5db;
+      }
+    }
+    
+    .product-info {
+      flex: 1;
+      min-width: 0;
+      
+      .tags-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        
+        .id-text {
+          font-family: monospace;
+          font-size: 12px;
+          color: #6b7280;
+          background: #f3f4f6;
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+      }
+      
+      .product-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1.4;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      
+      .category-info {
+        font-size: 12px;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        
+        b {
+          color: #374151;
+        }
+      }
+    }
+  }
+  
+  .error-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #dc2626;
+    
+    .error-icon {
+      width: 40px;
+      height: 40px;
+      background: #fef2f2;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .error-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    
+    .error-desc {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+  }
+}
+
+.progress-state {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .progress-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    width: 100%;
+    max-width: 280px;
+    
+    .progress-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      
+      .percentage {
+        font-size: 20px;
+        font-weight: 700;
+        color: #374151;
+      }
+      
+      .text {
+        font-size: 10px;
+        text-transform: uppercase;
+        color: #9ca3af;
+      }
+    }
+    
+    h4 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1f2937;
+      margin: 16px 0 4px 0;
+    }
+    
+    p {
+      font-size: 12px;
+      color: #6b7280;
+      margin: 0 0 16px 0;
+    }
+  }
+}
+
+// 动画增强
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
