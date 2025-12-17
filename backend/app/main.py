@@ -21,7 +21,7 @@ from app.api.routes import (
     dashboard as dashboard_router,
     mcp as mcp_router,
 )
-from app.api.v1.endpoints import sorftime_test
+from app.api.v1.endpoints import sorftime_test, ai
 from app.db import SessionLocal
 from app.services.log_service import LogService
 from app.middleware.error_handler import error_handler_middleware
@@ -109,6 +109,7 @@ app.include_router(extraction_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(mcp_router.router)
 app.include_router(sorftime_test.router, prefix="/api/v1/sorftime", tags=["sorftime"])
+app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI Analysis"])
 
 # 健康检查路由 (无前缀,公开访问)
 app.include_router(health_router.router, tags=["health"])
