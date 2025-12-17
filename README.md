@@ -38,6 +38,13 @@ ASKJeff 是一个基于 AI 的产品数据管理平台，提供批量导入、�
 - 分页和排序
 - 详情查看
 
+### 🌐 Sorftime API 集成
+- 完整支持 45 个 Amazon API 端点
+- 产品详情、类目分析、关键词研究
+- 实时数据采集和监控
+- 前端测试控制台
+- 详细文档和类型定义
+
 ## 🚀 快速开始
 
 ### 前置要求
@@ -73,6 +80,8 @@ make up
 - 🚢 [部署指南](docs/deployment.md) - 生产环境部署
 - 💻 [开发指南](docs/development.md) - 本地开发和贡献指南
 - 📋 [需求管理](specs/README.md) - 功能需求和开发计划
+- 🌐 [Sorftime API 使用指南](docs/SORFTIME_USAGE_GUIDE.md) - Sorftime API 集成文档
+- 🔐 [Sorftime 安全配置](docs/SORFTIME_SECURITY.md) - API Key 管理和安全最佳实践
 
 ## 🏗️ 技术栈
 
@@ -104,6 +113,7 @@ make up
 | 002 - Insight 产品列表 | ✅ 已完成 | 100% |
 | 003 - LLM 特征提取 | ✅ 已完成 | 100% |
 | 004 - Chatbot 数据库交互 | ✅ 已完成 | 100% |
+| 006 - Sorftime API 集成 | ✅ 已完成 | 100% |
 
 **测试覆盖**: 69/70 通过 (98.6%)
 
@@ -164,6 +174,9 @@ askjeff/
 # DeepSeek API
 DEEPSEEK_API_KEY=your_api_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+# Sorftime API
+SORFTIME_API_KEY=your_sorftime_api_key_here
 
 # 数据库
 POSTGRES_USER=sorftime
