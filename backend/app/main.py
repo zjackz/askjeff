@@ -33,6 +33,10 @@ async def request_logging(request: Request, call_next):
     """记录请求耗时与状态，方便排障。"""
     trace_id = request.headers.get("X-Trace-Id", str(uuid4()))
     start = time.perf_counter()
+    
+    # 记录 Query Params
+    query_params = dict(request.query_params)
+    
     try:
         response = await call_next(request)
         status = response.status_code
@@ -42,12 +46,13 @@ async def request_logging(request: Request, call_next):
             LogService.log(
                 db,
                 level=level,
-                category="api_request",
+                category="api_call",
                 message=f"{request.method} {request.url.path}",
                 context={
                     "status": status,
                     "duration_ms": duration,
                     "client": request.client.host if request.client else None,
+                    "query": query_params,
                 },
                 trace_id=trace_id,
                 status="info",
@@ -60,12 +65,13 @@ async def request_logging(request: Request, call_next):
             LogService.log(
                 db,
                 level="error",
-                category="api_error",
+                category="api_call",
                 message=str(exc),
                 context={
                     "path": request.url.path,
                     "method": request.method,
                     "duration_ms": duration,
+                    "query": query_params,
                 },
                 trace_id=trace_id,
                 status="new",

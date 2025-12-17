@@ -20,11 +20,13 @@ class ImportRepository:
         sheet_name: str | None = None,
         created_by: str | None = None,
         file_hash: str | None = None,
+        source_type: str = "file",
     ) -> ImportBatch:
         batch = ImportBatch(
             filename=filename,
             storage_path=storage_path,
             import_strategy=import_strategy,
+            source_type=source_type,
             status="pending",
             sheet_name=sheet_name,
             created_by=created_by,

@@ -24,6 +24,9 @@ class Settings:
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
         self.deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
         
+        # Sorftime API
+        self.sorftime_api_key = os.getenv("SORFTIME_API_KEY", "uis1m3dyr0exaecvmmnnwlfzdvdkqt09")
+        
         # 文件上传限制
         self.max_file_size_mb = int(os.getenv("MAX_FILE_SIZE_MB", "50"))  # 最大文件大小 (MB)
 

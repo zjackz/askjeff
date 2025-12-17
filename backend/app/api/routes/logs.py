@@ -27,8 +27,7 @@ async def ingest_log(payload: LogIngestRequest, db: Session = Depends(get_db)):
     category = payload.category
     if level not in LOG_LEVELS:
         raise HTTPException(status_code=400, detail="level 参数不合法")
-    if category not in LOG_CATEGORIES:
-        raise HTTPException(status_code=400, detail="category 参数不合法")
+    # 移除 category 校验
     entry = LogService.log(
         db,
         level=level,
@@ -54,8 +53,7 @@ async def list_logs(
 ):
     if level and level.lower() not in LOG_LEVELS:
         raise HTTPException(status_code=400, detail="level 参数不合法")
-    if category and category not in LOG_CATEGORIES:
-        raise HTTPException(status_code=400, detail="category 参数不合法")
+
     items, total = LogService.list_logs(
         db,
         level=level.lower() if level else None,
@@ -81,8 +79,7 @@ async def get_log_detail(log_id: str, db: Session = Depends(get_db)):
 async def analyze_logs(payload: LogAnalyzeRequest, db: Session = Depends(get_db)):
     if payload.level and payload.level.lower() not in LOG_LEVELS:
         raise HTTPException(status_code=400, detail="level 参数不合法")
-    if payload.category and payload.category not in LOG_CATEGORIES:
-        raise HTTPException(status_code=400, detail="category 参数不合法")
+
     if payload.log_ids:
         logs = LogService.fetch_by_ids(db, payload.log_ids[: payload.limit])
     else:

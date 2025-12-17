@@ -111,6 +111,24 @@ class ChatService:
             payload={"question": question, "tool_call": tool_call},
         )
         
+        # 记录到系统日志，方便在日志中心查看外部调用
+        from app.services.log_service import LogService
+        LogService.log(
+            db,
+            level="info",
+            category="external_api",
+            message="DeepSeek Chat Completion",
+            context={
+                "question": question,
+                "answer": answer,
+                "trace": trace,
+                "duration_ms": 0, # 暂无精确耗时，需从 trace 获取或自行计时
+                "client": "DeepSeek API"
+            },
+            trace_id=trace.get("id"),
+            status="succeeded"
+        )
+        
         return {
             "answer": session.answer,
             "references": references,

@@ -23,6 +23,7 @@ class ImportBatchOut(BaseModel):
     sheet_name: str | None = Field(default=None, alias="sheetName")
     failure_summary: dict | None = Field(default=None, alias="failureSummary")
     columns_seen: list[str] | None = Field(default=None, alias="columnsSeen")
+    import_metadata: dict | None = Field(default=None, alias="importMetadata")
     
     # Added fields
     created_at: datetime = Field(..., alias="createdAt")

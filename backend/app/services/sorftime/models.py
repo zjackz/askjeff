@@ -1,9 +1,11 @@
-from pydantic import BaseModel, Field, AliasChoices
+from pydantic import BaseModel, Field, AliasChoices, ConfigDict
 from typing import List, Optional, Any, Dict, Union
 
 # --- Common Models ---
 
 class SorftimeResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    
     requestLeft: Optional[int] = Field(None, validation_alias=AliasChoices('requestLeft', 'RequestLeft'))
     requestConsumed: Optional[int] = Field(None, validation_alias=AliasChoices('requestConsumed', 'RequestConsumed'))
     requestCount: Optional[int] = Field(None, validation_alias=AliasChoices('requestCount', 'RequestCount'))

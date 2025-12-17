@@ -17,40 +17,91 @@
       >
         <el-menu-item index="/dashboard">
           <el-icon><Odometer /></el-icon>
-          <template #title>数据总览</template>
+          <div class="menu-content" v-show="!isCollapse">
+            <span class="menu-title">数据总览</span>
+            <span class="menu-desc">核心指标监控</span>
+          </div>
         </el-menu-item>
         
-        <el-menu-item index="/import">
-          <el-icon><Upload /></el-icon>
-          <template #title>文件导入</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/product">
-          <el-icon><ChatDotRound /></el-icon>
-          <template #title>数据洞察</template>
-        </el-menu-item>
+        <!-- 智能运营 -->
+        <el-sub-menu index="/ai">
+          <template #title>
+            <el-icon><Cpu /></el-icon>
+            <span v-show="!isCollapse">智能运营</span>
+          </template>
+          <el-menu-item index="/ai/product-selection">
+            <el-icon><DataAnalysis /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">智能选品</span>
+              <span class="menu-desc">AI 辅助市场分析</span>
+            </div>
+          </el-menu-item>
+          <el-menu-item index="/ai/keyword-optimization">
+            <el-icon><Key /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">关键词优化</span>
+              <span class="menu-desc">Listing 排名提升</span>
+            </div>
+          </el-menu-item>
+          <el-menu-item index="/product">
+            <el-icon><ChatDotRound /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">产品透视</span>
+              <span class="menu-desc">深度数据洞察</span>
+            </div>
+          </el-menu-item>
+        </el-sub-menu>
 
+        <!-- 数据中心 -->
+        <el-sub-menu index="/data">
+          <template #title>
+            <el-icon><Document /></el-icon>
+            <span v-show="!isCollapse">数据中心</span>
+          </template>
+          <el-menu-item index="/import">
+            <el-icon><Upload /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">数据导入</span>
+              <span class="menu-desc">批量数据上传</span>
+            </div>
+          </el-menu-item>
+          <el-menu-item index="/export">
+            <el-icon><Download /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">数据导出</span>
+              <span class="menu-desc">报表下载中心</span>
+            </div>
+          </el-menu-item>
+        </el-sub-menu>
 
-        
-        <el-menu-item index="/export">
-          <el-icon><Download /></el-icon>
-          <template #title>数据导出</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/logs" v-if="userStore.role === 'admin'">
-          <el-icon><Document /></el-icon>
-          <template #title>日志中心</template>
-        </el-menu-item>
-
-        <el-menu-item index="/admin" v-if="userStore.role === 'admin'">
-          <el-icon><Delete /></el-icon>
-          <template #title>数据管理</template>
-        </el-menu-item>
-
-        <el-menu-item index="/admin/sorftime-test" v-if="userStore.role === 'admin'">
-          <el-icon><Connection /></el-icon>
-          <template #title>API 测试</template>
-        </el-menu-item>
+        <!-- 系统管理 -->
+        <el-sub-menu index="/system" v-if="userStore.role === 'admin'">
+          <template #title>
+            <el-icon><Setting /></el-icon>
+            <span v-show="!isCollapse">系统管理</span>
+          </template>
+          <el-menu-item index="/admin">
+            <el-icon><Delete /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">数据清理</span>
+              <span class="menu-desc">系统数据维护</span>
+            </div>
+          </el-menu-item>
+          <el-menu-item index="/logs">
+            <el-icon><Monitor /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">日志监控</span>
+              <span class="menu-desc">系统运行状态</span>
+            </div>
+          </el-menu-item>
+          <el-menu-item index="/admin/sorftime-test">
+            <el-icon><Connection /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">API 测试</span>
+              <span class="menu-desc">接口调试工具</span>
+            </div>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
       
       <!-- 侧边栏底部 -->
@@ -120,7 +171,8 @@ import { computed, ref } from 'vue'
 import { 
   Odometer, Upload, ChatDotRound, Download, 
   Document, InfoFilled, User, Setting, 
-  SwitchButton, Delete, Expand, Fold, Connection
+  SwitchButton, Delete, Expand, Fold, Connection,
+  Cpu, DataAnalysis, Key, Monitor
 } from '@element-plus/icons-vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { ElMessage } from 'element-plus'
@@ -140,12 +192,15 @@ const toggleCollapse = () => {
 
 const pageNames: Record<string, string> = {
   '/dashboard': '数据总览',
-  '/import': '文件导入',
-  '/product': '数据洞察',
+  '/import': '数据导入',
+  '/product': '产品透视',
+  '/ai/product-selection': '智能选品',
+  '/ai/keyword-optimization': '关键词优化',
   '/extraction': 'AI 提取',
   '/export': '数据导出',
-  '/logs': '日志中心',
-  '/admin': '数据管理'
+  '/logs': '日志监控',
+  '/admin': '数据清理',
+  '/admin/sorftime-test': 'API 测试'
 }
 
 const currentPageName = computed(() => pageNames[route.path] || '')
@@ -219,29 +274,38 @@ const handleLogout = () => {
   z-index: 1;
   
   :deep(.el-menu-item) {
-    height: 48px;
-    line-height: 48px;
+    height: 72px; // 增加高度以容纳双行文本
+    line-height: normal; // 重置行高
     margin-bottom: var(--spacing-sm);
     border-radius: var(--radius-md);
-    color: rgba(255, 255, 255, 0.9); // 提高亮度
+    color: rgba(255, 255, 255, 0.7);
     transition: all var(--transition-base) var(--ease-out);
     display: flex;
     align-items: center;
+    padding: 0 16px !important; // 调整内边距
     
     &:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
       color: #fff;
+      
+      .menu-desc {
+        color: rgba(255, 255, 255, 0.9);
+      }
     }
     
     &.is-active {
       background: var(--primary-gradient);
       color: #fff;
       box-shadow: var(--shadow-primary);
+      
+      .menu-desc {
+        color: rgba(255, 255, 255, 0.9);
+      }
     }
     
     .el-icon {
-      font-size: 18px;
-      margin-right: var(--spacing-sm);
+      font-size: 20px;
+      margin-right: 12px;
       text-align: center;
       vertical-align: middle;
       width: 24px;
@@ -249,9 +313,61 @@ const handleLogout = () => {
     }
   }
 
+  :deep(.el-sub-menu__title) {
+    height: 56px; // 分组标题稍矮一些
+    line-height: 56px;
+    margin-bottom: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    color: rgba(255, 255, 255, 0.9);
+    transition: all var(--transition-base) var(--ease-out);
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+    }
+
+    .el-icon {
+      font-size: 18px;
+      margin-right: 12px;
+      text-align: center;
+      vertical-align: middle;
+      width: 24px;
+      color: inherit;
+    }
+  }
+
+  :deep(.el-menu--inline) {
+    background: rgba(0, 0, 0, 0.2) !important; // 深色背景，形成凹陷感
+    
+    .el-menu-item {
+      padding-left: 48px !important; // 增加缩进
+      background: transparent; // 确保透明，显示父容器背景
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      
+      &.is-active {
+        background: var(--primary-gradient);
+      }
+
+      .el-icon {
+        font-size: 16px; // 缩小图标
+        width: 16px;
+        margin-right: 12px;
+        opacity: 0.8; // 降低图标透明度
+      }
+      
+      .menu-title {
+        font-size: 13px; // 稍微缩小标题字体
+      }
+    }
+  }
+  
   // 折叠状态下的特定样式
   &.el-menu--collapse {
     :deep(.el-menu-item) {
+      height: 56px; // 折叠时恢复正常高度
       padding: 0 !important;
       justify-content: center;
       margin-bottom: 8px;
@@ -260,6 +376,24 @@ const handleLogout = () => {
         margin-right: 0;
       }
     }
+  }
+}
+
+.menu-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.4;
+  
+  .menu-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  .menu-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
   }
 }
 

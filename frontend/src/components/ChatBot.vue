@@ -219,8 +219,8 @@ watch(visible, (val) => {
 }
 
 .chat-fab {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: #fff;
   box-shadow: var(--shadow-lg);
@@ -229,20 +229,24 @@ watch(visible, (val) => {
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #fff;
-  font-size: 28px;
+  color: var(--primary-color); // Change icon color to primary
+  font-size: 24px;
   position: relative;
   z-index: 2002;
+  animation: breathe 3s infinite ease-in-out;
 
   &:hover {
     transform: scale(1.1);
     box-shadow: 0 15px 30px -5px rgba(102, 126, 234, 0.6);
+    animation-play-state: paused;
   }
 
   &.is-active {
     transform: rotate(90deg);
     background: var(--danger-color);
+    color: #fff;
     box-shadow: var(--shadow-danger);
+    animation: none;
   }
 
   .fab-img {
@@ -555,5 +559,11 @@ watch(visible, (val) => {
 @keyframes bounce {
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
+}
+
+@keyframes breathe {
+  0% { transform: scale(1); box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3); }
+  50% { transform: scale(1.08); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5); }
+  100% { transform: scale(1); box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3); }
 }
 </style>

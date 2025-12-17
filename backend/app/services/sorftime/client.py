@@ -43,14 +43,16 @@ class SorftimeClient:
     
     BASE_URL = "https://standardapi.sorftime.com/api"
     
-    def __init__(self, account_sk: str):
+    def __init__(self, account_sk: str, db: Optional[Any] = None):
         """
         Initialize Sorftime client.
         
         Args:
             account_sk: Sorftime API key
+            db: Database session for logging (optional)
         """
         self.account_sk = account_sk
+        self.db = db
         self.headers = {
             "Authorization": f"BasicAuth {self.account_sk}",
             "Content-Type": "application/json;charset=UTF-8"
@@ -67,20 +69,10 @@ class SorftimeClient:
     ) -> Dict[str, Any]:
         """
         Make a POST request to Sorftime API.
-        
-        Args:
-            endpoint: API endpoint name (e.g., 'ProductRequest')
-            domain: Domain code (1: US, 2: GB, etc.)
-            payload: Request payload
-            timeout: Request timeout in seconds
-            
-        Returns:
-            API response as dictionary
-            
-        Raises:
-            httpx.HTTPError: On network errors
-            httpx.TimeoutException: On timeout
         """
+        from app.services.log_service import LogService  # Lazy import to avoid circular dependency
+        import time
+
         url = f"{self.BASE_URL}/{endpoint}"
         params = {"domain": domain}
         
@@ -95,41 +87,91 @@ class SorftimeClient:
             ]
 
         self._request_count += 1
-        logger.info(
-            f"Sorftime API Request #{self._request_count}: {endpoint} | "
-            f"Domain: {domain} | Payload: {json.dumps(json_payload)[:200]}..."
-        )
+        start_time = time.perf_counter()
         
         # trust_env=False ignores system proxy settings which may be broken
         async with httpx.AsyncClient(verify=False, trust_env=False, timeout=timeout) as client:
-            response = await client.post(
-                url, 
-                headers=self.headers, 
-                params=params, 
-                json=json_payload
-            )
-            
-            # Sorftime uses custom HTTP status codes (e.g., 694 for quota exceeded)
-            # Don't raise on non-2xx, return the response body instead
             try:
-                data = response.json()
-                logger.info(
-                    f"Sorftime API Response #{self._request_count}: "
-                    f"Code={data.get('code', 'N/A')}, "
-                    f"Message={data.get('message', 'N/A')[:100]}"
+                response = await client.post(
+                    url, 
+                    headers=self.headers, 
+                    params=params, 
+                    json=json_payload
                 )
-                return data
-            except json.JSONDecodeError:
-                logger.error(
-                    f"Failed to decode JSON response. "
-                    f"Status: {response.status_code}, Text: {response.text[:500]}"
-                )
-                # Return error response for frontend display
-                return {
-                    "code": response.status_code,
-                    "message": f"Non-JSON response: {response.text[:200]}",
-                    "data": None
-                }
+                duration = round((time.perf_counter() - start_time) * 1000, 2)
+                
+                response_data = {}
+                try:
+                    response_data = response.json()
+                except json.JSONDecodeError:
+                    response_data = {"raw": response.text[:500]}
+
+                # Log to DB if session is available
+                if self.db:
+                    try:
+                        # 提取 Quota 信息
+                        quota_info = {
+                            "requestLeft": response_data.get("requestLeft"),
+                            "requestConsumed": response_data.get("requestConsumed"),
+                            "requestCount": response_data.get("requestCount"),
+                            "code": response_data.get("code"),
+                            "message": response_data.get("message")
+                        }
+                        
+                        # 判断是否成功
+                        is_success = response.status_code < 400 and response_data.get("code") == 0
+                        
+                        # 构建 context
+                        context = {
+                            "platform": "Sorftime",
+                            "url": str(response.url),
+                            "method": "POST",
+                            "request": json_payload,
+                            "response": quota_info,
+                            "status_code": response.status_code,
+                            "duration_ms": duration,
+                            "domain": domain
+                        }
+                        
+                        # 如果失败，记录原始响应以便调试
+                        if not is_success:
+                            context["raw_response"] = response.text[:2000]  # 截断到 2000 字符
+                            context["error_detail"] = {
+                                "http_status": response.status_code,
+                                "api_code": response_data.get("code"),
+                                "api_message": response_data.get("message")
+                            }
+                        
+                        LogService.log(
+                            self.db,
+                            level="info" if is_success else "error",
+                            category="external_api",
+                            message=f"Sorftime API {endpoint}",
+                            context=context,
+                            status="info"
+                        )
+                    except Exception as log_err:
+                        logger.error(f"Failed to log to DB: {log_err}")
+
+                return response_data
+                
+            except Exception as e:
+                # Log error if DB available
+                if self.db:
+                    LogService.log(
+                        self.db,
+                        level="error",
+                        category="external_api",
+                        message=f"Sorftime API {endpoint} Failed",
+                        context={
+                            "platform": "Sorftime",
+                            "url": url,
+                            "method": "POST",
+                            "error": str(e)
+                        },
+                        status="new"
+                    )
+                raise
 
     # ==================== Basic Query APIs (1-9) ====================
     

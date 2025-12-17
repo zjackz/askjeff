@@ -8,6 +8,7 @@ from app.api.deps import get_db
 from app.api.errors import AppError
 from app.db import SessionLocal
 from app.schemas.imports import ImportBatchOut, ImportDetailResponse, ImportListResponse
+from app.services.api_import_service import api_import_service
 from app.services.deepseek_client import DeepseekClient
 from app.services.extraction_service import ExtractionService
 from app.services.import_repository import ImportRepository
@@ -172,3 +173,97 @@ def list_extraction_runs(
         .all()
     )
     return {"items": runs}
+
+
+# ==================== API 导入端点 ====================
+
+@router.post("/from-api", status_code=201)
+async def import_from_api(
+    input: str = Body(..., embed=True),
+    input_type: str | None = Body(None, embed=True),
+    domain: int = Body(1, embed=True),
+    test_mode: bool = Body(False, embed=True),
+    limit: int = Body(100, embed=True),
+    db: Session = Depends(get_db),
+):
+    """
+    从 Sorftime API 批量导入产品数据
+    
+    Args:
+        input: 输入值 (ASIN, 类目ID, URL)
+        input_type: 输入类型 (可选，自动识别)
+        domain: 站点 (1=美国)
+        test_mode: 是否开启测试模式 (只抓取少量数据)
+    """
+    # 验证输入
+    if not input:
+        raise HTTPException(status_code=400, detail="输入不能为空")
+    
+    # 启动导入
+    try:
+        batch_id = await api_import_service.import_from_input(
+            db=db,
+            input_value=input,
+            input_type=input_type,
+            domain=domain,
+            test_mode=test_mode,
+            limit=limit,
+        )
+        
+        return {
+            "batch_id": batch_id,
+            "status": "started",
+            "message": "导入已启动"
+        }
+        
+    except NotImplementedError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+
+
+@router.post("/preview-api")
+async def preview_api_import(
+    input: str = Body(..., embed=True),
+    domain: int = Body(1, embed=True),
+    test_mode: bool = Body(False, embed=True),
+    db: Session = Depends(get_db),
+):
+    """预览 API 导入内容"""
+    try:
+        result = await api_import_service.preview_input(input, domain, test_mode, db)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/from-api/{batch_id}/status")
+async def get_api_import_status(
+    batch_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    获取 API 导入状态
+    
+    Returns:
+        {
+            "batch_id": 123,
+            "status": "processing",
+            "progress": 45,
+            "message": "正在获取产品详情 (45/100)"
+        }
+    """
+    batch = ImportRepository.get_batch(db, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="批次不存在")
+    
+    return {
+        "batch_id": batch.id,
+        "status": batch.status,
+        "total_rows": batch.total_rows,
+        "success_rows": batch.success_rows,
+        "failed_rows": batch.failed_rows,
+        "import_metadata": batch.import_metadata,
+    }

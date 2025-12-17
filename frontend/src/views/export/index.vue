@@ -1,12 +1,12 @@
 <template>
-  <div class="export-page p-6">
+  <div class="export-page p-6 fade-up">
     <div class="page-header mb-6">
       <h1 class="text-2xl font-bold text-gray-800">数据导出</h1>
     </div>
 
     <div class="main-content">
       <!-- Top Section: Configuration & Preview Combined -->
-      <div class="section-card mb-24">
+      <div class="section-card mb-24 hover-card">
         <el-row>
           <!-- Left: Configuration (25%) -->
           <el-col :span="6" class="config-col">
@@ -126,7 +126,7 @@
       </div>
 
       <!-- Bottom Section: History -->
-      <div class="section-card">
+      <div class="section-card hover-card">
         <div class="section-header">
           <div class="flex justify-between items-center">
             <h2 class="section-title">导出历史</h2>
@@ -593,10 +593,16 @@ const formatDate = (dateStr: string) => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .export-page {
-  background-color: #f3f4f6;
+  background-color: var(--bg-secondary);
   min-height: 100vh;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .main-content {
@@ -605,32 +611,43 @@ const formatDate = (dateStr: string) => {
 
 .section-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
 }
 
 .section-header {
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--border-light);
 }
 
 .section-title {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 4px 0;
 }
 
 :deep(.el-table) {
   border-radius: 8px;
   overflow: hidden;
+  --el-table-border-color: var(--border-light);
   
   th {
     background: #f9fafb !important;
-    color: #374151;
+    color: var(--text-primary);
     font-weight: 600;
+    height: 56px;
+  }
+
+  td {
+    height: 64px;
+  }
+
+  .el-table__inner-wrapper::before {
+    display: none;
   }
 }
 
@@ -639,7 +656,7 @@ const formatDate = (dateStr: string) => {
 }
 
 .config-col {
-  border-right: 1px solid #f0f0f0;
+  border-right: 1px solid var(--border-light);
   padding-right: 24px;
 }
 

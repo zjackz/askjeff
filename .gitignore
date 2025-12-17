@@ -56,6 +56,8 @@ backend/migrations/versions/*.pyc
 
 # 本地虚拟环境
 backend/.venv-user/
+backend/venv_*/
+tmp_venv/
 
 # 临时/附属文件（Excel 暂存、Windows ADS）
 ~$*
@@ -66,5 +68,13 @@ frontend/playwright-report/
 frontend/test-results/
 frontend/tests/e2e/screenshots/
 
+# 调试和测试脚本
+backend/debug_*.py
+backend/debug_*.txt
+backend/test_*.py
+backend/query_*.py
+backend/scripts/test_*.py
+test_*.sh
+docs/*.json
 
 .pnpm-store-user/

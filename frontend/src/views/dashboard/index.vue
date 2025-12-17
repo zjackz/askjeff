@@ -8,7 +8,7 @@
 
     <!-- 统计卡片 -->
     <el-row :gutter="24" class="mb-6">
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8" class="mb-4-xs">
         <div class="stat-card primary-card slide-in" style="--delay: 0.1s">
           <div class="stat-icon">
             <el-icon><Upload /></el-icon>
@@ -25,7 +25,7 @@
         </div>
       </el-col>
       
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8" class="mb-4-xs">
         <div class="stat-card success-card slide-in" style="--delay: 0.2s">
           <div class="stat-icon">
             <el-icon><Box /></el-icon>
@@ -42,7 +42,7 @@
         </div>
       </el-col>
       
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8" class="mb-4-xs">
         <div class="stat-card warning-card slide-in" style="--delay: 0.3s">
           <div class="stat-icon">
             <el-icon><MagicStick /></el-icon>
@@ -65,8 +65,8 @@
       <h3>快速入口</h3>
     </div>
     
-    <el-row :gutter="20" class="mb-6 slide-in" style="--delay: 0.5s">
-      <el-col :span="8">
+    <el-row :gutter="20" class="mb-6 slide-in quick-action-row" style="--delay: 0.5s">
+      <el-col :xs="24" :sm="12" :md="8" class="mb-4-xs">
         <div class="quick-action-card" @click="$router.push('/import')">
           <div class="action-icon bg-blue-100 text-blue-600">
             <el-icon><Upload /></el-icon>
@@ -79,7 +79,7 @@
         </div>
       </el-col>
       
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8" class="mb-4-xs">
         <div class="quick-action-card" @click="$router.push('/product')">
           <div class="action-icon bg-green-100 text-green-600">
             <el-icon><Search /></el-icon>
@@ -92,7 +92,7 @@
         </div>
       </el-col>
       
-      <el-col :span="8">
+      <el-col :xs="24" :sm="12" :md="8" class="mb-4-xs">
         <div class="quick-action-card" @click="$router.push('/export')">
           <div class="action-icon bg-purple-100 text-purple-600">
             <el-icon><Download /></el-icon>
@@ -119,7 +119,7 @@
       
       <el-row :gutter="20" v-loading="loadingSystemStats">
         <!-- CPU使用率 -->
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :md="12" :lg="6" class="mb-4-md">
           <div class="metric-card">
             <div class="metric-icon cpu-icon">
               <el-icon><Cpu /></el-icon>
@@ -138,7 +138,7 @@
         </el-col>
         
         <!-- 内存使用率 -->
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :md="12" :lg="6" class="mb-4-md">
           <div class="metric-card">
             <div class="metric-icon memory-icon">
               <el-icon><Memo /></el-icon>
@@ -160,7 +160,7 @@
         </el-col>
         
         <!-- 磁盘使用率 -->
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :md="12" :lg="6" class="mb-4-md">
           <div class="metric-card">
             <div class="metric-icon disk-icon">
               <el-icon><FolderOpened /></el-icon>
@@ -182,7 +182,7 @@
         </el-col>
         
         <!-- 系统运行时间 -->
-        <el-col :span="6">
+        <el-col :xs="24" :sm="12" :md="12" :lg="6" class="mb-4-md">
           <div class="metric-card">
             <div class="metric-icon uptime-icon">
               <el-icon><Clock /></el-icon>
@@ -400,6 +400,14 @@ onUnmounted(() => {
 .justify-between { justify-content: space-between; }
 .items-center { align-items: center; }
 
+@media (max-width: 992px) {
+  .mb-4-md { margin-bottom: 16px; }
+}
+
+@media (max-width: 768px) {
+  .mb-4-xs { margin-bottom: 16px; }
+}
+
 // 统计卡片
 .stat-card {
   position: relative;
@@ -470,7 +478,6 @@ onUnmounted(() => {
 // 快速入口卡片
 .quick-action-card {
   background: var(--bg-primary);
-  height: 100%;
   padding: 20px;
   border-radius: var(--radius-lg);
   display: flex;
@@ -599,6 +606,9 @@ onUnmounted(() => {
     color: var(--text-primary);
     margin-bottom: 8px;
     line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     
     &.uptime-value {
       font-size: 20px;
@@ -622,5 +632,14 @@ onUnmounted(() => {
 .slide-in {
   animation: slideInRight 0.5s ease-out backwards;
   animation-delay: var(--delay, 0s);
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.quick-action-row {
+  margin-bottom: 40px !important;
 }
 </style>
