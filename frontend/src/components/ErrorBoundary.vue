@@ -23,6 +23,7 @@
 import { ref, onErrorCaptured } from 'vue'
 import { useRouter } from 'vue-router'
 import { WarningFilled } from '@element-plus/icons-vue'
+import { logger } from '@/utils/logger'
 
 const router = useRouter()
 const hasError = ref(false)
@@ -35,8 +36,8 @@ onErrorCaptured((err: Error) => {
   errorMessage.value = '抱歉,页面遇到了一些问题'
   errorDetails.value = `${err.message}\n\n${err.stack}`
   
-  // 记录错误到控制台
-  console.error('ErrorBoundary caught:', err)
+  // 记录错误
+  logger.error('ErrorBoundary caught error', err)
   
   // 阻止错误继续传播
   return false

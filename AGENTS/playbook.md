@@ -96,20 +96,35 @@ docker compose -f infra/docker/compose.dev.yml up -d
 
 ## 7. 日志排障（先查日志再改代码）
 
-### 7.1 数据库连接
+### 7.1 数据库连接（askjeff 项目）
 
-- 容器：`<db-container>`
-- 用户：`<db-user>`
-- 库：`<db-name>`
+- 容器：`askjeff-dev-db-1`
+- 用户：`sorftime`
+- 库：`askjeff`
 
 ```bash
-docker exec <db-container> psql -U <db-user> -d <db-name> -c "<SQL>"
+docker exec askjeff-dev-db-1 psql -U sorftime -d askjeff -c "<SQL>"
 ```
 
 ### 7.2 快速查看最近 API 错误
 
-- 优先使用脚本：`quick_check_api_logs.sh`
-- 或按工作流排查：`.agent/workflows/ai-log-analysis.md` 与 `.agent/workflows/troubleshoot-api-issues.md`
+```bash
+# 查询最近 30 分钟的 API 错误
+docker exec askjeff-dev-db-1 psql -U sorftime -d askjeff -c "
+SELECT 
+    to_char(timestamp, 'HH24:MI:SS') as time,
+    level,
+    message,
+    context->>'platform' as platform,
+    context->>'status_code' as status
+FROM system_logs
+WHERE category = 'external_api'
+  AND level = 'error'
+  AND timestamp >= NOW() - INTERVAL '30 minutes'
+ORDER BY timestamp DESC
+LIMIT 5;
+"
+```
 
 ### 7.3 进一步工作流
 

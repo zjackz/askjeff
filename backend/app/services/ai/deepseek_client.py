@@ -115,13 +115,14 @@ class DeepSeekClient:
         }
         
         try:
-            async with httpx.AsyncClient() as client:
+            # 设置默认超时,避免请求永久阻塞
+            async with httpx.AsyncClient(timeout=httpx.Timeout(timeout)) as client:
                 response = await client.post(
                     f"{self.base_url}/chat/completions",
                     headers=self.headers,
-                    json=payload,
-                    timeout=timeout
+                    json=payload
                 )
+
                 
                 # 检查响应状态
                 response.raise_for_status()
