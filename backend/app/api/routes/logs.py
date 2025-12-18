@@ -13,7 +13,6 @@ from app.schemas.logs import (
     LogListResponse,
     SystemLogOut,
     LOG_LEVELS,
-    LOG_CATEGORIES,
 )
 from app.services.log_analyzer import LogAnalyzer
 from app.services.log_service import LogService

@@ -5,7 +5,6 @@ AI 分析服务 API 端点
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status
-from typing import Optional
 import logging
 import os
 
@@ -14,7 +13,6 @@ from app.schemas.ai import (
     ProductSelectionResponse,
     KeywordOptimizationRequest,
     KeywordOptimizationResponse,
-    AIAnalysisError
 )
 from app.services.ai import ProductSelectionService, KeywordOptimizationService, DeepSeekClient
 from app.services.sorftime import SorftimeClient
@@ -32,7 +30,7 @@ def get_sorftime_client() -> SorftimeClient:
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="SORFTIME_API_KEY not configured"
+            detail="SORFTIME_API_KEY 未配置"
         )
     return SorftimeClient(account_sk=api_key)
 
@@ -43,7 +41,7 @@ def get_deepseek_client() -> DeepSeekClient:
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="DEEPSEEK_API_KEY not configured"
+            detail="DEEPSEEK_API_KEY 未配置"
         )
     return DeepSeekClient(api_key=api_key)
 

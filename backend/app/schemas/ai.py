@@ -4,9 +4,9 @@ AI 服务相关的 Pydantic Schemas
 定义 AI 分析服务的请求和响应模型。
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Any
+
 from pydantic import BaseModel, Field, validator
-from datetime import datetime
 
 
 # ==================== 产品选品相关 ====================
@@ -33,17 +33,17 @@ class ProductSelectionRequest(BaseModel):
     @validator('category_id')
     def validate_category_id(cls, v):
         if not v or not v.strip():
-            raise ValueError('category_id cannot be empty')
+            raise ValueError("category_id 不能为空")
         return v.strip()
 
 
 class ProductSelectionStatistics(BaseModel):
     """选品统计数据"""
     
-    avg_price: Optional[float] = Field(None, description="平均价格")
-    avg_rating: Optional[float] = Field(None, description="平均评分")
-    avg_reviews: Optional[int] = Field(None, description="平均评论数")
-    competition_level: Optional[str] = Field(None, description="竞争强度")
+    avg_price: float | None = Field(None, description="平均价格")
+    avg_rating: float | None = Field(None, description="平均评分")
+    avg_reviews: int | None = Field(None, description="平均评论数")
+    competition_level: str | None = Field(None, description="竞争强度")
 
 
 class ProductSelectionResponse(BaseModel):
@@ -106,12 +106,12 @@ class KeywordOptimizationRequest(BaseModel):
     @validator('asin')
     def validate_asin(cls, v):
         if not v or not v.strip():
-            raise ValueError('ASIN cannot be empty')
+            raise ValueError("ASIN 不能为空")
         v = v.strip().upper()
         if not v.startswith('B'):
-            raise ValueError('ASIN must start with B')
+            raise ValueError("ASIN 必须以 B 开头")
         if len(v) != 10:
-            raise ValueError('ASIN must be exactly 10 characters')
+            raise ValueError("ASIN 必须为 10 位")
         return v
 
 
@@ -145,16 +145,16 @@ class AIAnalysisError(BaseModel):
     
     error: str = Field(..., description="错误类型")
     message: str = Field(..., description="错误消息")
-    details: Optional[Dict[str, Any]] = Field(None, description="错误详情")
+    details: dict[str, Any] | None = Field(None, description="错误详情")
 
 
 class AIAnalysisStatus(BaseModel):
     """AI 分析状态"""
     
     status: str = Field(..., description="状态: pending, processing, completed, failed")
-    progress: Optional[int] = Field(None, description="进度百分比 (0-100)")
-    message: Optional[str] = Field(None, description="状态消息")
-    result: Optional[Dict[str, Any]] = Field(None, description="分析结果")
+    progress: int | None = Field(None, description="进度百分比 (0-100)")
+    message: str | None = Field(None, description="状态消息")
+    result: dict[str, Any] | None = Field(None, description="分析结果")
 
 
 # ==================== 缓存相关 ====================
@@ -164,5 +164,5 @@ class CacheInfo(BaseModel):
     
     cache_key: str = Field(..., description="缓存键")
     hit: bool = Field(..., description="是否命中缓存")
-    expires_at: Optional[str] = Field(None, description="过期时间")
-    created_at: Optional[str] = Field(None, description="创建时间")
+    expires_at: str | None = Field(None, description="过期时间")
+    created_at: str | None = Field(None, description="创建时间")

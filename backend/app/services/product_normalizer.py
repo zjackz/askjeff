@@ -244,7 +244,6 @@ class ProductDataNormalizer:
             "eur": "EUR",
             "£": "GBP",
             "gbp": "GBP",
-            "¥": "JPY",  # 日元也用 ¥
             "jpy": "JPY",
         }
         

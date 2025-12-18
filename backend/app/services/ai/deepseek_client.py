@@ -4,11 +4,12 @@ DeepSeek API 客户端
 提供与 DeepSeek AI 服务的集成，用于生成智能分析和建议。
 """
 
-import httpx
-from typing import Optional, List, Dict, Any
 import logging
 import asyncio
 from functools import wraps
+from typing import Any
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -18,21 +19,25 @@ def retry_on_failure(max_retries: int = 3, delay: float = 1.0):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            last_exception = None
+            last_exception: Exception | None = None
             for attempt in range(max_retries):
                 try:
                     return await func(*args, **kwargs)
-                except Exception as e:
-                    last_exception = e
+                except Exception as exc:  # noqa: BLE001 - 统一重试处理
+                    last_exception = exc
                     if attempt < max_retries - 1:
                         wait_time = delay * (2 ** attempt)
                         logger.warning(
-                            f"Attempt {attempt + 1} failed: {str(e)}. "
-                            f"Retrying in {wait_time}s..."
+                            "第 %s 次调用失败：%s；将在 %s 秒后重试",
+                            attempt + 1,
+                            str(exc),
+                            wait_time,
                         )
                         await asyncio.sleep(wait_time)
                     else:
-                        logger.error(f"All {max_retries} attempts failed")
+                        logger.error("已达到最大重试次数：%s", max_retries)
+            if last_exception is None:
+                raise RuntimeError("重试装饰器状态异常：未捕获到异常但未返回结果")
             raise last_exception
         return wrapper
     return decorator
@@ -55,7 +60,7 @@ class DeepSeekClient:
             base_url: API 基础 URL
         """
         if not api_key:
-            raise ValueError("DeepSeek API key is required")
+            raise ValueError("DeepSeek API 密钥不能为空")
         
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
@@ -64,12 +69,12 @@ class DeepSeekClient:
             "Content-Type": "application/json"
         }
         
-        logger.info("DeepSeek client initialized")
+        logger.info("DeepSeek 客户端已初始化")
     
     @retry_on_failure(max_retries=3, delay=1.0)
     async def chat_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         model: str = "deepseek-chat",
         temperature: float = 0.7,
         max_tokens: int = 4000,
@@ -92,14 +97,14 @@ class DeepSeekClient:
             httpx.HTTPError: HTTP 请求失败
             ValueError: 响应格式错误
         """
-        logger.info(f"Calling DeepSeek API with model={model}, messages={len(messages)}")
+        logger.info("调用 DeepSeek：model=%s，messages=%s", model, len(messages))
         
         # 验证参数
         if not messages:
-            raise ValueError("Messages cannot be empty")
+            raise ValueError("messages 不能为空")
         
         if not all(isinstance(m, dict) and 'role' in m and 'content' in m for m in messages):
-            raise ValueError("Invalid message format")
+            raise ValueError("messages 格式不正确（需要包含 role 与 content）")
         
         # 构建请求
         payload = {
@@ -126,34 +131,34 @@ class DeepSeekClient:
                 
                 # 提取生成的内容
                 if 'choices' not in data or not data['choices']:
-                    raise ValueError("Invalid API response: no choices")
+                    raise ValueError("DeepSeek 响应格式不正确：缺少 choices")
                 
                 content = data['choices'][0]['message']['content']
                 
                 # 记录使用情况
                 usage = data.get('usage', {})
                 logger.info(
-                    f"DeepSeek API call successful. "
-                    f"Tokens: {usage.get('total_tokens', 'unknown')}"
+                    "DeepSeek 调用成功；Tokens：%s",
+                    usage.get("total_tokens", "unknown"),
                 )
                 
                 return content
                 
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error: {e.response.status_code} - {e.response.text}")
+            logger.error("DeepSeek HTTP 错误：%s - %s", e.response.status_code, e.response.text)
             raise
         except httpx.RequestError as e:
-            logger.error(f"Request error: {str(e)}")
+            logger.error("DeepSeek 请求异常：%s", str(e))
             raise
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error("DeepSeek 未知异常：%s", str(e))
             raise
     
     async def analyze_with_system_prompt(
         self,
         system_prompt: str,
         user_prompt: str,
-        **kwargs
+        **kwargs: Any
     ) -> str:
         """
         使用系统提示词进行分析

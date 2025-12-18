@@ -6,20 +6,19 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.errors import register_exception_handlers
 from app.api.routes import (
-    imports as imports_router,
+    admin as admin_router,
+    backups as backups_router,
     chat as chat_router,
+    dashboard as dashboard_router,
     exports as exports_router,
-    products as products_router,
-    logs as logs_router,
     extraction as extraction_router,
     health as health_router,
+    imports as imports_router,
+    logs as logs_router,
     login as login_router,
-    backups as backups_router,
-    users as users_router,
-    admin as admin_router,
-    admin as admin_router,
-    dashboard as dashboard_router,
     mcp as mcp_router,
+    products as products_router,
+    users as users_router,
 )
 from app.api.v1.endpoints import sorftime_test, ai
 from app.db import SessionLocal
@@ -28,13 +27,13 @@ from app.middleware.error_handler import error_handler_middleware
 
 app = FastAPI(title="AskJeff API", version="0.1.0")
 
-# 1. 日志中间件 (最内层，记录原始请求和异常)
+# 1. 日志中间件（最内层，记录原始请求和异常）
 async def request_logging(request: Request, call_next):
     """记录请求耗时与状态，方便排障。"""
     trace_id = request.headers.get("X-Trace-Id", str(uuid4()))
     start = time.perf_counter()
     
-    # 记录 Query Params
+    # 记录查询参数
     query_params = dict(request.query_params)
     
     try:
@@ -98,8 +97,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 全局错误处理中间件 (Wait, error_handler_middleware is already added above)
-# app.middleware("http")(error_handler_middleware) # Removed duplicate
+# 全局错误处理中间件已在上方注册（避免重复注册）
+# app.middleware("http")(error_handler_middleware)  # 已移除重复注册
 
 register_exception_handlers(app)
 

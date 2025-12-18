@@ -55,8 +55,8 @@ class ProductSelectionReport(Base):
     )
     
     # 用户关联（可选，用于多用户场景）
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
     )
     
     def __repr__(self) -> str:
@@ -104,8 +104,8 @@ class KeywordOptimization(Base):
     )
     
     # 用户关联
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
     )
     
     def __repr__(self) -> str:

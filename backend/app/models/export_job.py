@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import uuid
 
 from sqlalchemy import JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -10,9 +11,6 @@ from app.db import Base
 EXPORT_STATUS = ("pending", "running", "succeeded", "failed")
 EXPORT_TYPES = ("clean_products", "failed_rows")
 FILE_FORMATS = ("csv", "xlsx")
-
-
-import uuid
 
 class ExportJob(Base):
     __tablename__ = "export_jobs"

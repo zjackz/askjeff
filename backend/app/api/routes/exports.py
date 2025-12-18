@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.api.errors import AppError
 from app.api.deps import get_db
 from app.schemas.exports import ExportJobOut, ExportRequest
@@ -42,27 +45,23 @@ async def create_export(payload: ExportRequest, db: Session = Depends(get_db)):
 @router.get("/download")
 async def download_file(path: str):
     """
-    Download a file from the storage directory.
-    This is used for downloading raw import files or failure logs.
-    """
-    from app.config import settings
-    from pathlib import Path
-    import os
+    从存储目录下载文件。
 
-    # Security check: ensure path is within storage directory
+    用途：下载原始导入文件或失败日志等。
+    """
     storage_dir = settings.storage_dir.resolve()
     requested_path = (storage_dir / path).resolve()
 
     if not str(requested_path).startswith(str(storage_dir)):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="访问被拒绝")
 
     if not requested_path.exists() or not requested_path.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="文件不存在")
 
     return FileResponse(
-        requested_path, 
+        requested_path,
         filename=requested_path.name,
-        media_type="application/octet-stream"
+        media_type="application/octet-stream",
     )
 
 
