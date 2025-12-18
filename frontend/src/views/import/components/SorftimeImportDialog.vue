@@ -64,8 +64,13 @@
               <el-input-number v-model="mcpForm.limit" :min="1" :max="500" size="small" controls-position="right" />
             </div>
             <div class="option-item">
-              <span>测试模式 (Mock)</span>
-              <el-switch v-model="mcpForm.test_mode" size="small" />
+              <div class="label-with-icon">
+                <span>测试模式 (Mock)</span>
+                <el-tooltip content="开启后将使用模拟数据，无需 API Key 即可测试流程" placement="top">
+                  <el-icon><InfoFilled /></el-icon>
+                </el-tooltip>
+              </div>
+              <el-switch v-model="mcpForm.test_mode" size="small" @change="handleInputPreview(mcpForm.input)" />
             </div>
           </div>
         </div>
@@ -152,9 +157,16 @@
               
               <div v-else class="error-content">
                 <div class="error-icon"><el-icon><Warning /></el-icon></div>
-                <div>
-                  <div class="error-title">无法识别内容</div>
-                  <div class="error-desc">{{ previewData.error || '请输入有效的 Amazon 链接或 ASIN' }}</div>
+                <div class="flex-1">
+                  <div class="error-title">{{ isApiKeyError ? 'API 未配置' : '识别失败' }}</div>
+                  <div class="error-desc">
+                    {{ previewData.error }}
+                    <div v-if="isApiKeyError" class="mt-2">
+                      <el-link type="primary" :underline="false" size="small" @click="enableMockMode">
+                        点此开启测试模式 (Mock) 预览
+                      </el-link>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -215,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { MagicStick, Link, InfoFilled, DataAnalysis, Loading, Document, Picture, Menu, Warning, CircleCheckFilled, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useDebounceFn } from '@vueuse/core'
@@ -246,6 +258,15 @@ const importProgress = ref<ImportProgress>({
   percentage: 0,
   batchId: null
 })
+
+const isApiKeyError = computed(() => {
+  return previewData.value?.error?.includes('SORFTIME_API_KEY')
+})
+
+const enableMockMode = () => {
+  mcpForm.value.test_mode = true
+  handleInputPreview(mcpForm.value.input)
+}
 
 const examples = [
   { label: 'ASIN 示例', value: 'B0C1S6Z7Y2' },
