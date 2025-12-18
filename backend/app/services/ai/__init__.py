@@ -5,7 +5,7 @@ AI 服务模块
 """
 
 from .deepseek_client import DeepSeekClient
-from .prompts import PromptTemplates
+from app.prompts.templates import PromptTemplates
 from .product_selection import ProductSelectionService
 from .keyword_optimization import KeywordOptimizationService
 

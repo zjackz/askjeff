@@ -6,6 +6,12 @@ from typing import Any
 
 import httpx
 
+from app.prompts.extraction_prompts import (
+    FEATURE_EXTRACTION_SYSTEM_PROMPT,
+    TRANSLATION_SYSTEM_PROMPT,
+    SUMMARIZE_SYSTEM_PROMPT
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +106,7 @@ class DeepseekClient:
             return {"answer": answer, "trace": {"mode": "fallback"}}
 
         messages = [
-            {"role": "system", "content": "你是产品分析助手，请使用中文回答"},
+            {"role": "system", "content": SUMMARIZE_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": f"问题: {question}\n上下文: {context}",
@@ -124,11 +130,9 @@ class DeepseekClient:
             return {}, {}
 
         import json
-        system_prompt = (
-            "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
-            f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n\n"
-            "请以 JSON 格式返回结果，必须严格使用上述字段列表中的字符串作为 key，value 为提取出的内容。如果无法提取，value 请留空。\n"
-            "只返回 JSON，不要包含markdown格式或其他文本。"
+        system_prompt = FEATURE_EXTRACTION_SYSTEM_PROMPT.format(
+            fields_json=json.dumps(fields, ensure_ascii=False),
+            custom_instructions=""
         )
 
         user_prompt = f"产品信息: {text}"
@@ -169,12 +173,9 @@ class DeepseekClient:
         if custom_instructions:
             instructions_part = f"\n\n额外指令：\n{custom_instructions}\n"
 
-        system_prompt = (
-            "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
-            f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n"
-            f"{instructions_part}\n"
-            "请以 JSON 格式返回结果，必须严格使用上述字段列表中的字符串作为 key，value 为提取出的内容。如果无法提取，value 请留空。\n"
-            "只返回 JSON，不要包含markdown格式或其他文本。"
+        system_prompt = FEATURE_EXTRACTION_SYSTEM_PROMPT.format(
+            fields_json=json.dumps(fields, ensure_ascii=False),
+            custom_instructions=instructions_part
         )
 
         # 2. User Prompt (Variable)
@@ -214,14 +215,7 @@ class DeepseekClient:
 
         import json
         
-        system_prompt = (
-            "你是一个专业的亚马逊运营专家，精通中英文互译。\n"
-            "请将提供的产品信息（标题和五点描述）翻译成通顺、符合电商习惯的中文。\n"
-            "请以 JSON 格式返回结果，包含以下两个字段：\n"
-            "- title_cn: 翻译后的中文标题\n"
-            "- bullets_cn: 翻译后的中文五点描述（保持列表格式或拼接成字符串）\n\n"
-            "只返回 JSON，不要包含markdown格式或其他文本。"
-        )
+        system_prompt = TRANSLATION_SYSTEM_PROMPT
 
         user_prompt = f"产品信息: {text}"
 
