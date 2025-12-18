@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: sorftime
       POSTGRES_DB: sorftime_dev
     ports:
-      - "5433:5432"
+      - "${ASKJEFF_DB_PORT:-5433}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -62,7 +62,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8001:8001"
+      - "${ASKJEFF_BACKEND_PORT:-8001}:8001"
     healthcheck:
       test:
         [
@@ -100,7 +100,7 @@ services:
       - frontend-node-modules:/app/node_modules
       - pnpm-store:/root/.local/share/pnpm/store/v10
     ports:
-      - "5174:5174"
+      - "${ASKJEFF_FRONTEND_PORT:-5174}:5174"
     depends_on:
       backend:
         condition: service_healthy

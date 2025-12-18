@@ -1,16 +1,15 @@
 import httpx
 import logging
 import json
-import asyncio
 import os
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
 class McpService:
     def __init__(self):
         self.base_url = "https://mcp.sorftime.com"
-        self.api_key = "t1hsvi9nwjr1cwhgwwtmvevvwez4dz09"
+        self.api_key = os.getenv("SORFTIME_MCP_API_KEY", "")
         self.client_info = {"name": "askjeff", "version": "0.1.0"}
         self.initialized = False
         # Allow disabling real calls via env var
@@ -29,6 +28,9 @@ class McpService:
         if self.mock_mode:
             logger.info("MOCK_MCP is enabled, returning mock data")
             return self._get_mock_data(input_value)
+
+        if not self.api_key:
+            raise ValueError("SORFTIME_MCP_API_KEY 未配置，无法调用真实 MCP 服务")
         
         async with httpx.AsyncClient(verify=False, timeout=60.0) as client:
             # 1. Initialize Session

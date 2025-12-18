@@ -13,7 +13,6 @@ import json
 from app.services.sorftime import SorftimeClient
 from app.services.ai.deepseek_client import DeepSeekClient
 from app.services.ai.prompts import PromptTemplates
-from app.models.ai import ProductSelectionReport
 
 logger = logging.getLogger(__name__)
 

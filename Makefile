@@ -8,7 +8,10 @@ PROJECT ?= askjeff-$(COMPOSE_ENV)
 COMPOSE_FILE := infra/docker/compose.$(COMPOSE_ENV).yml
 # 说明：Compose 默认只会读取“项目目录”的 .env；本仓库的 Compose 文件在 infra/docker/ 下
 # 为避免环境变量（如 DEEPSEEK_API_KEY）丢失，统一显式指定根目录 .env
-COMPOSE := docker compose --env-file .env -p $(PROJECT) -f $(COMPOSE_FILE)
+# 兼容不同 Docker 安装方式：优先使用 docker compose，其次 docker-compose
+COMPOSE_BIN := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+ENV_FILE := $(if $(wildcard .env),--env-file .env,)
+COMPOSE := $(COMPOSE_BIN) $(ENV_FILE) -p $(PROJECT) -f $(COMPOSE_FILE)
 
 .PHONY: up down restart logs ps backend-logs frontend-logs db-logs rebuild shell-backend shell-frontend test-backend test-frontend test-frontend-e2e test-frontend-all speckit-check help tag release tag-and-push
 

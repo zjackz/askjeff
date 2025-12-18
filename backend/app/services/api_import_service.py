@@ -11,7 +11,6 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from uuid import uuid4
 
 import pandas as pd
 from sqlalchemy.orm import Session

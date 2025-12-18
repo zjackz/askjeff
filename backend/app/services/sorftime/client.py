@@ -9,11 +9,11 @@ from .models import SorftimeResponse
 logger = logging.getLogger(__name__)
 
 def retry_on_failure(max_retries: int = 3, delay: float = 1.0):
-    """Decorator to retry failed requests"""
+    """请求失败自动重试（指数退避）"""
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            last_exception = None
+            last_exception: Exception | None = None
             for attempt in range(max_retries):
                 try:
                     return await func(*args, **kwargs)
@@ -21,10 +21,18 @@ def retry_on_failure(max_retries: int = 3, delay: float = 1.0):
                     last_exception = e
                     if attempt < max_retries - 1:
                         wait_time = delay * (2 ** attempt)  # Exponential backoff
-                        logger.warning(f"Request failed (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s: {str(e)}")
+                        logger.warning(
+                            "请求失败（第 %s/%s 次），%s 秒后重试：%s",
+                            attempt + 1,
+                            max_retries,
+                            wait_time,
+                            str(e),
+                        )
                         await asyncio.sleep(wait_time)
                     else:
-                        logger.error(f"Request failed after {max_retries} attempts: {str(e)}")
+                        logger.error("请求失败：已达到最大重试次数（%s）：%s", max_retries, str(e))
+            if last_exception is None:
+                raise RuntimeError("重试装饰器状态异常：未捕获到异常但未返回结果")
             raise last_exception
         return wrapper
     return decorator

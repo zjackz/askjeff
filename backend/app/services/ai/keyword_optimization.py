@@ -4,7 +4,7 @@ AI 关键词优化服务
 基于 Sorftime API 数据和 DeepSeek AI，提供智能关键词优化功能。
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from datetime import datetime
 import logging
 import hashlib

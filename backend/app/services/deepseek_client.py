@@ -1,15 +1,25 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
 import httpx
 
 
+logger = logging.getLogger(__name__)
+
+
 class DeepseekClient:
     def __init__(self) -> None:
         self.api_key = os.getenv("DEEPSEEK_API_KEY")
         self.endpoint = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/chat/completions")
+
+    def _post_chat_completions(self, payload: dict[str, Any]) -> dict[str, Any]:
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        response = httpx.post(self.endpoint, json=payload, headers=headers, timeout=60)
+        response.raise_for_status()
+        return response.json()
 
     def chat(
         self,
@@ -44,13 +54,9 @@ class DeepseekClient:
         
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
-
-        headers = {"Authorization": f"Bearer {self.api_key}"}
         
         try:
-            response = httpx.post(self.endpoint, json=payload, headers=headers, timeout=60)
-            response.raise_for_status()
-            data = response.json()
+            data = self._post_chat_completions(payload)
             content = data["choices"][0]["message"]["content"]
             
             # JSON 模式下的简单清理
@@ -58,11 +64,11 @@ class DeepseekClient:
                 content = self._clean_json_string(content)
                 
             return {"content": content, "trace": data}
-        except Exception as exc:
-            print(f"DeepSeek API Error: {exc}", flush=True)
+        except Exception:
+            logger.exception("DeepSeek 调用失败")
             return {
-                "content": f"AI 服务暂时不可用: {str(exc)}",
-                "trace": {"error": str(exc)},
+                "content": "AI 服务暂时不可用，请稍后重试。",
+                "trace": {"error": "request_failed"},
             }
 
     def _clean_json_string(self, content: str) -> str:
@@ -118,7 +124,6 @@ class DeepseekClient:
             return {}, {}
 
         import json
-        # 1. System Prompt (Static for caching)
         system_prompt = (
             "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
             f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n\n"
@@ -126,7 +131,6 @@ class DeepseekClient:
             "只返回 JSON，不要包含markdown格式或其他文本。"
         )
 
-        # 2. User Prompt (Variable)
         user_prompt = f"产品信息: {text}"
 
         payload = {
@@ -135,30 +139,19 @@ class DeepseekClient:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "temperature": 0.1,  # Lower temperature for extraction
-            "response_format": {"type": "json_object"}, # DeepSeek supports json_object
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
         }
-        headers = {"Authorization": f"Bearer {self.api_key}"}
         
         try:
-            response = httpx.post(self.endpoint, json=payload, headers=headers, timeout=60)
-            response.raise_for_status()
-            data = response.json()
+            data = self._post_chat_completions(payload)
             content = data["choices"][0]["message"]["content"]
             usage = data.get("usage", {})
             
-            # Simple cleanup if model returns markdown code blocks despite instructions
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            
-            return json.loads(content), usage
-        except Exception as exc:
-            print(f"DeepSeek Extraction Error: {exc}", flush=True)
+            cleaned = self._clean_json_string(content)
+            return json.loads(cleaned), usage
+        except Exception:
+            logger.exception("DeepSeek 特征提取失败")
             return {}, {}
 
     async def extract_features_async(self, text: str, fields: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -166,7 +159,6 @@ class DeepseekClient:
             return {}, {}
 
         import json
-        # 1. System Prompt (Static for caching)
         system_prompt = (
             "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
             f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n\n"
@@ -196,18 +188,10 @@ class DeepseekClient:
                 content = data["choices"][0]["message"]["content"]
                 usage = data.get("usage", {})
                 
-                # Simple cleanup
-                content = content.strip()
-                if content.startswith("```json"):
-                    content = content[7:]
-                if content.startswith("```"):
-                    content = content[3:]
-                if content.endswith("```"):
-                    content = content[:-3]
-                
-                return json.loads(content), usage
-        except Exception as exc:
-            print(f"DeepSeek Async Extraction Error: {exc}", flush=True)
+                cleaned = self._clean_json_string(content)
+                return json.loads(cleaned), usage
+        except Exception:
+            logger.exception("DeepSeek 异步特征提取失败")
             return {}, {}
 
     async def translate_product_info_async(self, text: str) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -249,10 +233,9 @@ class DeepseekClient:
                 content = data["choices"][0]["message"]["content"]
                 usage = data.get("usage", {})
                 
-                # Simple cleanup
                 content = self._clean_json_string(content)
                 
                 return json.loads(content), usage
-        except Exception as exc:
-            print(f"DeepSeek Translation Error: {exc}", flush=True)
+        except Exception:
+            logger.exception("DeepSeek 翻译失败")
             return {}, {}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 import json
+import time
 
 from sqlalchemy.orm import Session
 
@@ -27,6 +28,8 @@ class ChatService:
         # 确保工具已注册 (Phase 2 将实现具体工具)
         from app.services import chat_tools  # noqa: F401
 
+        start_time = time.perf_counter()
+
         # 1. 构造 System Prompt
         tools_schema = ToolRegistry.get_schemas()
         system_prompt = self._build_system_prompt(tools_schema)
@@ -48,6 +51,7 @@ class ChatService:
         answer = ""
         references = []
         tool_call = None
+        deepseek_duration_ms = 0.0
         
         intent = self.client.parse_json_response(content)
         if not intent:
@@ -88,6 +92,8 @@ class ChatService:
         else:
             answer = intent.get("content", str(content))
 
+        deepseek_duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
         # 5. 保存记录
         session = QuerySession(
             question=question,
@@ -122,7 +128,7 @@ class ChatService:
                 "question": question,
                 "answer": answer,
                 "trace": trace,
-                "duration_ms": 0, # 暂无精确耗时，需从 trace 获取或自行计时
+                "duration_ms": deepseek_duration_ms,
                 "client": "DeepSeek API"
             },
             trace_id=trace.get("id"),

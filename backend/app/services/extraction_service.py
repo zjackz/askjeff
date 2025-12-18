@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import uuid
 from typing import List
 
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.models.extraction import ExtractionItem, ExtractionTask
 from app.services.deepseek_client import DeepseekClient
+
+logger = logging.getLogger(__name__)
 
 
 class ExtractionService:
@@ -103,6 +106,7 @@ class ExtractionService:
                 except Exception as e:
                     item.status = "FAILED"
                     item.error_message = str(e)
+                    logger.exception("特征提取失败：task_id=%s item_id=%s", task_id, item.id)
 
         # Create tasks for all items
         tasks = [process_item(item) for item in items]
@@ -169,8 +173,6 @@ class ExtractionService:
 
         sem = asyncio.Semaphore(10)
         
-        sem = asyncio.Semaphore(10)
-        
         stats = {
             "success": 0, 
             "failed": 0,
@@ -203,10 +205,10 @@ class ExtractionService:
                     record.ai_features = extracted
                     record.ai_status = "success"
                     stats["success"] += 1
-                except Exception as e:
+                except Exception:
                     record.ai_status = "failed"
                     stats["failed"] += 1
-                    print(f"Extraction failed for record {record.id}: {e}")
+                    logger.exception("批次特征提取失败：batch_id=%s record_id=%s", batch_id, record.id)
 
         tasks = [process_record(record) for record in records]
         
@@ -223,9 +225,6 @@ class ExtractionService:
             input_cost = (stats["input_tokens"] / 1_000_000) * PRICE_PER_1M_INPUT
             output_cost = (stats["output_tokens"] / 1_000_000) * PRICE_PER_1M_OUTPUT
             total_cost = input_cost + output_cost
-
-            end_time = datetime.now(timezone.utc)
-            duration_seconds = (end_time - start_time).total_seconds()
 
             end_time = datetime.now(timezone.utc)
             duration_seconds = (end_time - start_time).total_seconds()
@@ -354,8 +353,8 @@ class ExtractionService:
                         
                         record.raw_payload = new_payload
                         
-                except Exception as e:
-                    print(f"Auto translation failed for record {record.id}: {e}")
+                except Exception:
+                    logger.exception("自动翻译失败：batch_id=%s record_id=%s", batch_id, record.id)
 
         tasks = [process_record(record) for record in records]
         
