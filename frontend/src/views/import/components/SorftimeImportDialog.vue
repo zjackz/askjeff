@@ -29,7 +29,7 @@
               <el-input
                 v-model="mcpForm.input"
                 type="textarea"
-                :rows="6"
+                :rows="4"
                 resize="none"
                 class="premium-textarea"
                 placeholder="在此粘贴链接或 ASIN..."
@@ -495,24 +495,24 @@ const getProgressStatus = (status: string) => {
 }
 
 .mcp-footer {
-  margin-top: auto;
-  padding-top: 24px;
+  margin-top: 24px; // Use fixed margin instead of auto to avoid overflow
+  flex-shrink: 0;
   .start-btn {
     width: 100%;
-    height: 50px;
+    height: 48px;
     font-size: 16px;
     font-weight: 600;
-    border-radius: 16px;
+    border-radius: 14px;
     box-shadow: 0 8px 20px -6px rgba(var(--el-color-primary-rgb), 0.4);
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     
     &:hover:not(:disabled) {
-      transform: translateY(-2px) scale(1.02);
+      transform: translateY(-2px);
       box-shadow: 0 12px 24px -6px rgba(var(--el-color-primary-rgb), 0.5);
     }
     
     &:active:not(:disabled) {
-      transform: translateY(0) scale(0.98);
+      transform: translateY(0);
     }
   }
 }
