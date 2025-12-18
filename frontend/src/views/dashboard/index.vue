@@ -106,8 +106,36 @@
       </el-col>
     </el-row>
     
+    <!-- 图表区域 -->
+    <el-row :gutter="24" class="mb-6">
+      <el-col :xs="24" :lg="16" class="mb-4-lg">
+        <el-card class="chart-card slide-in" style="--delay: 0.6s">
+          <template #header>
+            <div class="flex justify-between items-center">
+              <span class="font-bold">任务趋势 (最近7天)</span>
+              <el-radio-group v-model="trendType" size="small">
+                <el-radio-button label="all">全部</el-radio-button>
+                <el-radio-button label="imports">导入</el-radio-button>
+                <el-radio-button label="extractions">提取</el-radio-button>
+              </el-radio-group>
+            </div>
+          </template>
+          <div ref="trendChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+      
+      <el-col :xs="24" :lg="8">
+        <el-card class="chart-card slide-in" style="--delay: 0.7s">
+          <template #header>
+            <span class="font-bold">产品类目分布</span>
+          </template>
+          <div ref="categoryChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+    </el-row>
+    
     <!-- 系统状态 -->
-    <el-card class="system-status slide-in" style="--delay: 0.6s">
+    <el-card class="system-status slide-in" style="--delay: 0.8s">
       <template #header>
         <div class="flex justify-between items-center">
           <span class="font-bold">系统状态</span>
@@ -202,11 +230,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch, nextTick } from 'vue'
 import { Upload, Box, MagicStick, Search, Download, ArrowRight, Cpu, Memo, FolderOpened, Clock } from '@element-plus/icons-vue'
 import { http } from '@/utils/http'
+import * as echarts from 'echarts'
 // 简单的数字滚动组件逻辑，实际项目中可以使用 vue-count-to
-import { TransitionPresets, useTransition } from '@vueuse/core'
+import { TransitionPresets, useTransition, useEventListener } from '@vueuse/core'
 
 const stats = ref({
   batches: 0,
@@ -224,6 +253,14 @@ const systemStats = ref({
   uptime: { seconds: 0, boot_time: '' }
 })
 const loadingSystemStats = ref(false)
+
+// 图表相关
+const trendChartRef = ref<HTMLElement | null>(null)
+const categoryChartRef = ref<HTMLElement | null>(null)
+let trendChart: echarts.ECharts | null = null
+let categoryChart: echarts.ECharts | null = null
+const trendType = ref('all')
+const summaryData = ref<any>(null)
 
 // 使用 vueuse 的 useTransition 实现数字滚动
 const CountTo = {
@@ -253,20 +290,150 @@ const CountTo = {
 
 const loadStats = async () => {
   try {
-    // 获取批次统计
-    const { data: batchData } = await http.get('/imports')
-    stats.value.batches = batchData.total || 0
-
-    // 获取产品统计
-    const { data: productData } = await http.get('/products', {
-      params: { page: 1, pageSize: 1 }
-    })
-    stats.value.products = productData.total || 0
+    const { data } = await http.get('/dashboard/summary')
+    summaryData.value = data
+    stats.value = data.stats
     
+    nextTick(() => {
+      initCharts()
+    })
   } catch (err) {
-    console.error('加载统计数据失败:', err)
+    console.error('加载汇总数据失败:', err)
   }
 }
+
+const initCharts = () => {
+  if (!summaryData.value) return
+
+  // 趋势图
+  if (trendChartRef.value) {
+    trendChart = echarts.init(trendChartRef.value)
+    updateTrendChart()
+  }
+
+  // 类目图
+  if (categoryChartRef.value) {
+    categoryChart = echarts.init(categoryChartRef.value)
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        left: 'left',
+        top: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: { fontSize: 12 }
+      },
+      series: [
+        {
+          name: '类目分布',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['65%', '50%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: { show: false },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: 'bold'
+            }
+          },
+          data: summaryData.value.categories
+        }
+      ]
+    }
+    categoryChart.setOption(option)
+  }
+}
+
+const updateTrendChart = () => {
+  if (!trendChart || !summaryData.value) return
+
+  const trends = summaryData.value.trends
+  const dates = trends.map((t: any) => t.date.split('-').slice(1).join('/'))
+  
+  const series = []
+  if (trendType.value === 'all' || trendType.value === 'imports') {
+    series.push({
+      name: '导入任务',
+      type: 'line',
+      smooth: true,
+      data: trends.map((t: any) => t.imports),
+      areaStyle: {
+        opacity: 0.1,
+        color: '#409eff'
+      },
+      itemStyle: { color: '#409eff' }
+    })
+  }
+  if (trendType.value === 'all' || trendType.value === 'extractions') {
+    series.push({
+      name: '提取任务',
+      type: 'line',
+      smooth: true,
+      data: trends.map((t: any) => t.extractions),
+      areaStyle: {
+        opacity: 0.1,
+        color: '#e6a23c'
+      },
+      itemStyle: { color: '#e6a23c' }
+    })
+  }
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      borderWidth: 0,
+      shadowBlur: 10,
+      shadowColor: 'rgba(0, 0, 0, 0.1)'
+    },
+    legend: {
+      data: ['导入任务', '提取任务'],
+      bottom: 0
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      top: '5%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: dates,
+      axisLine: { lineStyle: { color: '#eee' } },
+      axisLabel: { color: '#999' }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { type: 'dashed', color: '#f5f5f5' } },
+      axisLabel: { color: '#999' }
+    },
+    series
+  }
+  trendChart.setOption(option)
+}
+
+watch(trendType, () => {
+  updateTrendChart()
+})
+
+// 响应式图表
+useEventListener(window, 'resize', () => {
+  trendChart?.resize()
+  categoryChart?.resize()
+})
 
 // 加载系统状态
 const loadSystemStats = async () => {
@@ -641,5 +808,25 @@ onUnmounted(() => {
 
 .quick-action-row {
   margin-bottom: 40px !important;
+}
+
+.chart-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  
+  :deep(.el-card__header) {
+    border-bottom: 1px solid var(--border-light);
+    padding: 16px 24px;
+  }
+}
+
+.chart-container {
+  height: 320px;
+  width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .mb-4-lg { margin-bottom: 16px; }
 }
 </style>
