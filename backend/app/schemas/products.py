@@ -29,6 +29,11 @@ class ProductOut(BaseModel):
     validation_messages: dict[str, Any] | None = Field(default=None, alias="validationMessages")
     ai_status: str | None = Field(default=None, alias="aiStatus")
     ai_features: dict[str, Any] | None = Field(default=None, alias="aiFeatures")
+    
+    # Computed fields from model properties
+    title_cn: str | None = Field(default=None, alias="titleCn")
+    bullets: str | None = None
+    bullets_cn: str | None = Field(default=None, alias="bulletsCn")
 
     @field_serializer("price", "rating")
     def _serialize_decimal(self, value: float | None) -> float | None:

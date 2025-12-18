@@ -163,8 +163,8 @@ export function useProductList() {
             category: String(raw.category ?? ''),
             brand: brand,
             raw_payload: rawPayload,
-            title_cn: (rawPayload.title_cn as string) || null,
-            bullets_cn: (rawPayload.bullets_cn as string) || null
+            title_cn: (rawPayload.title_cn as string) || (rawPayload.Title_CN as string) || (rawPayload['中文标题'] as string) || null,
+            bullets_cn: (rawPayload.bullets_cn as string) || (rawPayload.Bullets_CN as string) || (rawPayload['中文五点'] as string) || null
         }
     }
 

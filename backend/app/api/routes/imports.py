@@ -203,10 +203,15 @@ async def run_api_import_task(
     created_by: str | None = None,
 ):
     """后台运行 API 导入任务"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"[Background Task] Starting API import for batch {batch_id}")
+    
     from app.db import SessionLocal
     with SessionLocal() as db:
         try:
-            await api_import_service.import_from_input(
+            actual_batch_id = await api_import_service.import_from_input(
                 db=db,
                 input_value=input_value,
                 input_type=input_type,
@@ -216,14 +221,48 @@ async def run_api_import_task(
                 limit=limit,
                 batch_id=batch_id,
             )
+            
+            logger.info(f"[Background Task] Import completed for batch {actual_batch_id}")
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Background API import failed: {e}")
+            logger.error(f"[Background Task] API import failed for batch {batch_id}: {e}", exc_info=True)
 
+
+def run_api_import_worker(
+    input_value: str,
+    input_type: str | None,
+    domain: int,
+    test_mode: bool,
+    limit: int,
+    batch_id: int,
+):
+    """同步工人函数，负责启动异步导入任务"""
+    import asyncio
+    import sys
+    print(f"🚀 [Worker Thread] Thread started for batch {batch_id}", file=sys.stderr, flush=True)
+    
+    try:
+        # 创建新的事件循环并在其中运行异步任务
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        print(f"📦 [Worker Thread] Executing run_api_import_task for batch {batch_id}", file=sys.stderr, flush=True)
+        loop.run_until_complete(run_api_import_task(
+            input_value=input_value,
+            input_type=input_type,
+            domain=domain,
+            test_mode=test_mode,
+            limit=limit,
+            batch_id=batch_id
+        ))
+        loop.close()
+        print(f"✅ [Worker Thread] Thread finished for batch {batch_id}", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"❌ [Worker Thread] CRITICAL ERROR for batch {batch_id}: {e}", file=sys.stderr, flush=True)
+        import traceback
+        traceback.print_exc()
 
 @router.post("/from-api", status_code=201)
 async def import_from_api(
-    background_tasks: BackgroundTasks,
     input: str = Body(..., embed=True),
     input_type: str | None = Body(None, embed=True),
     domain: int = Body(1, embed=True),
@@ -232,52 +271,98 @@ async def import_from_api(
     db: Session = Depends(get_db),
 ):
     """
-    从 Sorftime API 批量导入产品数据 (后台执行)
+    从 Sorftime API 批量导入产品数据
     """
+    import sys
+    import hashlib
+    import time
+    
+    # 生成请求指纹用于去重
+    request_key = f"{input}:{input_type}:{domain}:{test_mode}:{limit}"
+    request_hash = hashlib.md5(request_key.encode()).hexdigest()
+    
+    # 简单的内存去重 (5秒内相同请求只处理一次)
+    if not hasattr(import_from_api, '_recent_requests'):
+        import_from_api._recent_requests = {}
+    
+    current_time = time.time()
+    # 清理过期的记录 (超过10秒)
+    import_from_api._recent_requests = {
+        k: v for k, v in import_from_api._recent_requests.items() 
+        if current_time - v['time'] < 10
+    }
+    
+    # 检查是否是重复请求
+    if request_hash in import_from_api._recent_requests:
+        recent = import_from_api._recent_requests[request_hash]
+        if current_time - recent['time'] < 5:  # 5秒内
+            print(f"⚠️ [API] Duplicate request detected, returning existing batch {recent['batch_id']}", file=sys.stderr, flush=True)
+            return {
+                "batch_id": recent['batch_id'],
+                "status": "pending",
+                "message": "导入任务已提交 (去重)"
+            }
+    
+    print(f"📥 [API] Received import request: {input[:50]}...", file=sys.stderr, flush=True)
+    
     if not input:
         raise HTTPException(status_code=400, detail="输入不能为空")
     
     try:
-        # 1. 先解析输入并创建批次 (同步执行，为了立即返回 ID)
-        # 我们需要一个轻量级的方法来创建批次
-        from app.services.api_import_service import APIImportService
-        
-        # 临时解析以获取类目信息
+        # 1. 解析输入
         parsed = api_import_service._parse_input(input, input_type)
-        
-        # 如果是 ASIN 且不是测试模式，尝试同步获取类目 ID (为了文件名准确)
-        # 但为了速度，如果获取失败也可以用默认名
         if parsed["type"] == "asin" and not parsed.get("category_id"):
              parsed["category_id"] = "pending"
 
+        # 2. 创建批次
         batch = api_import_service._create_batch(
             db=db,
             parsed=parsed,
             domain=domain,
-            created_by=None, # TODO: 获取当前用户
+            created_by=None,
             test_mode=test_mode
         )
+        db.commit() # 确保批次已持久化
         
-        # 2. 启动后台任务执行完整的导入流程
-        background_tasks.add_task(
-            run_api_import_task,
-            input_value=input,
-            input_type=input_type,
-            domain=domain,
-            test_mode=test_mode,
-            limit=limit,
-            batch_id=batch.id
+        batch_id = batch.id
+        print(f"📝 [API] Created batch {batch_id}, starting thread...", file=sys.stderr, flush=True)
+        
+        # 记录此请求
+        import_from_api._recent_requests[request_hash] = {
+            'batch_id': batch_id,
+            'time': current_time
+        }
+        
+        # 3. 使用标准 Thread 启动
+        import threading
+        thread = threading.Thread(
+            target=run_api_import_worker,
+            kwargs={
+                "input_value": input,
+                "input_type": input_type,
+                "domain": domain,
+                "test_mode": test_mode,
+                "limit": limit,
+                "batch_id": batch_id
+            },
+            daemon=True
         )
+        thread.start()
+        print(f"📡 [API] Thread launched for batch {batch_id}", file=sys.stderr, flush=True)
         
         return {
-            "batch_id": batch.id,
+            "batch_id": batch_id,
             "status": "pending",
-            "message": "导入任务已提交到后台"
+            "message": "导入任务已提交"
         }
         
     except ValueError as e:
+        print(f"⚠️ [API] Validation error: {e}", file=sys.stderr, flush=True)
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"🔥 [API] Unexpected error: {e}", file=sys.stderr, flush=True)
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"提交任务失败: {str(e)}")
 
 
@@ -308,19 +393,32 @@ async def get_api_import_status(
         {
             "batch_id": 123,
             "status": "processing",
-            "progress": 45,
-            "message": "正在获取产品详情 (45/100)"
+            "progress": {
+                "percentage": 45,
+                "message": "正在获取产品详情 (45/100)",
+                "phase": "fetching_details"
+            },
+            "total_rows": 100,
+            "success_rows": 45,
+            "import_metadata": {...}
         }
     """
+    from app.services.progress_tracker import ProgressTracker
+    
     batch = ImportRepository.get_batch(db, batch_id)
     if not batch:
         raise HTTPException(status_code=404, detail="批次不存在")
     
+    # 获取进度信息
+    progress = ProgressTracker.get_progress(batch)
+    
     return {
         "batch_id": batch.id,
         "status": batch.status,
+        "progress": progress,  # 新增进度信息
         "total_rows": batch.total_rows,
         "success_rows": batch.success_rows,
         "failed_rows": batch.failed_rows,
         "import_metadata": batch.import_metadata,
     }
+

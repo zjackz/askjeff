@@ -79,6 +79,27 @@ class ProductRecord(Base):
     ai_status: Mapped[str] = mapped_column(String(20), default='pending') # pending, success, failed
     
     ingested_at: Mapped[datetime] = mapped_column(default=utc_now)
+    
+    @property
+    def title_cn(self) -> str | None:
+        if not self.raw_payload: return None
+        return self.raw_payload.get("title_cn")
+        
+    @property
+    def bullets(self) -> str | None:
+        if not self.raw_payload: return None
+        return (
+            self.raw_payload.get("bullets") or 
+            self.raw_payload.get("Bullet Points") or 
+            self.raw_payload.get("bullet_points") or
+            self.raw_payload.get("Description") or
+            self.raw_payload.get("description")
+        )
+        
+    @property
+    def bullets_cn(self) -> str | None:
+        if not self.raw_payload: return None
+        return self.raw_payload.get("bullets_cn")
 
     batch: Mapped[ImportBatch] = relationship('ImportBatch', back_populates='records')
 

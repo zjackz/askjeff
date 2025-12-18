@@ -305,22 +305,22 @@ class ExtractionService:
 
         df = pd.DataFrame(data)
 
-        # Reorder columns: Original + Target Fields
-        # Get original columns from the first item if available
-        original_cols = list(items[0].original_data.keys()) if items else []
+        # Reorder columns: ASIN and Title first, then original, then target fields
+        priority_keywords = ["asin", "title", "标题", "product_name", "bullet", "五点"]
+        priority_cols = []
         
-        # Ensure target fields are present
-        for field in task.target_fields:
-            if field not in df.columns:
-                df[field] = None
+        # Find all columns that match priority keywords (case-insensitive)
+        for col in df.columns:
+            col_lower = col.lower()
+            if any(kw in col_lower for kw in priority_keywords):
+                priority_cols.append(col)
         
+        # Sort priority_cols to put ASIN before Title if both exist
+        priority_cols.sort(key=lambda x: (0 if "asin" in x.lower() else 1))
+
         # Construct final column order
-        cols = original_cols + [f for f in task.target_fields if f not in original_cols]
-        
-        # Filter df to only include these columns (and any others that might have been added?)
-        # Actually, let's just use the columns we have but ordered
-        existing_cols = [c for c in cols if c in df.columns]
-        df = df[existing_cols]
+        other_cols = [c for c in df.columns if c not in priority_cols]
+        df = df[priority_cols + other_cols]
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:

@@ -156,6 +156,31 @@
                     <el-icon><Menu /></el-icon>
                     <span>类目 ID: <b>{{ previewData.category_id }}</b></span>
                   </div>
+
+                  <!-- 新增：详细属性预览 -->
+                  <div class="preview-stats-grid">
+                    <div class="stat-item" v-if="previewData.price">
+                      <span class="stat-label">价格</span>
+                      <span class="stat-value">{{ previewData.currency || '$' }}{{ previewData.price }}</span>
+                    </div>
+                    <div class="stat-item" v-if="previewData.rating">
+                      <span class="stat-label">评分</span>
+                      <span class="stat-value">⭐ {{ previewData.rating }}</span>
+                    </div>
+                    <div class="stat-item" v-if="previewData.reviews">
+                      <span class="stat-label">评论</span>
+                      <span class="stat-value">{{ previewData.reviews }}</span>
+                    </div>
+                    <div class="stat-item" v-if="previewData.sales_rank">
+                      <span class="stat-label">排名</span>
+                      <span class="stat-value">#{{ previewData.sales_rank }}</span>
+                    </div>
+                  </div>
+
+                  <div v-if="previewData.bullets" class="preview-bullets">
+                    <div class="bullets-label">五点描述:</div>
+                    <div class="bullets-content line-clamp-3">{{ previewData.bullets }}</div>
+                  </div>
                 </div>
               </div>
               
@@ -313,7 +338,7 @@ const handleInputPreview = useDebounceFn(async (val: string) => {
     })
     previewData.value = data
   } catch (err) {
-    console.error(err)
+    // 预览失败,重置数据
     previewData.value = null
   } finally {
     previewLoading.value = false
@@ -321,21 +346,30 @@ const handleInputPreview = useDebounceFn(async (val: string) => {
 }, 800)
 
 const handleMcpSubmit = async () => {
+  // 防止重复提交
+  if (mcpSubmitting.value) {
+    console.warn('任务正在提交中,请勿重复点击')
+    return
+  }
+  
   if (!mcpForm.value.input) {
     ElMessage.warning('请输入内容')
     return
   }
   
+  // 立即设置提交状态,防止快速双击
+  mcpSubmitting.value = true
+  
+  // 显示简单的提交状态
   importProgress.value = {
     visible: true,
-    status: 'processing',
+    status: 'running',
     message: '正在提交任务...',
-    detail: '',
-    percentage: 0,
+    detail: '任务已提交到后台处理',
+    percentage: 50,
     batchId: null
   }
   
-  mcpSubmitting.value = true
   try {
     const payload = {
       ...mcpForm.value,
@@ -349,18 +383,35 @@ const handleMcpSubmit = async () => {
       throw new Error('后端未返回有效的批次 ID')
     }
     
+    // 显示成功消息
     importProgress.value.batchId = batchId
-    importProgress.value.message = '任务已提交，正在抓取数据...'
-    importProgress.value.percentage = 10
+    importProgress.value.status = 'succeeded'
+    importProgress.value.percentage = 100
+    importProgress.value.message = '任务已提交成功!'
+    importProgress.value.detail = `批次 ID: ${batchId}，请在导入列表中查看进度`
     
-    pollImportStatus(batchId)
+    ElMessage.success(`导入任务已提交 (批次 ${batchId})`)
+    
+    // TODO: 实现可靠的进度轮询机制
+    // 当前临时方案:5秒后自动关闭弹窗
+    // 用户可以在导入列表中查看实际进度和结果
+    setTimeout(() => {
+      mcpSubmitting.value = false
+      emit('update:visible', false)
+      importProgress.value.visible = false
+      emit('success')
+    }, 5000)
     
   } catch (err: any) {
-    console.error('API import failed:', err)
+    // API 导入失败
     importProgress.value.status = 'failed'
     importProgress.value.message = '提交失败'
     importProgress.value.detail = err.response?.data?.detail || '未知错误'
     mcpSubmitting.value = false
+    
+    setTimeout(() => {
+      importProgress.value.visible = false
+    }, 3000)
   }
 }
 
@@ -380,22 +431,34 @@ const pollImportStatus = async (batchId: number) => {
     attempts++
     
     try {
-      const { data } = await http.get(`/imports/${batchId}`)
-      // 后端返回的是 { batch: {...}, failed_rows: [...] }
-      const batch = data.batch
+      // 使用新的状态 API
+      const { data } = await http.get(`/imports/from-api/${batchId}/status`)
+      // data 直接包含 status, progress 等字段
+      const batch = data  // 兼容旧代码结构
       
-      if (batch.status === 'processing') {
-        const progress = Math.min(10 + (attempts * 1.5), 90)
-        importProgress.value.percentage = Math.round(progress)
-        importProgress.value.message = '正在抓取数据...'
-        if (batch.importMetadata) {
-          importProgress.value.detail = `输入: ${batch.importMetadata.inputValue || ''}`
+      // 轮询状态检查
+      
+      if (batch.status === 'running') {
+        // 使用后端返回的进度信息
+        const progress = batch.progress || {}
+        
+        // 优先使用后端计算的进度,降级到基于时间的估算
+        importProgress.value.percentage = progress.percentage || Math.min(10 + (attempts * 1.5), 90)
+        importProgress.value.message = progress.message || '正在抓取数据...'
+        
+        // 显示详细信息
+        if (progress.phase) {
+          importProgress.value.detail = `阶段: ${progress.phase} | ${batch.successRows || 0}/${batch.totalRows || 0}`
+        } else {
+          importProgress.value.detail = `${batch.successRows || 0} / ${batch.totalRows || 0}`
         }
+        
         setTimeout(poll, 3000)
       } else if (batch.status === 'succeeded') {
+        // 导入成功
         importProgress.value.status = 'succeeded'
         importProgress.value.percentage = 100
-        importProgress.value.message = `抓取成功！获取数据 ${batch.successRows || 0} 条`
+        importProgress.value.message = `抓取成功！获取数据 ${batch.successRows || batch.totalRows || 0} 条`
         importProgress.value.detail = `总计: ${batch.totalRows || 0} 条 | 成功: ${batch.successRows || 0} 条`
         mcpSubmitting.value = false
         ElMessage.success('数据抓取完成')
@@ -405,17 +468,20 @@ const pollImportStatus = async (batchId: number) => {
           emit('success')
         }, 3000)
       } else if (batch.status === 'failed') {
+        // 导入失败
         importProgress.value.status = 'failed'
         importProgress.value.message = '抓取失败'
-        importProgress.value.detail = batch.failureSummary?.error || '未知错误'
+        // 优先使用 progress 中的错误信息
+        importProgress.value.detail = batch.progress?.message || batch.import_metadata?.progress?.message || '未知错误'
         mcpSubmitting.value = false
       } else {
         // pending 或其他状态
         importProgress.value.percentage = 5
+        importProgress.value.message = '准备中...'
         setTimeout(poll, 3000)
       }
     } catch (err) {
-      console.error('Poll status failed:', err)
+      // 轮询失败,继续重试
       setTimeout(poll, 3000)
     }
   }
@@ -765,6 +831,7 @@ const getProgressStatus = (status: string) => {
     
     .product-title {
       font-size: 14px;
+      line-clamp: 1;
       -webkit-line-clamp: 1;
     }
   }
@@ -841,23 +908,82 @@ const getProgressStatus = (status: string) => {
       line-height: 1.5;
       margin: 0 0 12px 0;
       display: -webkit-box;
+      line-clamp: 2;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
 
     .category-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 8px;
+    width: fit-content;
+    margin-bottom: 12px;
+    
+    .el-icon { font-size: 14px; }
+    b { color: #0f172a; }
+  }
+
+  .preview-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+
+    .stat-item {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: #64748b;
-      background: #f8fafc;
-      padding: 6px 12px;
-      border-radius: 10px;
-      width: fit-content;
-      b { color: #0f172a; }
+      flex-direction: column;
+      gap: 4px;
+
+      .stat-label {
+        font-size: 11px;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+      }
+
+      .stat-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+      }
     }
+  }
+
+  .preview-bullets {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+
+    .bullets-label {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .bullets-content {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #475569;
+      display: -webkit-box;
+      line-clamp: 3;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
   }
 }
 

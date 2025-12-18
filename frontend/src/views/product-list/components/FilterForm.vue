@@ -96,7 +96,7 @@ defineEmits(['search', 'reset', 'extract'])
 const showAdvanced = ref(false)
 
 const formatBatchLabel = (batch: any) => {
-  const time = dayjs(batch.created_at).format('YYYYMMDD HH:mm:ss')
+  const time = dayjs(batch.createdAt).format('YYYYMMDD HH:mm:ss')
   return `${batch.id} - ${time}`
 }
 </script>

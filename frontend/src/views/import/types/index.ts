@@ -21,7 +21,7 @@ export interface BatchRow {
 
 export interface ImportProgress {
     visible: boolean
-    status: 'idle' | 'processing' | 'succeeded' | 'failed'
+    status: 'idle' | 'running' | 'succeeded' | 'failed'
     message: string
     detail: string
     percentage: number
@@ -42,4 +42,11 @@ export interface PreviewData {
     image?: string
     category_id?: string
     error?: string
+    price?: number
+    currency?: string
+    rating?: number
+    reviews?: number
+    sales_rank?: number
+    brand?: string
+    bullets?: string
 }

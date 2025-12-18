@@ -1,6 +1,6 @@
 <template>
-  <div class="export-page p-6 fade-up">
-    <div class="page-header mb-6">
+  <div class="export-page p-4 fade-up">
+    <div class="page-header mb-4">
       <h1 class="text-2xl font-bold text-gray-800">数据导出</h1>
     </div>
 
@@ -67,7 +67,21 @@
               </template>
 
               <!-- 4. Field Selection -->
-              <el-form-item label="选择字段">
+              <el-form-item>
+                <template #label>
+                  <div class="flex justify-between items-center">
+                    <span>选择字段</span>
+                    <el-button 
+                      v-if="form.selectedFields.length > 0"
+                      link 
+                      type="primary" 
+                      size="small" 
+                      @click="form.selectedFields = []"
+                    >
+                      清空
+                    </el-button>
+                  </div>
+                </template>
                  <el-select 
                    v-model="form.selectedFields" 
                    multiple 
@@ -113,7 +127,19 @@
                    :label="col" 
                    min-width="120" 
                    show-overflow-tooltip 
-                 />
+                 >
+                   <template #header>
+                     <span :class="{ 'highlight-header': extractedFields.includes(col) }">
+                       {{ col }}
+                       <el-icon v-if="extractedFields.includes(col)" class="ml-1"><MagicStick /></el-icon>
+                     </span>
+                   </template>
+                   <template #default="{ row }">
+                     <span :class="{ 'highlight-cell': extractedFields.includes(col) }">
+                       {{ row[col] }}
+                     </span>
+                   </template>
+                 </el-table-column>
                  <template #empty>
                    <div class="text-center py-8 text-gray-400">
                      {{ previewMessage }}
@@ -210,7 +236,7 @@ import { reactive, ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { http } from '@/utils/http'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, MagicStick } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 
@@ -248,6 +274,16 @@ const availableFields = computed(() => {
   return Array.from(new Set(fields))
 })
 
+const extractedFields = computed(() => {
+  if (form.exportType === 'extraction_results' && form.filters.run_id) {
+    const run = runs.value.find(r => r.id === form.filters.run_id)
+    if (run && run.target_fields) {
+      return run.target_fields
+    }
+  }
+  return []
+})
+
 const canPreview = computed(() => {
   if (form.exportType === 'extraction_results') {
     return !!form.filters.batch_id // 需要 batch_id 来获取预览数据
@@ -277,7 +313,7 @@ const fetchBatches = async () => {
 
 // 格式化批次显示
 const formatBatchLabel = (batch: any) => {
-  const time = dayjs(batch.created_at).format('YYYY-MM-DD HH:mm')
+  const time = dayjs(batch.createdAt).format('YYYY-MM-DD HH:mm')
   return `[${batch.id}] ${batch.filename} (${time})`
 }
 
@@ -612,7 +648,7 @@ const formatDate = (dateStr: string) => {
 .section-card {
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 16px;
   box-shadow: var(--shadow-sm);
   transition: all 0.3s ease;
 }
@@ -665,6 +701,22 @@ const formatDate = (dateStr: string) => {
 }
 
 .mb-24 {
-  margin-bottom: 24px;
+  margin-bottom: 16px; /* Reduced from 24px */
+}
+
+.highlight-header {
+  color: var(--el-color-primary);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.highlight-cell {
+  color: var(--el-color-primary);
+  font-weight: 600;
+  background: #eff6ff;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 </style>

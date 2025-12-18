@@ -54,6 +54,19 @@
         </template>
       </el-table-column>
 
+      <el-table-column v-if="columnVisibility.bullets" prop="bullets" label="五点描述" min-width="240">
+        <template #default="{ row }">
+          <el-popover effect="dark" trigger="hover" placement="top" :width="400" append-to-body>
+            <template #default>
+              <div class="popover-content">{{ row.bullets || row.raw_payload?.['Bullet Points'] || row.raw_payload?.bullets || row.raw_payload?.bullet_points || row.raw_payload?.Description || row.raw_payload?.description || '—' }}</div>
+            </template>
+            <template #reference>
+              <div class="line-clamp-2">{{ row.bullets || row.raw_payload?.['Bullet Points'] || row.raw_payload?.bullets || row.raw_payload?.bullet_points || row.raw_payload?.Description || row.raw_payload?.description || '—' }}</div>
+            </template>
+          </el-popover>
+        </template>
+      </el-table-column>
+
       <el-table-column v-if="columnVisibility.bullets_cn" prop="bullets_cn" label="中文五点" min-width="240">
         <template #default="{ row }">
           <el-popover effect="dark" trigger="hover" placement="top" :width="400" append-to-body>
@@ -164,6 +177,7 @@ const columnLabels = {
   reviews: '评论数',
   sales_rank: '排名',
   title_cn: '中文标题',
+  bullets: '五点描述',
   bullets_cn: '中文五点'
 }
 
@@ -171,6 +185,7 @@ const columnVisibility = reactive({
   asin: true,
   title: true,
   title_cn: true,
+  bullets: true,
   bullets_cn: true,
   brand: true,
   category: true,
@@ -189,7 +204,7 @@ const dynamicColumns = computed(() => {
     if (p.raw_payload) {
       Object.keys(p.raw_payload).forEach(k => {
         const lowerK = k.toLowerCase()
-        if (['asin', 'title', 'price', 'currency', 'sales_rank', 'reviews', 'rating', 'category', 'title_cn', 'bullets_cn'].includes(lowerK)) {
+        if (['asin', 'title', 'price', 'currency', 'sales_rank', 'reviews', 'rating', 'category', 'title_cn', 'bullets_cn', 'bullets', 'bullet_points', 'bullet points', 'titlecn', 'bulletscn'].includes(lowerK)) {
            return
         }
         keys.add(k)
@@ -285,6 +300,7 @@ const formatStatus = (status?: string) => {
 }
 .line-clamp-2 {
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;

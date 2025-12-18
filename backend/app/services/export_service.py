@@ -155,18 +155,42 @@ class ExportService:
                     ai_fields = set(run.target_fields)
             
             # 2. Identify all available keys from data
-            # Use a dict to preserve order while removing duplicates, starting from standard fields if possible
             all_keys = list(rows[0].keys())
             
+            # 3. Reorder fields: Essentials -> AI Fields -> Others
+            essential_keys = ['asin', 'title', 'bullets', 'feature_bullets', 'price', 'brand']
+            
             final_fields = []
-            for key in all_keys:
-                if key in ai_fields:
-                    # It's an AI field. Include only if selected (or if no selection made)
+            processed_keys = set()
+            
+            # 3.1 Essentials
+            for key in essential_keys:
+                if key in all_keys:
+                    final_fields.append(key)
+                    processed_keys.add(key)
+            
+            # 3.2 AI Fields (Use order from run.target_fields if available)
+            ai_ordered = []
+            if run and run.target_fields:
+                ai_ordered = run.target_fields
+            else:
+                ai_ordered = sorted(list(ai_fields))
+                
+            for key in ai_ordered:
+                if key in all_keys and key not in processed_keys:
+                    # Check selection
                     if not job.selected_fields or key in job.selected_fields:
                         final_fields.append(key)
-                else:
-                    # It's a source field (Standard or Raw). ALWAYS include.
-                    final_fields.append(key)
+                        processed_keys.add(key)
+            
+            # 3.3 Others (Raw fields not in essentials, and any AI fields missed)
+            for key in all_keys:
+                if key not in processed_keys:
+                    if key in ai_fields:
+                        if not job.selected_fields or key in job.selected_fields:
+                            final_fields.append(key)
+                    else:
+                        final_fields.append(key)
             
             fields = final_fields
 
@@ -196,42 +220,84 @@ class ExportService:
     def _generate_xlsx(self, filename: Path, fields: list[str], rows: list[dict], job: ExportJob, ai_columns: set[str] = None) -> None:
         """Generate XLSX file with styling for AI columns."""
         from openpyxl import Workbook
-        from openpyxl.styles import PatternFill, Font
+        from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
         
         wb = Workbook()
         ws = wb.active
         ws.title = "Export Data"
         
-        # Wait, I need to refactor _generate_file to pass ai_columns to _generate_xlsx
-        # because _generate_xlsx doesn't have access to the DB session.
-        # Let's modify _generate_file first to prepare ai_columns.
-
+        # Freeze top row
+        ws.freeze_panes = 'A2'
         
-        # Yellow fill for AI columns
-        yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-        bold_font = Font(bold=True)
+        # Styles
+        # Header Styles
+        header_font = Font(bold=True, size=11, color="000000")
+        header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        
+        # Standard Column Header (Light Blue)
+        standard_fill = PatternFill(start_color="E6F7FF", end_color="E6F7FF", fill_type="solid")
+        # AI Column Header (Light Orange)
+        ai_fill = PatternFill(start_color="FFF7E6", end_color="FFF7E6", fill_type="solid")
+        
+        # Cell Styles
+        # Disable wrap_text for data cells to keep row height compact
+        cell_align = Alignment(vertical="center", wrap_text=False)
+        thin_border = Border(
+            left=Side(style='thin', color='D9D9D9'),
+            right=Side(style='thin', color='D9D9D9'),
+            top=Side(style='thin', color='D9D9D9'),
+            bottom=Side(style='thin', color='D9D9D9')
+        )
         
         # Write header row
+        ws.row_dimensions[1].height = 30  # Taller header
         for col_idx, field in enumerate(fields, start=1):
             cell = ws.cell(row=1, column=col_idx, value=field)
-            cell.font = bold_font
-            if field in ai_columns:
-                cell.fill = yellow_fill
+            cell.font = header_font
+            cell.alignment = header_align
+            cell.border = thin_border
+            
+            if ai_columns and field in ai_columns:
+                cell.fill = ai_fill
+            else:
+                cell.fill = standard_fill
         
         # Write data rows
         for row_idx, row_data in enumerate(rows, start=2):
+            # Set fixed row height for data rows (optional, but good for consistency)
+            ws.row_dimensions[row_idx].height = 20
             for col_idx, field in enumerate(fields, start=1):
                 value = row_data.get(field)
-                ws.cell(row=row_idx, column=col_idx, value=value)
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.alignment = cell_align
+                cell.border = thin_border
         
         # Auto-adjust column widths
         for col_idx, field in enumerate(fields, start=1):
-            max_length = len(str(field))
-            for row_data in rows[:100]:  # Sample first 100 rows for performance
-                cell_value = str(row_data.get(field, ""))
-                max_length = max(max_length, len(cell_value))
-            # Set width (with some padding)
-            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = min(max_length + 2, 50)
+            column_letter = ws.cell(row=1, column=col_idx).column_letter
+            
+            # Set specific widths for known columns
+            if field.lower() == 'asin':
+                ws.column_dimensions[column_letter].width = 15
+            elif field.lower() in ('price', 'rating', 'reviews', 'currency'):
+                ws.column_dimensions[column_letter].width = 12
+            elif field.lower() in ('title', 'title_cn'):
+                ws.column_dimensions[column_letter].width = 50
+            elif field.lower() in ('bullets', 'bullets_cn'):
+                ws.column_dimensions[column_letter].width = 60
+            elif ai_columns and field in ai_columns:
+                # AI columns usually contain text, give them space
+                ws.column_dimensions[column_letter].width = 40
+            else:
+                # Auto-width for others (capped)
+                max_length = len(str(field)) + 4
+                for row_data in rows[:50]:  # Sample first 50 rows
+                    cell_value = str(row_data.get(field, ""))
+                    # Cap sample length to avoid huge calculation for long text
+                    length = min(len(cell_value), 50)
+                    max_length = max(max_length, length)
+                
+                ws.column_dimensions[column_letter].width = min(max_length + 2, 40)
         
         wb.save(filename)
 
@@ -285,13 +351,13 @@ class ExportService:
                     # Skip metadata fields
                     if k.startswith("_"):
                         continue
-                    
-                    # Convert complex types to string for Excel compatibility
-                    if isinstance(v, (dict, list)):
-                        import json
-                        row[k] = json.dumps(v, ensure_ascii=False)
-                    else:
-                        row[k] = v
+                    row[k] = v
+            
+            # 3. Sanitize all values for Excel (convert dict/list to JSON string)
+            for k, v in row.items():
+                if isinstance(v, (dict, list)):
+                    import json
+                    row[k] = json.dumps(v, ensure_ascii=False)
                 
             results.append(row)
             

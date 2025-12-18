@@ -13,9 +13,8 @@ declare module 'axios' {
   }
 }
 
-// baseURL is just API_BASE since it already includes /api
+// HTTP 客户端基础配置
 const baseURL = API_BASE
-console.log('HTTP Client initialized with baseURL:', baseURL)
 
 const http: AxiosInstance = axios.create({
   baseURL,
@@ -96,7 +95,7 @@ http.interceptors.response.use(
         // 最多重试 3 次
         if (config.__retryCount < 3) {
           config.__retryCount += 1
-          console.log(`网络错误,正在重试 (${config.__retryCount}/3)...`)
+          // 网络错误重试中
 
           // 延迟后重试
           await new Promise(resolve => setTimeout(resolve, 1000 * (config.__retryCount || 1)))
@@ -117,13 +116,8 @@ http.interceptors.response.use(
     // 新的错误响应格式: { error: { code, message, details } }
     if (responseData?.error) {
       const { code, message, details } = responseData.error
-
-      // 根据错误码显示用户友好的提示
       const userMessage = getUserFriendlyMessage(code, message, details)
       ElMessage.error(userMessage)
-
-      // 记录详细错误信息到控制台
-      console.error('API Error:', { code, message, details, status })
     }
     // 兼容旧的错误格式
     else if (responseData?.detail) {

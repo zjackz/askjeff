@@ -43,6 +43,60 @@
 
 - `check-ui-consistency`：阻止硬编码尺寸/分页不一致/过多内联样式等回退
 
-## 项目占位符（复制后填写）
+## 🎨 Design System (Premium Intelligence)
 
-- UI 组件库：`<...>`；默认尺寸：`<...>`；分页页大小：`<...>`；Token 位置：`<...>`
+### 1. Color Palette (Dark Mode Default)
+
+**Backgrounds**:
+- Main: `#0F172A` (Deep Slate Blue) - `var(--color-studio-bg)`
+- Surface: `#1E293B` (Lighter Slate) - `var(--color-studio-surface)`
+- Surface Hover: `#334155` - `var(--color-studio-surface-hover)`
+
+**Accents**:
+- Primary: `#D48B78` (Rose Gold) - `var(--color-accent-primary)`
+- Secondary: `#B89628` (Gold) - `var(--color-accent-secondary)`
+- Glow: `rgba(212, 139, 120, 0.5)` - `var(--color-accent-glow)`
+
+**Text**:
+- Main: `#F8FAFC` (Off-white) - `var(--color-text-main)`
+- Muted: `#94A3B8` (Slate grey) - `var(--color-text-muted)`
+
+**Borders**:
+- Default: `#334155` - `var(--color-border)`
+- Highlight: `#475569` - `var(--color-border-highlight)`
+
+### 2. Typography
+
+- **UI Font**: `'DM Sans', sans-serif` - `var(--font-ui)`
+- **Heading Font**: `'Playfair Display', serif` - `var(--font-heading)`
+- **Monospace**: `'JetBrains Mono', monospace` - `var(--font-mono)`
+
+### 3. Effects & Components
+
+**Glassmorphism**:
+- Background: `rgba(30, 41, 59, 0.7)` - `var(--glass-bg)`
+- Border: `1px solid rgba(255, 255, 255, 0.1)` - `var(--glass-border)`
+
+**Shadows**:
+- Card: `0 4px 6px -1px rgba(0, 0, 0, 0.3)` - `var(--shadow-card)`
+- Glow: `0 0 15px var(--color-accent-glow)` - `var(--shadow-glow)`
+
+**Component Styles**:
+- **Inputs**: Minimal style, transparent background, bottom border or subtle outline.
+- **Buttons**: Icon-based actions, hover effects with scaling, rounded corners (`9999px`).
+- **Tables**: Glass panel container, minimal input cells, sticky headers.
+
+### 4. Spacing System
+
+- `xs`: 4px (`var(--space-xs)`)
+- `sm`: 8px (`var(--space-sm)`)
+- `md`: 16px (`var(--space-md)`)
+- `lg`: 24px (`var(--space-lg)`)
+- `xl`: 32px (`var(--space-xl)`)
+- `2xl`: 48px (`var(--space-2xl)`)
+
+## 🚫 常见错误 (Must Avoid)
+
+- ❌ **硬编码颜色**: 严禁使用 hex 值，必须使用 `var(--color-...)`。
+- ❌ **随意尺寸**: 严禁使用 `padding: 13px` 这种魔法数字。
+- ❌ **默认滚动条**: 必须使用自定义的极简滚动条样式。

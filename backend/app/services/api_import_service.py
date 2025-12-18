@@ -59,14 +59,16 @@ class APIImportService:
         Returns:
             batch_id: 导入批次 ID (整数)
         """
-        batch_id: Optional[int] = None # Initialize batch_id to None
+        from app.services.progress_tracker import ProgressTracker
+        
+        batch_id: Optional[int] = None
         try:
             # 1. 解析输入
             logger.info(f"开始解析输入: {input_value}")
             parsed = self._parse_input(input_value, input_type)
             logger.info(f"解析结果: {parsed}")
             
-            # 如果是 ASIN，需要获取类目 ID
+            # 如果是 ASIN,需要获取类目 ID
             if parsed["type"] == "asin":
                 logger.info(f"正在通过 ASIN {parsed['value']} 获取类目 ID")
                 category_id = await self._get_category_by_asin(
@@ -76,14 +78,26 @@ class APIImportService:
                 logger.info(f"获取到类目 ID: {category_id}")
             
             # 2. 获取或创建批次记录
+            logger.info(f"[DEBUG] batch_id parameter: {batch_id}")
             if batch_id:
+                # 使用已有批次,更新状态和 metadata
+                logger.info(f"[DEBUG] Attempting to get existing batch {batch_id}")
                 batch = ImportRepository.get_batch(db, batch_id)
                 if not batch:
+                    logger.error(f"[DEBUG] Batch {batch_id} not found in database!")
                     raise ValueError(f"批次 {batch_id} 不存在")
-                # 立即更新状态为处理中
-                batch.status = "processing"
+                
+                logger.info(f"[DEBUG] Found batch {batch_id}, updating metadata")
+                # 更新 metadata (特别是 category_id)
+                if batch.import_metadata:
+                    batch.import_metadata["category_id"] = parsed.get("category_id")
+                
+                batch.status = "running"
                 db.commit()
+                logger.info(f"[{batch_id}] 使用已有批次,已更新 category_id")
             else:
+                # 创建新批次 (这个分支不应该在后台任务中执行)
+                logger.warning(f"[DEBUG] batch_id is None, creating new batch!")
                 batch = self._create_batch(
                     db,
                     parsed=parsed,
@@ -92,10 +106,16 @@ class APIImportService:
                     test_mode=test_mode,
                 )
                 batch_id = batch.id
+                logger.info(f"[{batch_id}] 创建新批次")
             
-            logger.info(f"[{batch_id}] 任务开始处理 (Status: {batch.status})")
+            logger.info(f"[{batch_id}] 任务开始处理")
+            
+            # 进度: 准备阶段
+            ProgressTracker.update_progress(db, batch_id, phase="preparing", message="正在准备...")
             
             # 3. 获取 Best Sellers
+            ProgressTracker.update_progress(db, batch_id, phase="fetching_list", message="正在获取产品列表...")
+            
             logger.info(f"[{batch_id}] 开始获取 Best Sellers (Category: {parsed['category_id']})")
             bestsellers = await self._fetch_bestsellers(
                 category_id=parsed["category_id"],
@@ -119,16 +139,63 @@ class APIImportService:
             
             # 4. 批量获取详情
             logger.info(f"[{batch_id}] 开始获取产品详情")
+            
+            # 提前更新 total_rows
+            batch.total_rows = len(bestsellers)
+            db.commit()
+            
+            # 进度: 开始获取详情
+            ProgressTracker.update_progress(
+                db, batch_id,
+                phase="fetching_details",
+                current=0,
+                total=len(bestsellers),
+                message=f"开始获取产品详情 (0/{len(bestsellers)})"
+            )
+            
             asins = [item.get("asin") for item in bestsellers if item.get("asin")]
-            products = await self._fetch_details_batch(asins, domain, test_mode=test_mode, db=db)
+            products = await self._fetch_details_batch(asins, domain, test_mode=test_mode, db=db, batch_id=batch_id)
             
             logger.info(f"[{batch_id}] 获取到 {len(products)} 个产品详情")
             
             # 5. 保存到数据库
+            ProgressTracker.update_progress(
+                db, batch_id,
+                phase="saving",
+                current=len(products),
+                total=len(products),
+                message=f"正在保存数据 ({len(products)} 条)"
+            )
             logger.info(f"[{batch_id}] 开始保存数据")
             await self._save_to_database(db, batch_id, products)
             
+            # 5.5 自动翻译 (在生成 Excel 之前)
+            try:
+                from app.services.extraction_service import ExtractionService
+                from app.services.deepseek_client import DeepseekClient
+                translation_service = ExtractionService(db, DeepseekClient())
+                logger.info(f"[{batch_id}] 开始自动翻译标题")
+                await translation_service.auto_translate_batch(batch_id)
+                # 重新从数据库加载产品以获取翻译后的数据
+                from app.models.import_batch import ProductRecord
+                db_products = db.query(ProductRecord).filter(ProductRecord.batch_id == batch_id).all()
+                # 更新 products 列表用于生成 Excel
+                products = []
+                for p in db_products:
+                    prod_dict = p.normalized_payload or {}
+                    prod_dict["asin"] = p.asin
+                    prod_dict["title"] = p.title
+                    prod_dict["raw_payload"] = p.raw_payload
+                    products.append(prod_dict)
+            except Exception as e:
+                logger.error(f"[{batch_id}] 自动翻译失败 (不影响后续流程): {e}")
+
             # 6. 生成 Excel
+            ProgressTracker.update_progress(
+                db, batch_id,
+                phase="generating_excel",
+                message="正在生成 Excel 文件..."
+            )
             logger.info(f"[{batch_id}] 开始生成 Excel")
             excel_path = await self._generate_excel(batch_id, products, parsed)
             
@@ -145,6 +212,15 @@ class APIImportService:
                 total_rows=len(products),
                 success_rows=len(products),
                 failed_rows=0,
+            )
+            
+            # 进度: 完成
+            ProgressTracker.update_progress(
+                db, batch_id,
+                phase="completed",
+                current=len(products),
+                total=len(products),
+                message=f"导入完成! 共 {len(products)} 条数据"
             )
             
             LogService.log(
@@ -178,6 +254,9 @@ class APIImportService:
                     failed_rows=0,
                     failure_summary={"error": str(e)},
                 )
+                
+                # 进度: 标记失败
+                ProgressTracker.mark_failed(db, batch.id, str(e))
             
             if batch_id is not None:
                 LogService.log(
@@ -213,23 +292,48 @@ class APIImportService:
             if parsed["type"] == "asin":
                 # 获取 ASIN 详情
                 product = await self._fetch_single_product(parsed["value"], domain, test_mode, db)
-                result["image"] = product.get("image")
+                # Note: Normalized product data uses 'image_url' key
+                result["image"] = product.get("image_url") or product.get("image")
                 result["title"] = product.get("title")
                 # 尝试获取类目名称或 ID
                 cat_id = product.get("nodeId") or product.get("node_id") or product.get("categoryId")
                 result["category_id"] = str(cat_id) if cat_id else None
-                result["info"] = f"ASIN: {parsed['value']}"
+                
+                # 增强预览信息
+                result["price"] = product.get("price")
+                result["currency"] = product.get("currency")
+                result["rating"] = product.get("rating")
+                result["reviews"] = product.get("reviews")
+                result["sales_rank"] = product.get("sales_rank")
+                result["brand"] = product.get("brand")
+                result["bullets"] = product.get("bullets") or product.get("Bullet Points") or product.get("bullet_points")
+                
+                info_parts = [f"ASIN: {parsed['value']}"]
+                if result["brand"]:
+                    info_parts.append(f"品牌: {result['brand']}")
                 if product.get("category"):
-                     result["info"] += f" | {product.get('category')}"
+                    info_parts.append(f"类目: {product.get('category')}")
+                result["info"] = " | ".join(info_parts)
                 
             elif parsed["type"] == "category_id":
                 # 获取类目 Top 产品作为预览
                 products = await self._fetch_bestsellers(parsed["value"], domain, test_mode, db)
                 if products:
                     top = products[0]
-                    result["image"] = top.get("image")
+                    # Note: Normalized product data uses 'image_url' key
+                    result["image"] = top.get("image_url") or top.get("image")
                     result["title"] = f"Top 1: {top.get('title')}"
-                    result["info"] = f"Category ID: {parsed['value']} | Total: {len(products)}+"
+                    
+                    # 增强预览信息
+                    result["price"] = top.get("price")
+                    result["currency"] = top.get("currency")
+                    result["rating"] = top.get("rating")
+                    result["reviews"] = top.get("reviews")
+                    result["sales_rank"] = top.get("sales_rank")
+                    result["brand"] = top.get("brand")
+                    result["bullets"] = top.get("bullets") or top.get("Bullet Points") or top.get("bullet_points")
+                    
+                    result["info"] = f"类目 ID: {parsed['value']} | 预计抓取: {len(products)} 个产品"
                 else:
                     result["valid"] = False
                     result["error"] = "未找到该类目下的产品"
@@ -350,8 +454,8 @@ class APIImportService:
         self, category_id: str, domain: int, test_mode: bool = False, db: Optional[Session] = None
     ) -> list[dict]:
         """获取 Best Sellers Top 100"""
-        # 测试模式且没有 API Key 时使用 Mock 数据
-        if test_mode and not settings.sorftime_api_key:
+        # 测试模式优先使用 Mock 数据
+        if test_mode:
             logger.info("测试模式：使用 Mock Best Sellers 数据")
             return [
                 {
@@ -408,8 +512,8 @@ class APIImportService:
         self, asin: str, domain: int, test_mode: bool = False, db: Optional[Session] = None
     ) -> dict:
         """获取单个产品信息"""
-        # Mock 模式
-        if test_mode and not settings.sorftime_api_key:
+        # 测试模式优先使用 Mock 数据
+        if test_mode:
             return {
                 "asin": asin,
                 "title": f"Mock Product {asin}",
@@ -464,14 +568,17 @@ class APIImportService:
             raise
 
     async def _fetch_details_batch(
-        self, asins: list[str], domain: int, test_mode: bool = False, db: Optional[Session] = None
+        self, asins: list[str], domain: int, test_mode: bool = False, db: Optional[Session] = None, batch_id: Optional[int] = None
     ) -> list[dict]:
         """批量获取产品详情"""
-        # 测试模式且没有 API Key 时使用 Mock 数据
-        if test_mode and not settings.sorftime_api_key:
+        # 测试模式优先使用 Mock 数据
+        if test_mode:
             logger.info("测试模式：使用 Mock 产品详情数据")
-            return [
-                {
+            # Mock 模式下也模拟进度更新
+            total = len(asins)
+            results = []
+            for i, asin in enumerate(asins):
+                results.append({
                     "asin": asin,
                     "title": f"Mock Product {asin}",
                     "price": 99.99,
@@ -489,15 +596,27 @@ class APIImportService:
                     "variations": 2,
                     "sellers": 5,
                     "weight": 1.5,
-                }
-                for asin in asins
-            ]
+                })
+                # Mock 模式下也更新进度
+                if batch_id and db and (i + 1) % 5 == 0:
+                    from app.services.progress_tracker import ProgressTracker
+                    ProgressTracker.update_progress(
+                        db, batch_id,
+                        phase="fetching_details",
+                        current=i + 1,
+                        total=total,
+                        message=f"测试模式: 获取详情 ({i + 1}/{total})"
+                    )
+                await asyncio.sleep(0.1) # 模拟延迟
+            return results
 
         client = SorftimeClient(account_sk=settings.sorftime_api_key, db=db)
         
         results = []
         batch_size = 10
         batches = [asins[i:i+batch_size] for i in range(0, len(asins), batch_size)]
+        
+        current_fetched_count = 0
         
         for i, batch in enumerate(batches):
             logger.info(f"处理批次 {i+1}/{len(batches)}, {len(batch)} 个产品")
@@ -532,7 +651,21 @@ class APIImportService:
                     else:
                         products = []
                     
-                    results.extend([self._normalize_product_data(p) for p in products])
+                    fetched_items = [self._normalize_product_data(p) for p in products]
+                    results.extend(fetched_items)
+                    current_fetched_count += len(fetched_items)
+                    
+                    # 更新进度 (使用 ProgressTracker)
+                    if batch_id and db:
+                        from app.services.progress_tracker import ProgressTracker
+                        ProgressTracker.update_progress(
+                            db, batch_id,
+                            phase="fetching_details",
+                            current=current_fetched_count,
+                            total=len(asins),
+                            message=f"正在获取产品详情 ({current_fetched_count}/{len(asins)})"
+                        )
+                            
                 else:
                     logger.warning(f"批次 {i+1} API 调用失败: {response.message}")
                 
@@ -607,9 +740,18 @@ class APIImportService:
         data = []
         for product in products:
             asin = product.get("asin", "")
+            # 尝试从 raw_payload 中获取翻译后的标题
+            raw_payload = product.get("raw_payload") or {}
+            title_cn = raw_payload.get("title_cn") or product.get("title_cn", "")
+            bullets = raw_payload.get("Bullet Points") or raw_payload.get("bullet_points") or product.get("bullets", "")
+            bullets_cn = raw_payload.get("bullets_cn") or product.get("bullets_cn", "")
+            
             data.append({
                 "ASIN": asin,
                 "Title": product.get("title", ""),
+                "Title (CN)": title_cn,
+                "Bullet Points": bullets,
+                "Bullet Points (CN)": bullets_cn,
                 "Price": product.get("price"),
                 "Rating": product.get("rating"),
                 "Reviews": product.get("reviews"),

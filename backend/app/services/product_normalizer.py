@@ -56,6 +56,7 @@ class ProductDataNormalizer:
         "a_plus": ["APlus", "a_plus"],
         "coupon": ["Coupon", "coupon"],
         "description": ["Description", "description"],
+        "bullets": ["Bullet Points", "bullet_points", "五点描述", "bullets"],
     }
     
     @classmethod

@@ -4,14 +4,14 @@
     <div class="page-header">
       <div class="header-content">
         <div class="header-left">
-          <el-button circle :icon="ArrowLeft" class="back-btn" @click="$router.back()" />
+          <el-button circle :icon="ArrowLeft" size="small" class="back-btn" @click="$router.back()" />
           <div class="header-title-area">
             <h1 class="page-title">
               <span class="gradient-text">AI 特征提取</span>
               <span v-if="batch?.id" class="batch-id">#{{ batch.id }}</span>
             </h1>
             <p class="page-subtitle" v-if="batch">
-              {{ batch.filename }} · {{ batch.total_rows }} 条记录
+              {{ batch.filename }} · {{ batch.totalRows }} 条记录
             </p>
           </div>
         </div>
@@ -21,7 +21,7 @@
     <div class="main-content" v-loading="loading">
       
       <!-- 顶部：场景化模板引导 -->
-      <div class="step-section">
+      <div class="step-section compact-step">
         <div class="step-header">
           <el-icon class="step-icon"><MagicStick /></el-icon>
           <h2 class="step-title">第一步：选择分析场景</h2>
@@ -38,17 +38,11 @@
             </div>
             <div class="card-header">
               <div class="icon-wrapper">
-                <el-icon :size="20"><component :is="template.icon || 'DataAnalysis'" /></el-icon>
+                <el-icon :size="16"><component :is="template.icon || 'DataAnalysis'" /></el-icon>
               </div>
               <h3 class="card-title">{{ template.name }}</h3>
             </div>
             <p class="card-desc">{{ template.desc }}</p>
-            <div class="card-tags">
-              <span v-for="field in template.fields.slice(0, 3)" :key="field" class="mini-tag">
-                {{ field }}
-              </span>
-              <span v-if="template.fields.length > 3" class="mini-tag-more">+{{ template.fields.length - 3 }}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -58,17 +52,25 @@
         <el-col :span="10">
           <div class="config-panel-wrapper">
             <div class="step-header">
-              <el-icon class="step-icon blue"><EditPen /></el-icon>
+              <el-icon class="step-icon"><EditPen /></el-icon>
               <h2 class="step-title">第二步：配置提取规则</h2>
             </div>
             
             <div class="config-panel">
               <el-form label-position="top">
-                <el-form-item>
+                <el-form-item style="margin-bottom: 8px;">
                   <template #label>
                     <div class="form-label">
                       <span class="label-text">目标字段</span>
-                      <span class="label-sub">AI 将提取这些信息</span>
+                      <el-button 
+                        v-if="targetFields.length > 0"
+                        link 
+                        type="primary" 
+                        size="small" 
+                        @click="targetFields = []"
+                      >
+                        清空
+                      </el-button>
                     </div>
                   </template>
                   <el-select
@@ -78,14 +80,14 @@
                     allow-create
                     default-first-option
                     :reserve-keyword="false"
-                    placeholder="输入字段名并回车 (如: 材质, 适用人群)"
-                    class="w-full custom-tag-input"
-                    size="large"
+                    placeholder="输入字段名并回车"
+                    class="custom-tag-input"
+                    style="width: 100%;"
+                    size="default"
                   />
                   
                   <!-- 智能推荐标签 -->
                   <div class="quick-tags-area">
-                    <div class="tags-label">常用推荐：</div>
                     <div class="tags-list">
                       <div
                         v-for="tag in quickTags"
@@ -99,18 +101,26 @@
                   </div>
                 </el-form-item>
 
-                <el-form-item class="mt-large">
+                <el-form-item style="margin-top: 16px;">
                   <template #label>
                     <div class="form-label">
                       <span class="label-text">额外指令 (Prompt)</span>
-                      <span class="label-sub">可选</span>
+                      <el-button 
+                        v-if="customInstructions"
+                        link 
+                        type="primary" 
+                        size="small" 
+                        @click="customInstructions = ''"
+                      >
+                        清空
+                      </el-button>
                     </div>
                   </template>
                   <el-input
                     v-model="customInstructions"
                     type="textarea"
-                    :rows="4"
-                    placeholder="例如：请忽略包装材质，只提取产品本身的材质。价格请统一保留两位小数..."
+                    :rows="3"
+                    placeholder="例如：请忽略包装材质..."
                     class="custom-textarea"
                   />
                 </el-form-item>
@@ -131,19 +141,19 @@
                 <div class="action-buttons">
                   <el-button 
                     type="warning" 
-                    size="large" 
+                    size="default" 
                     class="action-btn test-btn"
                     :loading="extracting && isTestRun"
                     @click="submitExtraction(true)"
                     :disabled="targetFields.length === 0 || extracting"
                   >
                     <el-icon class="mr-2"><VideoPlay /></el-icon>
-                    试运行 (3条)
+                    试运行
                   </el-button>
                   
                   <el-button 
                     type="primary" 
-                    size="large" 
+                    size="default" 
                     class="action-btn run-btn" 
                     :loading="extracting && !isTestRun"
                     @click="submitExtraction(false)"
@@ -187,14 +197,48 @@
                   <span class="title-text">{{ row.title }}</span>
                 </template>
               </el-table-column>
+              <el-table-column label="中文标题" prop="title_cn" min-width="240" show-overflow-tooltip />
+              
+              <el-table-column label="五点描述" prop="bullets" min-width="240" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span class="bullets-text">{{ row.bullets || row.bullet_points || row.Description || row.description || '—' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="中文五点" prop="bullets_cn" min-width="240" show-overflow-tooltip />
+
+              <!-- 其他核心字段 -->
+              <el-table-column label="品牌" prop="brand" width="120" show-overflow-tooltip />
+              <el-table-column label="价格" width="120">
+                <template #default="{ row }">
+                  <span v-if="row.price">{{ row.currency || '$' }}{{ row.price }}</span>
+                  <span v-else>-</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="评分" prop="rating" width="80" />
+              <el-table-column label="评论" prop="reviews" width="100" />
+              <el-table-column label="排名" prop="sales_rank" width="100" />
+              <el-table-column label="类目" prop="category" width="150" show-overflow-tooltip />
+
               <el-table-column 
-                v-for="col in previewColumns.slice(0, 3)" 
+                v-for="col in previewColumns.slice(0, 8)" 
                 :key="col" 
                 :prop="col" 
                 :label="col"
                 min-width="140" 
                 show-overflow-tooltip
-              />
+              >
+                <template #header>
+                  <span :class="{ 'highlight-header': targetFields.includes(col) }">
+                    {{ col }}
+                    <el-icon v-if="targetFields.includes(col)" class="ml-1"><MagicStick /></el-icon>
+                  </span>
+                </template>
+                <template #default="{ row }">
+                  <span :class="{ 'highlight-cell': targetFields.includes(col) }">
+                    {{ row[col] }}
+                  </span>
+                </template>
+              </el-table-column>
               <el-table-column label="..." width="60" align="center">
                 <template #default>
                   <span class="dots">...</span>
@@ -367,9 +411,9 @@ const batchId = route.params.batchId as string
 interface Batch {
   id: number
   filename: string
-  total_rows?: number
-  ai_status?: string
-  ai_summary?: {
+  totalRows?: number
+  aiStatus?: string
+  aiSummary?: {
     total: number
     success: number
     failed: number
@@ -410,6 +454,7 @@ interface ExtractionRun {
   batch_id: number
   status: string
   target_fields: string[]
+  custom_instructions?: string
   created_at: string
   stats?: {
     total: number
@@ -437,11 +482,30 @@ const reExtractionResult = ref<any>(null)
 // 计算预览列（从第一条记录的 payload 中获取 key）
 const previewColumns = computed(() => {
   if (previewRecords.value.length === 0) return []
-  // 优先使用 normalized_payload，否则使用 raw_payload
+  
+  // 1. 优先展示目标字段 (targetFields)
+  const priorityFields = targetFields.value || []
+  
+  // 2. 获取所有可用字段
   const firstRecord = previewRecords.value[0]
   if (!firstRecord) return []
-  // 排除 id, asin, title 字段（因为已经单独展示了）
-  return Object.keys(firstRecord).filter(key => !['id', 'asin', 'title'].includes(key))
+  
+  // 排除已显式展示的列
+  const excludedKeys = [
+    'id', 'asin', 'title', 'price', 'currency', 'rating', 
+    'reviews', 'sales_rank', 'category', 'brand', 'extended_data', 
+    'raw_payload', 'normalized_payload', 'ai_features', 'ai_status',
+    'ingested_at', 'batch_id', 'validation_status', 'validation_messages',
+    'data_source', 'bullets', 'bullet_points', 'bullets_cn', 'title_cn'
+  ]
+  
+  const allKeys = Object.keys(firstRecord).filter(key => !excludedKeys.includes(key))
+  
+  // 3. 排序：优先字段在前，其他字段在后
+  return [
+    ...priorityFields.filter(f => allKeys.includes(f)),
+    ...allKeys.filter(k => !priorityFields.includes(k))
+  ]
 })
 
 const fetchBatchDetails = async () => {
@@ -462,9 +526,27 @@ const fetchBatchDetails = async () => {
       // 处理记录数据，展平 payload
       previewRecords.value = recordsData.map((record: RecordData) => {
         const payload = record.raw_payload || record.normalized_payload || {}
+        const extended = record.extended_data || {}
+        const aiFeatures = record.ai_features || {}
+        // 移除 _usage 字段，不展示在表格中
+        const { _usage, ...cleanAiFeatures } = aiFeatures
+        
         return {
           id: record.id,
-          ...payload
+          asin: record.asin,
+          title: record.title,
+          price: record.price,
+          currency: record.currency,
+          rating: record.rating,
+          reviews: record.reviews,
+          sales_rank: record.sales_rank,
+          category: record.category,
+          bullets: payload.bullets || payload.bullet_points || payload['Bullet Points'] || payload.Description || payload.description || '',
+          bullets_cn: payload.bullets_cn || '',
+          title_cn: payload.title_cn || '',
+          ...extended, // 包含 brand 等
+          ...payload, // 包含原始抓取的所有字段
+          ...cleanAiFeatures // 包含已提取的 AI 特征
         }
       })
     }
@@ -488,9 +570,9 @@ const fetchResults = async () => {
     
     if (Array.isArray(data)) {
       resultRecords.value = data
-      // 如果是第一页，尝试更新总数（虽然 API 没返回总数，但可以用 batch.total_rows 近似）
-      if (batch.value?.total_rows) {
-        resultTotal.value = batch.value.total_rows
+      // 如果是第一页，尝试更新总数（虽然 API 没返回总数，但可以用 batch.totalRows 近似）
+      if (batch.value?.totalRows) {
+        resultTotal.value = batch.value.totalRows || 0
       }
     }
   } catch (err) {
@@ -520,6 +602,17 @@ const fetchRuns = async () => {
 
 const viewRunDetails = (run: ExtractionRun) => {
   selectedRun.value = run
+  
+  // 恢复配置
+  if (run.target_fields) {
+    targetFields.value = run.target_fields
+  }
+  if (run.custom_instructions) {
+    customInstructions.value = run.custom_instructions
+  }
+  
+  ElMessage.success(`已加载 Run #${run.id} 的配置`)
+  
   fetchResults()
 }
 
@@ -614,25 +707,7 @@ const getAiStatusText = (status?: string) => {
   }
 }
 
-const startPolling = () => {
-  if (pollTimer) return
-  pollTimer = window.setInterval(async () => {
-    // 刷新 runs
-    await fetchRuns()
-    
-    // 检查是否有正在进行的 run
-    const processingRun = runs.value.find(r => r.status === 'processing')
-    
-    if (processingRun) {
-      // 如果有正在进行的，刷新结果列表（虽然结果可能还没出来，但为了实时性）
-      fetchResults()
-    } else {
-      // 如果没有正在进行的，停止轮询
-      stopPolling()
-      fetchResults()
-    }
-  }, 3000)
-}
+
 
 const stopPolling = () => {
   if (pollTimer) {
@@ -647,7 +722,7 @@ const customInstructions = ref('')
 const isTestRun = ref(false)
 
 const estimateCost = () => {
-  if (!batch.value?.total_rows || previewRecords.value.length === 0) return null
+  if (!batch.value?.totalRows || previewRecords.value.length === 0) return null
 
   // 1. 计算单行输入 Token (JSON 字符串长度 / 3)
   const sampleRow = previewRecords.value[0]
@@ -661,7 +736,7 @@ const estimateCost = () => {
   const outputTokensPerRow = Math.ceil((targetFields.value.length * 20) / 3)
 
   // 3. 总 Token
-  const totalRows = batch.value.total_rows
+  const totalRows = batch.value?.totalRows || 0
   const totalInputTokens = inputTokensPerRow * totalRows
   const totalOutputTokens = outputTokensPerRow * totalRows
   const totalTokens = totalInputTokens + totalOutputTokens
@@ -740,10 +815,10 @@ const submitExtraction = async (testRun = false) => {
   isTestRun.value = testRun
 
   // 检查是否超过 50 条记录 (仅在非测试模式下)
-  if (!testRun && batch.value?.total_rows && batch.value.total_rows > 50) {
+  if (!testRun && batch.value?.totalRows && (batch.value.totalRows as number) > 50) {
     try {
       await ElMessageBox.confirm(
-        `当前批次包含 ${batch.value.total_rows} 条记录，超过 50 条。AI 提取将消耗较多 Token，是否继续？`,
+        `当前批次包含 ${batch.value?.totalRows || 0} 条记录，超过 50 条。AI 提取将消耗较多 Token，是否继续？`,
         '高消耗预警',
         {
           confirmButtonText: '确认继续',
@@ -787,10 +862,36 @@ const submitExtraction = async (testRun = false) => {
   } catch (err) {
     console.error('Extraction failed:', err)
     ElMessage.error('AI 提取启动失败')
-  } finally {
     extracting.value = false
     isTestRun.value = false
   }
+}
+
+const startPolling = () => {
+  if (pollTimer) clearInterval(pollTimer)
+  
+  pollTimer = window.setInterval(async () => {
+    await fetchRuns()
+    
+    // Check if the latest run is completed
+    const latestRun = runs.value[0]
+    if (latestRun && latestRun.status === 'completed') {
+      if (pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+      }
+      extracting.value = false
+      isTestRun.value = false
+      ElMessage.success('提取完成！')
+      
+      // Refresh preview data to show results
+      await fetchBatchDetails()
+      // Refresh results list if needed
+      if (selectedRun.value?.id === latestRun.id) {
+        await fetchResults()
+      }
+    }
+  }, 2000)
 }
 
 const copyPrompt = async () => {
@@ -876,15 +977,15 @@ $card-border-radius: 16px;
 .extraction-page {
   min-height: 100vh;
   background-color: #f8fafc; /* 更冷淡的高级灰 */
-  padding-bottom: 64px;
+  padding-bottom: 0;
 }
 
 .page-header {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(229, 231, 235, 0.5);
-  padding: 20px 32px;
-  margin-bottom: 40px;
+  padding: 12px 24px;
+  margin-bottom: 16px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -901,7 +1002,7 @@ $card-border-radius: 16px;
   .header-left {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
   }
 
   .back-btn {
@@ -917,37 +1018,42 @@ $card-border-radius: 16px;
   }
 
   .header-title-area {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+
     .page-title {
-      font-size: 22px;
+      font-size: 18px;
       font-weight: 800;
       color: #0f172a;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       margin: 0;
       letter-spacing: -0.02em;
 
       .gradient-text {
         background: $primary-gradient;
         -webkit-background-clip: text;
+        background-clip: text;
         color: transparent;
       }
 
       .batch-id {
-        padding: 2px 10px;
+        padding: 1px 8px;
         background: #f1f5f9;
         color: #64748b;
-        font-size: 13px;
-        border-radius: 6px;
+        font-size: 12px;
+        border-radius: 4px;
         font-weight: 600;
         font-family: 'JetBrains Mono', monospace;
       }
     }
 
     .page-subtitle {
-      font-size: 13px;
+      font-size: 12px;
       color: #64748b;
-      margin: 4px 0 0 0;
+      margin: 0;
       font-weight: 500;
     }
   }
@@ -956,41 +1062,41 @@ $card-border-radius: 16px;
 .main-content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 0 24px;
 }
 
 .step-section {
-  margin-bottom: 48px;
+  margin-bottom: 16px;
+}
 
-  .step-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-    padding-left: 16px;
-    border-left: 4px solid $primary-color;
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-left: 12px;
+  border-left: 3px solid $primary-color;
 
-    .step-icon {
-      color: $primary-color;
-      font-size: 22px;
-      background: #eff6ff;
-      padding: 6px;
-      border-radius: 8px;
-    }
+  .step-icon {
+    color: $primary-color;
+    font-size: 16px;
+    background: #eff6ff;
+    padding: 4px;
+    border-radius: 6px;
+  }
 
-    .step-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #1e293b;
-      margin: 0;
-    }
+  .step-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
   }
 }
 
 .scenario-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 12px;
 
   @media (max-width: 1024px) {
     grid-template-columns: repeat(2, 1fr);
@@ -1000,12 +1106,15 @@ $card-border-radius: 16px;
 .scenario-card {
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: $card-border-radius;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 12px;
   cursor: pointer;
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 
   /* 默认状态下的微弱渐变 */
   background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
@@ -1033,10 +1142,10 @@ $card-border-radius: 16px;
 
   .card-check-icon {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 8px;
+    right: 8px;
     color: #8b5cf6;
-    font-size: 24px;
+    font-size: 16px;
     opacity: 0;
     transform: scale(0.8);
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1045,13 +1154,13 @@ $card-border-radius: 16px;
   .card-header {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 4px;
 
     .icon-wrapper {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
       background-color: #f3e8ff;
       color: #9333ea;
       display: flex;
@@ -1062,7 +1171,7 @@ $card-border-radius: 16px;
     }
 
     .card-title {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 700;
       color: #1e293b;
       margin: 0;
@@ -1071,15 +1180,17 @@ $card-border-radius: 16px;
   }
 
   .card-desc {
-    font-size: 14px;
+    font-size: 12px;
     color: #64748b;
-    line-height: 1.6;
-    margin-bottom: 20px;
-    height: 44px;
+    line-height: 1.4;
+    margin-bottom: 0;
+    height: 34px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    padding-left: 42px; /* Align with title */
   }
 
   .card-tags {
@@ -1109,14 +1220,14 @@ $card-border-radius: 16px;
 
 .config-panel-wrapper {
   position: sticky;
-  top: 120px;
+  top: 80px;
 }
 
 .config-panel {
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: $card-border-radius;
-  padding: 32px;
+  border-radius: 12px;
+  padding: 20px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
@@ -1140,8 +1251,8 @@ $card-border-radius: 16px;
 }
 
 .quick-tags-area {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px dashed #e2e8f0;
 
   .tags-label {
@@ -1186,9 +1297,9 @@ $card-border-radius: 16px;
 .info-alert {
   background: linear-gradient(to right, #eff6ff, #f5f3ff);
   border: 1px solid #dbeafe;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 16px;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
 
   .alert-content {
     display: flex;
@@ -1225,15 +1336,15 @@ $card-border-radius: 16px;
 
 .action-buttons {
   display: flex;
-  gap: 16px;
-  margin-top: 32px;
+  gap: 12px;
+  margin-top: 20px;
 
   .action-btn {
     flex: 1;
-    border-radius: 10px;
+    border-radius: 8px;
     font-weight: 600;
-    height: 48px;
-    font-size: 15px;
+    height: 40px;
+    font-size: 14px;
     letter-spacing: 0.01em;
   }
 
@@ -1298,9 +1409,11 @@ $card-border-radius: 16px;
 .preview-table-card {
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: $card-border-radius;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  max-height: 500px;
+  overflow-y: auto;
 
   .asin-text {
     font-family: 'JetBrains Mono', monospace;
@@ -1320,30 +1433,46 @@ $card-border-radius: 16px;
     color: #cbd5e1;
     letter-spacing: 2px;
   }
+
+  .highlight-header {
+    color: $primary-color;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .highlight-cell {
+    color: $primary-color;
+    font-weight: 600;
+    background: #eff6ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
 }
 
 .history-section {
-  margin-top: 48px;
+  margin-top: 24px;
 }
 
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .empty-history {
-  padding: 64px;
+  padding: 32px;
   background: white;
   border: 2px dashed #e2e8f0;
-  border-radius: $card-border-radius;
+  border-radius: 12px;
   text-align: center;
 }
 
 .history-card {
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: $card-border-radius;
+  border-radius: 12px;
   overflow: hidden;
   transition: all 0.2s;
 
@@ -1353,7 +1482,7 @@ $card-border-radius: 16px;
   }
 
   .history-header {
-    padding: 16px 24px;
+    padding: 12px 16px;
     background-color: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
@@ -1385,7 +1514,7 @@ $card-border-radius: 16px;
   }
 
   .history-body {
-    padding: 20px 24px;
+    padding: 12px 16px;
   }
 
   .fields-row {
@@ -1598,9 +1727,9 @@ $card-border-radius: 16px;
   box-shadow: none !important;
   background-color: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 8px 12px;
-  min-height: 42px;
+  border-radius: 8px;
+  padding: 4px 12px;
+  min-height: 36px;
   transition: all 0.2s;
   
   &:hover {
@@ -1619,8 +1748,8 @@ $card-border-radius: 16px;
   box-shadow: none !important;
   background-color: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: 8px;
+  padding: 12px;
   transition: all 0.2s;
   font-size: 14px;
   
