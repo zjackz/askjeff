@@ -26,7 +26,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/product',
-        component: () => import('../views/chat/index.vue'),
+        component: () => import('../views/product-list/index.vue'),
         meta: { title: '产品查询' }
       },
       {
