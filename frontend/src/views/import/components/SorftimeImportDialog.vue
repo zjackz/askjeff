@@ -37,6 +37,20 @@
               />
               <el-icon class="input-icon"><Link /></el-icon>
             </div>
+            <!-- 快速示例 -->
+            <div class="quick-examples mt-2">
+              <span class="text-xs text-gray-400 mr-2">示例:</span>
+              <el-tag 
+                v-for="ex in examples" 
+                :key="ex.value" 
+                size="small" 
+                class="example-tag cursor-pointer mr-1"
+                effect="plain"
+                @click="useExample(ex.value)"
+              >
+                {{ ex.label }}
+              </el-tag>
+            </div>
           </div>
 
           <div class="options-box">
@@ -93,7 +107,23 @@
             <p class="sub-text">在左侧输入内容以开始预览</p>
           </div>
 
-          <div v-else-if="previewData && !importProgress.visible" class="preview-card">
+          <div v-else-if="previewLoading" class="preview-skeleton">
+            <el-skeleton animated>
+              <template #template>
+                <div class="flex gap-4 p-4 bg-white rounded-2xl border border-gray-100">
+                  <el-skeleton-item variant="image" style="width: 80px; height: 80px; border-radius: 12px;" />
+                  <div class="flex-1 space-y-3">
+                    <el-skeleton-item variant="text" style="width: 30%" />
+                    <el-skeleton-item variant="h3" style="width: 90%" />
+                    <el-skeleton-item variant="text" style="width: 50%" />
+                  </div>
+                </div>
+              </template>
+            </el-skeleton>
+          </div>
+
+          <!-- 预览卡片 -->
+          <div v-else-if="previewData && !importProgress.visible" class="preview-card animate-fade-in">
             <div class="status-bar" :class="{ valid: previewData.valid }"></div>
             <div class="card-body">
               <div v-if="previewData.valid" class="valid-content">
@@ -130,31 +160,51 @@
             </div>
           </div>
 
-          <div v-if="importProgress.visible" class="progress-state">
-            <div class="progress-card">
+          <div v-if="importProgress.visible" class="progress-state animate-fade-in">
+            <div class="progress-card glass-effect">
               <el-progress 
                 type="dashboard" 
                 :percentage="importProgress.percentage" 
                 :status="getProgressStatus(importProgress.status)"
-                :width="100"
-                :stroke-width="8"
+                :width="120"
+                :stroke-width="10"
               >
                 <template #default="{ percentage }">
                   <div class="progress-label">
                     <span class="percentage">{{ percentage }}%</span>
-                    <span class="text">Progress</span>
+                    <span class="text">AI Processing</span>
                   </div>
                 </template>
               </el-progress>
               
-              <h4>{{ importProgress.message }}</h4>
-              <p>{{ importProgress.detail }}</p>
-              
-              <div v-if="importProgress.status === 'failed'" class="action-row">
-                <el-button size="small" @click="importProgress.visible = false">返回修改</el-button>
+              <div class="progress-info mt-4">
+                <h4 class="text-lg font-bold text-gray-800">{{ importProgress.message }}</h4>
+                <p class="text-sm text-gray-500 mb-6">{{ importProgress.detail }}</p>
+                
+                <!-- 步骤列表 -->
+                <div class="steps-list">
+                  <div class="step-item" :class="{ active: importProgress.percentage >= 10, completed: importProgress.percentage > 30 }">
+                    <el-icon class="step-icon"><CircleCheckFilled v-if="importProgress.percentage > 30" /><Loading v-else-if="importProgress.percentage >= 10" /><CircleCheck v-else /></el-icon>
+                    <span>提交抓取任务</span>
+                  </div>
+                  <div class="step-item" :class="{ active: importProgress.percentage > 30, completed: importProgress.percentage > 80 }">
+                    <el-icon class="step-icon"><CircleCheckFilled v-if="importProgress.percentage > 80" /><Loading v-else-if="importProgress.percentage > 30" /><CircleCheck v-else /></el-icon>
+                    <span>AI 识别与数据解析</span>
+                  </div>
+                  <div class="step-item" :class="{ active: importProgress.percentage > 80, completed: importProgress.status === 'succeeded' }">
+                    <el-icon class="step-icon"><CircleCheckFilled v-if="importProgress.status === 'succeeded'" /><Loading v-else-if="importProgress.percentage > 80" /><CircleCheck v-else /></el-icon>
+                    <span>数据入库与索引</span>
+                  </div>
+                </div>
               </div>
-              <div v-if="importProgress.status === 'succeeded'" class="action-row">
-                <el-button type="success" size="small" plain @click="$emit('update:visible', false)">完成并查看</el-button>
+              
+              <div v-if="importProgress.status === 'failed'" class="action-row mt-6">
+                <el-button type="danger" plain size="small" @click="importProgress.visible = false">返回修改</el-button>
+              </div>
+              <div v-if="importProgress.status === 'succeeded'" class="action-row mt-6">
+                <el-button type="primary" size="large" class="w-full rounded-xl" @click="$emit('update:visible', false)">
+                  完成并查看
+                </el-button>
               </div>
             </div>
           </div>
@@ -166,7 +216,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { MagicStick, Link, InfoFilled, DataAnalysis, Loading, Document, Picture, Menu, Warning } from '@element-plus/icons-vue'
+import { MagicStick, Link, InfoFilled, DataAnalysis, Loading, Document, Picture, Menu, Warning, CircleCheckFilled, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useDebounceFn } from '@vueuse/core'
 import { http } from '@/utils/http'
@@ -196,6 +246,16 @@ const importProgress = ref<ImportProgress>({
   percentage: 0,
   batchId: null
 })
+
+const examples = [
+  { label: 'ASIN 示例', value: 'B0C1S6Z7Y2' },
+  { label: '链接示例', value: 'https://www.amazon.com/dp/B0C1S6Z7Y2' }
+]
+
+const useExample = (val: string) => {
+  mcpForm.value.input = val
+  handleInputPreview(val)
+}
 
 const handleInputPreview = useDebounceFn(async (val: string) => {
   if (!val.trim()) {
@@ -439,11 +499,75 @@ const getProgressStatus = (status: string) => {
   padding-top: 24px;
   .start-btn {
     width: 100%;
-    height: 44px;
+    height: 50px;
     font-size: 16px;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
-    &:hover { box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3); }
+    font-weight: 600;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px -6px rgba(var(--el-color-primary-rgb), 0.4);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    &:hover:not(:disabled) {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 12px 24px -6px rgba(var(--el-color-primary-rgb), 0.5);
+    }
+    
+    &:active:not(:disabled) {
+      transform: translateY(0) scale(0.98);
+    }
+  }
+}
+
+.example-tag {
+  background: #f3f4f6;
+  border: none;
+  color: #6b7280;
+  border-radius: 6px;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: #e5e7eb;
+    color: var(--el-color-primary);
+  }
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.preview-skeleton {
+  padding: 1px;
+}
+
+.steps-list {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 200px;
+  margin: 0 auto;
+  
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #9ca3af;
+    transition: all 0.3s;
+    
+    .step-icon {
+      font-size: 16px;
+    }
+    
+    &.active {
+      color: var(--el-color-primary);
+      font-weight: 600;
+    }
+    
+    &.completed {
+      color: #10b981;
+    }
   }
 }
 
