@@ -17,38 +17,12 @@ services:
       retries: 20
 
   backend:
-    image: python:3.12-slim
-    working_dir: /app
-    command:
-      - bash
-      - -lc
-      - |
-        set -e
-        # 使用官方PyPI源以避免镜像源超时
-        pip install --no-cache-dir poetry poetry-plugin-export
-        # 安装包含开发依赖（用于 ruff/pytest 等质量门禁）
-        poetry install --no-root --with dev
-        # 激活虚拟环境以使用安装的依赖
-        source .venv/bin/activate
-        python - <<'PY'
-        import os, time
-        from sqlalchemy import create_engine, text
-        url = os.environ.get('DATABASE_URL')
-        for i in range(60):
-            try:
-                engine = create_engine(url, future=True)
-                with engine.connect() as conn:
-                    conn.execute(text('SELECT 1'))
-                print('Database is ready')
-                break
-            except Exception as e:  # noqa: BLE001
-                print('Waiting for database...', e)
-                time.sleep(2)
-        PY
-        alembic upgrade head
-        # 自动创建默认用户(admin/admin666, shangu/shangu666)
-        python scripts/init_admin.py || echo "用户初始化失败或已存在,继续启动..."
-        uvicorn app.main:app --host 0.0.0.0 --port 8001
+    build:
+      context: ../../
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    # 移除冗余的 command，直接使用镜像自带的 entrypoint
     volumes:
       - ../../backend:/app
       - backend-venv:/app/.venv
@@ -58,6 +32,8 @@ services:
       STORAGE_DIR: /app/storage
       PYTHONPATH: /app
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      SORFTIME_API_KEY: ${SORFTIME_API_KEY}
+      BACKEND_PORT: 8001
     depends_on:
       db:
         condition: service_healthy
@@ -65,24 +41,16 @@ services:
       - "${ASKJEFF_BACKEND_PORT:-8001}:8001"
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "python - <<'PY'
-
-            import sys,urllib.request
-
-            try:
-
-            \ urllib.request.urlopen('http://localhost:8001/health', timeout=2)
-
-            \ sys.exit(0)
-
-            except Exception:
-
-            \ sys.exit(1)
-
-            PY\n"
-        ]
+        - "CMD-SHELL"
+        - |
+          python - <<'PY'
+          import sys, urllib.request
+          try:
+              urllib.request.urlopen('http://localhost:8001/health', timeout=2)
+              sys.exit(0)
+          except Exception:
+              sys.exit(1)
+          PY
       interval: 10s
       timeout: 3s
       retries: 10

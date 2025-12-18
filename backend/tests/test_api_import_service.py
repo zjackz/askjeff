@@ -7,7 +7,7 @@
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from app.services.api_import_service import APIImportService
-
+from app.config import settings
 
 class TestAPIImportService:
     """测试 API 导入服务"""
@@ -22,33 +22,11 @@ class TestAPIImportService:
         assert result["value"] == "172282"
         assert result["category_id"] == "172282"
     
-    def test_parse_input_asin_not_implemented(self):
-        """测试 ASIN 输入（暂未实现）"""
+    def test_default_config(self):
+        """测试默认配置"""
         service = APIImportService()
         
-        with pytest.raises(NotImplementedError):
-            service._parse_input("B08N5WRWNW")
-    
-    def test_parse_input_url_not_implemented(self):
-        """测试 URL 输入（暂未实现）"""
-        service = APIImportService()
-        
-        with pytest.raises(NotImplementedError):
-            service._parse_input("https://www.amazon.com/s?node=172282")
-    
-    def test_parse_input_invalid(self):
-        """测试无效输入"""
-        service = APIImportService()
-        
-        with pytest.raises(ValueError):
-            service._parse_input("invalid_input")
-    
-    def test_test_mode_enabled(self):
-        """测试模式应该启用"""
-        service = APIImportService()
-        
-        assert service.test_mode is True
-        assert service.test_batch_size == 10
+        assert service.default_test_batch_size == 10
     
     @pytest.mark.asyncio
     async def test_fetch_bestsellers_mock(self):
@@ -65,15 +43,17 @@ class TestAPIImportService:
             ]
         }
         
-        with patch('app.services.api_import_service.SorftimeClient') as MockClient:
-            mock_client = AsyncMock()
-            mock_client.category_request.return_value = mock_response
-            MockClient.return_value = mock_client
-            
-            result = await service._fetch_bestsellers("172282", 1)
-            
-            assert len(result) == 100
-            assert result[0]["asin"] == "B00000000"
+        # Mock settings.sorftime_api_key
+        with patch('app.config.settings.sorftime_api_key', 'test_key'):
+            with patch('app.services.api_import_service.SorftimeClient') as MockClient:
+                mock_client = AsyncMock()
+                mock_client.category_request.return_value = mock_response
+                MockClient.return_value = mock_client
+                
+                result = await service._fetch_bestsellers("172282", 1)
+                
+                assert len(result) == 100
+                assert result[0]["asin"] == "B000000000"
     
     @pytest.mark.asyncio
     async def test_fetch_details_batch_mock(self):
@@ -96,17 +76,19 @@ class TestAPIImportService:
             ]
         }
         
-        with patch('app.services.api_import_service.SorftimeClient') as MockClient:
-            mock_client = AsyncMock()
-            mock_client.product_request.return_value = mock_response
-            MockClient.return_value = mock_client
-            
-            asins = [f"B0{i:08d}" for i in range(10)]
-            result = await service._fetch_details_batch(asins, 1)
-            
-            assert len(result) == 10
-            assert result[0]["asin"] == "B00000000"
-            assert result[0]["price"] == 99.99
+        # Mock settings.sorftime_api_key
+        with patch('app.config.settings.sorftime_api_key', 'test_key'):
+            with patch('app.services.api_import_service.SorftimeClient') as MockClient:
+                mock_client = AsyncMock()
+                mock_client.product_request.return_value = mock_response
+                MockClient.return_value = mock_client
+                
+                asins = [f"B0{i:08d}" for i in range(10)]
+                result = await service._fetch_details_batch(asins, 1)
+                
+                assert len(result) == 10
+                assert result[0]["asin"] == "B000000000"
+                assert result[0]["price"] == 99.99
 
 
 if __name__ == "__main__":

@@ -86,8 +86,7 @@
 
           <!-- 详细报告 -->
           <el-card shadow="never" class="report-card">
-            <pre class="whitespace-pre-wrap font-sans text-gray-600 leading-relaxed">{{ renderedReport }}</pre>
-            <!-- <div class="markdown-body" v-html="renderedReport"></div> -->
+            <div class="markdown-body" v-html="renderedReport"></div>
           </el-card>
         </div>
       </div>
@@ -101,7 +100,7 @@ import { Key } from '@element-plus/icons-vue'
 import { aiApi, type KeywordOptimizationResponse } from '@/api/ai'
 import { ElMessage } from 'element-plus'
 import { useClipboard } from '@vueuse/core'
-// import MarkdownIt from 'markdown-it'
+import { renderMarkdown } from '@/utils/markdown'
 
 // const md = new MarkdownIt()
 const { copy } = useClipboard()
@@ -116,8 +115,7 @@ const result = ref<KeywordOptimizationResponse | null>(null)
 
 const renderedReport = computed(() => {
   if (!result.value?.optimization_report) return ''
-  return result.value.optimization_report
-  // return md.render(result.value.optimization_report)
+  return renderMarkdown(result.value.optimization_report)
 })
 
 const handleOptimize = async () => {

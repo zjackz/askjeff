@@ -22,12 +22,12 @@ class ProductDataNormalizer:
     CORE_FIELDS = {
         "asin": ["asin", "Asin", "ASIN"],
         "title": ["title", "Title", "product_name", "ProductName"],
-        "category": ["category", "Category", "category_name"],
-        "price": ["price", "Price"],
+        "category": ["category", "Category", "category_name", "MainCategory"],
+        "price": ["price", "Price", "SalesPrice", "ListPrice"],
         "currency": ["currency", "Currency"],
         "sales_rank": ["sales_rank", "salesRank", "Rank", "rank", "bsr"],
         "reviews": ["reviews", "Reviews", "ratingsCount", "RatingsCount", "review_count"],
-        "rating": ["rating", "Rating", "ratings", "Ratings", "star_rating"],
+        "rating": ["rating", "Rating", "ratings", "Ratings", "star_rating", "StarRating"],
     }
     
     # 扩展字段映射（存入 extended_data）
@@ -35,19 +35,27 @@ class ProductDataNormalizer:
         "brand": ["brand", "Brand"],
         "image_url": ["image", "Image", "photo", "Photo", "image_url", "main_image"],
         "product_url": ["product_url", "url", "link"],
-        "launch_date": ["launch_date", "launchDate", "LaunchDate", "release_date"],
+        "launch_date": ["launch_date", "launchDate", "LaunchDate", "release_date", "OnlineDate"],
         "revenue": ["revenue", "Revenue"],
         "sales_volume": ["sales", "Sales", "sales_volume"],
         "fba_fee": ["fbaFee", "FbaFee", "fba_fee", "fees"],
         "lqs": ["lqs", "Lqs", "LQS"],
-        "variation_count": ["variations", "Variations", "variation_count"],
-        "seller_count": ["sellers", "Sellers", "seller_count"],
+        "variation_count": ["variations", "Variations", "variation_count", "VariationASINCount"],
+        "seller_count": ["sellers", "Sellers", "seller_count", "SellerCount"],
         "weight": ["weight", "Weight"],
-        "dimensions": ["dimensions", "Dimensions"],
+        "dimensions": ["dimensions", "Dimensions", "Size"],
         "bsr_category": ["BsrCategory", "bsrCategory", "bsr_category"],
         "parent_asin": ["parentAsin", "ParentAsin", "parent_asin"],
         "is_amazon": ["isAmazon", "IsAmazon", "is_amazon"],
         "availability": ["availability", "Availability", "in_stock"],
+        "store_name": ["StoreName", "store_name"],
+        "is_fba": ["IsFBA", "is_fba"],
+        "ships_from": ["ShipsFrom", "ships_from"],
+        "online_days": ["OnlineDays", "online_days"],
+        "has_video": ["HasVideo", "has_video"],
+        "a_plus": ["APlus", "a_plus"],
+        "coupon": ["Coupon", "coupon"],
+        "description": ["Description", "description"],
     }
     
     @classmethod
@@ -76,9 +84,19 @@ class ProductDataNormalizer:
         for std_field, possible_names in cls.CORE_FIELDS.items():
             value = cls._extract_field(raw_data, possible_names)
             
+            # 特殊处理：Sorftime 的 Category 可能是列表
+            if std_field == "category" and isinstance(value, list) and value:
+                value = value[-1] # 取最细分的类目
+            
             # 类型转换
             if std_field == "price":
-                normalized[std_field] = cls._to_decimal(value)
+                val = cls._to_decimal(value)
+                # Sorftime API 价格通常是分，如果是 API 来源且数值较大（如 > 500 且没有小数），自动除以 100
+                if source == "api" and val is not None and val > 500:
+                    raw_val_str = str(value)
+                    if "." not in raw_val_str and " " not in raw_val_str:
+                        val = val / 100
+                normalized[std_field] = val
             elif std_field in ["sales_rank", "reviews"]:
                 normalized[std_field] = cls._to_int(value)
             elif std_field == "rating":
@@ -91,6 +109,26 @@ class ProductDataNormalizer:
         # 2. 提取扩展字段
         for std_field, possible_names in cls.EXTENDED_FIELDS.items():
             value = cls._extract_field(raw_data, possible_names)
+            
+            # 特殊处理：Sorftime 的销量和销售额可能是趋势列表
+            if std_field == "sales_volume" and value is None:
+                # 尝试各种可能的趋势字段名
+                trend_names = ["ListingSalesVolumeOfMonthTrend", "listingSalesVolumeOfMonthTrend", "SalesTrend"]
+                for tn in trend_names:
+                    trend = raw_data.get(tn)
+                    if isinstance(trend, list) and trend:
+                        value = trend[-1]
+                        break
+            
+            if std_field == "revenue" and value is None:
+                # 尝试各种可能的趋势字段名
+                trend_names = ["ListingSalesOfMonthTrend", "listingSalesOfMonthTrend", "RevenueTrend"]
+                for tn in trend_names:
+                    trend = raw_data.get(tn)
+                    if isinstance(trend, list) and trend:
+                        value = trend[-1]
+                        break
+            
             if value is not None:
                 # 特殊处理
                 if std_field == "image_url":
@@ -168,10 +206,19 @@ class ProductDataNormalizer:
     
     @classmethod
     def _extract_field(cls, data: Dict[str, Any], possible_names: list) -> Any:
-        """从数据中提取字段，支持多种可能的字段名"""
+        """从数据中提取字段，支持多种可能的字段名（不区分大小写和下划线）"""
+        # 1. 精确匹配
         for name in possible_names:
             if name in data:
                 return data[name]
+        
+        # 2. 模糊匹配（不区分大小写和下划线）
+        data_keys_map = {k.lower().replace("_", ""): k for k in data.keys()}
+        for name in possible_names:
+            norm_name = name.lower().replace("_", "")
+            if norm_name in data_keys_map:
+                return data[data_keys_map[norm_name]]
+                
         return None
     
     @classmethod
@@ -318,5 +365,5 @@ class ProductDataNormalizer:
             "rating": float(data["rating"]) if data.get("rating") else None,
             
             # 扩展字段（从 extended_data 提取）
-            **data.get("extended_data", {}),
+            **(data.get("extended_data") or {}),
         }

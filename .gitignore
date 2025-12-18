@@ -78,3 +78,4 @@ test_*.sh
 docs/*.json
 
 .pnpm-store-user/
+api_import_*.xlsx

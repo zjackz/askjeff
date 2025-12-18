@@ -13,9 +13,16 @@ WORKDIR /app
 # 安装 Poetry（使用官方推荐的 pip 安装方式）
 RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
+# 是否安装开发依赖，默认不安装
+ARG INSTALL_DEV=false
+
 # 先复制依赖声明并安装依赖（不安装本项目本身）
 COPY backend/pyproject.toml backend/poetry.lock ./
-RUN poetry install --only main --no-interaction --no-ansi --no-root
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+    poetry install --with dev --no-interaction --no-ansi --no-root; \
+    else \
+    poetry install --only main --no-interaction --no-ansi --no-root; \
+    fi
 
 # 再复制应用源码
 COPY backend/ /app/

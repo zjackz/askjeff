@@ -133,10 +133,20 @@ async def get_batch_records(
     return records
 
 
-async def run_batch_extraction_background(batch_id: int, target_fields: list[str]):
+async def run_batch_extraction_background(
+    batch_id: int, 
+    target_fields: list[str],
+    custom_instructions: str | None = None,
+    test_mode: bool = False
+):
     with SessionLocal() as db:
         service = ExtractionService(db, DeepseekClient())
-        await service.extract_batch_features(batch_id, target_fields)
+        await service.extract_batch_features(
+            batch_id, 
+            target_fields, 
+            custom_instructions=custom_instructions,
+            test_mode=test_mode
+        )
 
 
 async def run_batch_translation_background(batch_id: int):
@@ -150,6 +160,8 @@ async def extract_batch_features(
     batch_id: int,
     background_tasks: BackgroundTasks,
     target_fields: list[str] = Body(..., embed=True),
+    custom_instructions: str | None = Body(None, embed=True),
+    test_mode: bool = Body(False, embed=True),
     db: Session = Depends(get_db),
 ):
     """Start AI feature extraction for a batch."""
@@ -157,7 +169,13 @@ async def extract_batch_features(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
     
-    background_tasks.add_task(run_batch_extraction_background, batch_id, target_fields)
+    background_tasks.add_task(
+        run_batch_extraction_background, 
+        batch_id, 
+        target_fields,
+        custom_instructions,
+        test_mode
+    )
     return {"message": "Extraction started", "batch_id": batch_id}
 @router.get("/{id}/runs")
 def list_extraction_runs(
@@ -175,10 +193,37 @@ def list_extraction_runs(
     return {"items": runs}
 
 
-# ==================== API 导入端点 ====================
+async def run_api_import_task(
+    input_value: str,
+    input_type: str | None,
+    domain: int,
+    test_mode: bool,
+    limit: int,
+    batch_id: int | None = None,
+    created_by: str | None = None,
+):
+    """后台运行 API 导入任务"""
+    from app.db import SessionLocal
+    with SessionLocal() as db:
+        try:
+            await api_import_service.import_from_input(
+                db=db,
+                input_value=input_value,
+                input_type=input_type,
+                domain=domain,
+                created_by=created_by,
+                test_mode=test_mode,
+                limit=limit,
+                batch_id=batch_id,
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Background API import failed: {e}")
+
 
 @router.post("/from-api", status_code=201)
 async def import_from_api(
+    background_tasks: BackgroundTasks,
     input: str = Body(..., embed=True),
     input_type: str | None = Body(None, embed=True),
     domain: int = Body(1, embed=True),
@@ -187,41 +232,53 @@ async def import_from_api(
     db: Session = Depends(get_db),
 ):
     """
-    从 Sorftime API 批量导入产品数据
-    
-    Args:
-        input: 输入值 (ASIN, 类目ID, URL)
-        input_type: 输入类型 (可选，自动识别)
-        domain: 站点 (1=美国)
-        test_mode: 是否开启测试模式 (只抓取少量数据)
+    从 Sorftime API 批量导入产品数据 (后台执行)
     """
-    # 验证输入
     if not input:
         raise HTTPException(status_code=400, detail="输入不能为空")
     
-    # 启动导入
     try:
-        batch_id = await api_import_service.import_from_input(
+        # 1. 先解析输入并创建批次 (同步执行，为了立即返回 ID)
+        # 我们需要一个轻量级的方法来创建批次
+        from app.services.api_import_service import APIImportService
+        
+        # 临时解析以获取类目信息
+        parsed = api_import_service._parse_input(input, input_type)
+        
+        # 如果是 ASIN 且不是测试模式，尝试同步获取类目 ID (为了文件名准确)
+        # 但为了速度，如果获取失败也可以用默认名
+        if parsed["type"] == "asin" and not parsed.get("category_id"):
+             parsed["category_id"] = "pending"
+
+        batch = api_import_service._create_batch(
             db=db,
+            parsed=parsed,
+            domain=domain,
+            created_by=None, # TODO: 获取当前用户
+            test_mode=test_mode
+        )
+        
+        # 2. 启动后台任务执行完整的导入流程
+        background_tasks.add_task(
+            run_api_import_task,
             input_value=input,
             input_type=input_type,
             domain=domain,
             test_mode=test_mode,
             limit=limit,
+            batch_id=batch.id
         )
         
         return {
-            "batch_id": batch_id,
-            "status": "started",
-            "message": "导入已启动"
+            "batch_id": batch.id,
+            "status": "pending",
+            "message": "导入任务已提交到后台"
         }
         
-    except NotImplementedError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"提交任务失败: {str(e)}")
 
 
 @router.post("/preview-api")

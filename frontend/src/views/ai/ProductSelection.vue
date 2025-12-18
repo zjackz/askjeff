@@ -84,8 +84,7 @@
 
           <!-- 详细报告 -->
           <el-card shadow="never" class="report-card">
-            <pre class="whitespace-pre-wrap font-sans text-gray-600 leading-relaxed">{{ renderedReport }}</pre>
-            <!-- <div class="markdown-body" v-html="renderedReport"></div> -->
+            <div class="markdown-body" v-html="renderedReport"></div>
           </el-card>
         </div>
       </div>
@@ -98,7 +97,7 @@ import { ref, computed } from 'vue'
 import { DataAnalysis } from '@element-plus/icons-vue'
 import { aiApi, type ProductSelectionResponse } from '@/api/ai'
 import { ElMessage } from 'element-plus'
-// import MarkdownIt from 'markdown-it'
+import { renderMarkdown } from '@/utils/markdown'
 
 // const md = new MarkdownIt()
 const loading = ref(false)
@@ -111,8 +110,7 @@ const result = ref<ProductSelectionResponse | null>(null)
 
 const renderedReport = computed(() => {
   if (!result.value?.analysis) return ''
-  return result.value.analysis
-  // return md.render(result.value.analysis)
+  return renderMarkdown(result.value.analysis)
 })
 
 const handleAnalyze = async () => {

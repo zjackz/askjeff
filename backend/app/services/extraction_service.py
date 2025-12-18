@@ -125,7 +125,13 @@ class ExtractionService:
         task.status = "COMPLETED"
         self.db.commit()
 
-    async def extract_batch_features(self, batch_id: int, target_fields: List[str]) -> None:
+    async def extract_batch_features(
+        self, 
+        batch_id: int, 
+        target_fields: List[str],
+        custom_instructions: str | None = None,
+        test_mode: bool = False
+    ) -> None:
         import asyncio
         from datetime import datetime, timezone
         from app.models.import_batch import ProductRecord, ImportBatch
@@ -149,8 +155,9 @@ class ExtractionService:
         self.db.refresh(run)
 
         # Update batch status to processing (optional, just to show activity)
+        # Only update batch status if it's a full run
         batch = self.db.get(ImportBatch, batch_id)
-        if batch:
+        if batch and not test_mode:
             batch.ai_status = "processing"
             self.db.commit()
 
@@ -160,13 +167,17 @@ class ExtractionService:
             .all()
         )
         
+        # If test mode, only take first 3 records
+        if test_mode:
+            records = records[:3]
+        
         if not records:
             run.status = "completed"
             run.stats = {"total": 0, "success": 0, "failed": 0}
             run.finished_at = datetime.now(timezone.utc)
             self.db.commit()
             
-            if batch:
+            if batch and not test_mode:
                 batch.ai_status = "completed"
                 self.db.commit()
             return
@@ -190,7 +201,11 @@ class ExtractionService:
                     # Prepare text for LLM
                     text = json.dumps(data, ensure_ascii=False)
                     
-                    extracted, usage = await self.client.extract_features_async(text, target_fields)
+                    extracted, usage = await self.client.extract_features_async(
+                        text, 
+                        target_fields,
+                        custom_instructions=custom_instructions
+                    )
                     
                     if isinstance(extracted, dict):
                         extracted["_usage"] = usage
@@ -202,6 +217,11 @@ class ExtractionService:
                             stats["output_tokens"] += output_t
                             stats["total_tokens"] += (input_t + output_t)
 
+                    # If test mode, we might not want to overwrite the main record's ai_features
+                    # But for now, let's overwrite so the user can see it in the UI easily.
+                    # Or maybe we should store it in the run? 
+                    # The current UI reads from record.ai_features.
+                    # Let's overwrite. It's a "Test Run" on the data.
                     record.ai_features = extracted
                     record.ai_status = "success"
                     stats["success"] += 1
@@ -219,38 +239,39 @@ class ExtractionService:
             self.db.commit()
             
         # Update batch status to completed
-        if batch:
+        if batch and not test_mode:
             self.db.refresh(batch)
             # Calculate cost
             input_cost = (stats["input_tokens"] / 1_000_000) * PRICE_PER_1M_INPUT
             output_cost = (stats["output_tokens"] / 1_000_000) * PRICE_PER_1M_OUTPUT
             total_cost = input_cost + output_cost
-
-            end_time = datetime.now(timezone.utc)
-            duration_seconds = (end_time - start_time).total_seconds()
-
-            # Update Run
-            run.status = "completed"
-            run.finished_at = end_time
-            run.stats = {
-                "total": len(records),
-                "success": stats["success"],
-                "failed": stats["failed"],
-                "total_tokens": stats["total_tokens"],
-                "input_tokens": stats["input_tokens"],
-                "output_tokens": stats["output_tokens"],
-                "total_cost": round(total_cost, 6),
-                "duration_seconds": round(duration_seconds, 2)
-            }
             
             # Update Batch status
             batch.ai_status = "completed"
-            # We don't overwrite ai_summary anymore, or maybe we keep the latest?
-            # Let's keep ai_summary as "latest run summary" for backward compatibility if needed,
-            # or just rely on runs. For now, let's clear it or leave it.
-            # Actually, the requirement is to use runs.
-            
             self.db.commit()
+
+        # Update Run
+        end_time = datetime.now(timezone.utc)
+        duration_seconds = (end_time - start_time).total_seconds()
+        
+        # Calculate cost for the run
+        input_cost = (stats["input_tokens"] / 1_000_000) * PRICE_PER_1M_INPUT
+        output_cost = (stats["output_tokens"] / 1_000_000) * PRICE_PER_1M_OUTPUT
+        total_cost = input_cost + output_cost
+
+        run.status = "completed"
+        run.finished_at = end_time
+        run.stats = {
+            "total": len(records),
+            "success": stats["success"],
+            "failed": stats["failed"],
+            "total_tokens": stats["total_tokens"],
+            "input_tokens": stats["input_tokens"],
+            "output_tokens": stats["output_tokens"],
+            "total_cost": round(total_cost, 6),
+            "duration_seconds": round(duration_seconds, 2)
+        }
+        self.db.commit()
 
     def list_tasks(self, limit: int = 20, offset: int = 0) -> List[ExtractionTask]:
         """获取任务列表,按创建时间倒序"""

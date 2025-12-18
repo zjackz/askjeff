@@ -338,9 +338,12 @@ const handleLogout = () => {
 
   :deep(.el-menu--inline) {
     background: rgba(0, 0, 0, 0.2) !important; // 深色背景，形成凹陷感
+    padding: 4px 0;
     
     .el-menu-item {
+      height: 50px !important; // 显著降低二级菜单高度
       padding-left: 48px !important; // 增加缩进
+      margin-bottom: 4px; // 减小间距
       background: transparent; // 确保透明，显示父容器背景
       
       &:hover {
@@ -352,14 +355,23 @@ const handleLogout = () => {
       }
 
       .el-icon {
-        font-size: 16px; // 缩小图标
-        width: 16px;
-        margin-right: 12px;
-        opacity: 0.8; // 降低图标透明度
+        font-size: 14px !important; // 进一步缩小图标
+        width: 14px !important;
+        margin-right: 10px !important;
+        opacity: 0.6; // 降低图标透明度
       }
       
-      .menu-title {
-        font-size: 13px; // 稍微缩小标题字体
+      .menu-content {
+        .menu-title {
+          font-size: 13px; // 缩小标题字体
+          font-weight: 500; // 降低字重
+        }
+        
+        .menu-desc {
+          font-size: 11px; // 缩小描述字体
+          opacity: 0.6;
+          margin-top: 0; // 紧凑布局
+        }
       }
     }
   }

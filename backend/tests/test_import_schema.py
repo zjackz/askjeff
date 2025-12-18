@@ -32,6 +32,7 @@ class TestImportBatchOutSchema:
             "created_at": now,
             "ai_status": "none",
             "ai_summary": None,
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         # 创建 schema 实例
@@ -55,6 +56,7 @@ class TestImportBatchOutSchema:
             "created_at": now,
             "ai_status": "completed",
             "ai_summary": {"extracted": 50},
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         batch_out = ImportBatchOut(**batch_data)
@@ -77,6 +79,7 @@ class TestImportBatchOutSchema:
             "created_at": now,
             "ai_status": "completed",
             "ai_summary": ai_summary,
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         batch_out = ImportBatchOut(**batch_data)
@@ -97,6 +100,7 @@ class TestImportBatchOutSchema:
             "failed_rows": 5,
             "created_at": now,
             "ai_status": "none",
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         batch_out = ImportBatchOut(**batch_data)
@@ -126,6 +130,7 @@ class TestImportBatchOutSchema:
             "success_rows": 100,
             "failed_rows": 0,
             "created_at": now,
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         batch_out = ImportBatchOut(**batch_data)
@@ -151,6 +156,7 @@ class TestImportBatchOutSchema:
             "success_rows": 0,
             "failed_rows": 0,
             "created_at": now,
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         batch_out = ImportBatchOut(**batch_data)
@@ -190,6 +196,7 @@ class TestImportBatchOutSchema:
             "failure_summary": None,
             "columns_seen": None,
             "ai_summary": None,
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         batch_out = ImportBatchOut(**batch_data)
@@ -213,6 +220,7 @@ class TestImportBatchOutSchema:
             "success_rows": 100,
             "failed_rows": 0,
             "created_at": now,
+            "storage_path": "/app/storage/imports/test.xlsx",
         }
         
         batch_out = ImportBatchOut(**batch_data)

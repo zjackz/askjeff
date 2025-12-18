@@ -43,6 +43,7 @@ class APIImportService:
         created_by: Optional[str] = None,
         test_mode: bool = False,
         limit: int = 100,
+        batch_id: Optional[int] = None,
     ) -> int:
         """
         从输入启动导入流程
@@ -74,16 +75,25 @@ class APIImportService:
                 parsed["category_id"] = category_id
                 logger.info(f"获取到类目 ID: {category_id}")
             
-            # 2. 创建批次记录
-            batch = self._create_batch(
-                db,
-                parsed=parsed,
-                domain=domain,
-                created_by=created_by,
-                test_mode=test_mode,
-            )
-            batch_id = batch.id
-            logger.info(f"[{batch_id}] 批次已创建")
+            # 2. 获取或创建批次记录
+            if batch_id:
+                batch = ImportRepository.get_batch(db, batch_id)
+                if not batch:
+                    raise ValueError(f"批次 {batch_id} 不存在")
+                # 立即更新状态为处理中
+                batch.status = "processing"
+                db.commit()
+            else:
+                batch = self._create_batch(
+                    db,
+                    parsed=parsed,
+                    domain=domain,
+                    created_by=created_by,
+                    test_mode=test_mode,
+                )
+                batch_id = batch.id
+            
+            logger.info(f"[{batch_id}] 任务开始处理 (Status: {batch.status})")
             
             # 3. 获取 Best Sellers
             logger.info(f"[{batch_id}] 开始获取 Best Sellers (Category: {parsed['category_id']})")
@@ -503,10 +513,22 @@ class APIImportService:
                 
                 if response.code == 0:
                     data = response.data
-                    if isinstance(data, dict):
-                        products = data.get("Products") or data.get("products") or []
-                    elif isinstance(data, list):
+                    # 兼容不同的返回格式
+                    if isinstance(data, list):
                         products = data
+                    elif isinstance(data, dict):
+                        # 尝试常见的包装键
+                        products = (
+                            data.get("Products") or 
+                            data.get("products") or 
+                            data.get("list") or 
+                            data.get("data")
+                        )
+                        # 如果没有包装键，但本身包含 ASIN，说明 dict 就是产品本身
+                        if products is None and ("Asin" in data or "asin" in data):
+                            products = [data]
+                        elif products is None:
+                            products = []
                     else:
                         products = []
                     
@@ -534,9 +556,10 @@ class APIImportService:
         
         for product in products:
             try:
-                # 1. 标准化数据
+                # 1. 标准化数据 (优先使用原始数据)
+                raw_data = product.get("_raw_data", product)
                 normalized = ProductDataNormalizer.normalize_product(
-                    raw_data=product,
+                    raw_data=raw_data,
                     source="api"
                 )
                 
@@ -588,21 +611,29 @@ class APIImportService:
                 "ASIN": asin,
                 "Title": product.get("title", ""),
                 "Price": product.get("price"),
-                "Rating": product.get("ratings"),
-                "Reviews": product.get("ratingsCount"),
+                "Rating": product.get("rating"),
+                "Reviews": product.get("reviews"),
                 "Category": product.get("category", ""),
-                "Sales Rank": product.get("salesRank"),
+                "Sales Rank": product.get("sales_rank"),
                 "Brand": product.get("brand", ""),
-                "Image": product.get("image", ""),
-                "Product URL": f"https://www.amazon.com/dp/{asin}" if asin else "",
-                "Launch Date": product.get("launchDate"),
+                "Store": product.get("store_name", ""),
+                "Image": product.get("image_url", ""),
+                "Product URL": product.get("product_url") or (f"https://www.amazon.com/dp/{asin}" if asin else ""),
+                "Launch Date": product.get("launch_date"),
+                "Online Days": product.get("online_days"),
                 "Revenue": product.get("revenue"),
-                "Sales": product.get("sales"),
-                "Fees": product.get("fbaFee"),
+                "Sales": product.get("sales_volume"),
+                "Fees": product.get("fba_fee"),
+                "Is FBA": "Yes" if product.get("is_fba") else "No",
+                "Ships From": product.get("ships_from", ""),
                 "LQS": product.get("lqs"),
-                "Variations": product.get("variations"),
-                "Sellers": product.get("sellers"),
+                "Variations": product.get("variation_count"),
+                "Sellers": product.get("seller_count"),
                 "Weight": product.get("weight"),
+                "Dimensions": str(product.get("dimensions", "")),
+                "Has Video": "Yes" if product.get("has_video") else "No",
+                "A+ Page": "Yes" if product.get("a_plus") else "No",
+                "Coupon": product.get("coupon"),
             })
         
         # 创建 DataFrame
@@ -621,50 +652,30 @@ class APIImportService:
 
 
     def _normalize_product_data(self, data: dict) -> dict:
-        """标准化产品数据字段 (Sorftime API 返回大写字段，内部使用小写)"""
-        # 处理图片：Photo 是列表，取第一个
-        image = data.get("image")
-        if not image and data.get("Photo"):
-            photos = data.get("Photo")
-            if isinstance(photos, list) and photos:
-                image = photos[0]
-            elif isinstance(photos, str):
-                image = photos
-
-        # 处理类目：Category 是列表，取第一个
-        category = data.get("category")
-        if not category and data.get("Category"):
-            cats = data.get("Category")
-            if isinstance(cats, list) and cats:
-                category = cats[0] # 通常取第一个作为主类目
-            elif isinstance(cats, str):
-                category = cats
-
-        # 尝试提取 nodeId
-        node_id = data.get("nodeId") or data.get("node_id") or data.get("categoryId")
+        """标准化产品数据字段 (使用统一的 ProductDataNormalizer)"""
+        from app.services.product_normalizer import ProductDataNormalizer
         
-        # 如果没有直接的 nodeId，尝试从 BsrCategory 提取
-        # BsrCategory 格式: [['Category Name', 'NodeID', 'Rank', 'Date'], ...]
-        if not node_id and data.get("BsrCategory"):
-            bsr_cats = data.get("BsrCategory")
-            if isinstance(bsr_cats, list) and bsr_cats:
-                first_bsr = bsr_cats[0]
-                if isinstance(first_bsr, list) and len(first_bsr) >= 2:
-                    node_id = first_bsr[1]
+        # 1. 执行标准化
+        normalized = ProductDataNormalizer.normalize_product(data, source="api")
+        
+        # 2. 创建平坦化的 Payload (方便 Excel 导出和预览)
+        flat_data = ProductDataNormalizer.create_normalized_payload(normalized)
+        
+        # 3. 保留原始数据，供 _save_to_database 使用
+        flat_data["_raw_data"] = data
+        
+        # 4. 补充一些 API 导入特有的字段
+        if "nodeId" not in flat_data:
+            node_id = data.get("nodeId") or data.get("node_id") or data.get("categoryId")
+            if not node_id and data.get("BsrCategory"):
+                bsr_cats = data.get("BsrCategory")
+                if isinstance(bsr_cats, list) and bsr_cats:
+                    first_bsr = bsr_cats[0]
+                    if isinstance(first_bsr, list) and len(first_bsr) >= 2:
+                        node_id = first_bsr[1]
+            flat_data["nodeId"] = node_id
 
-        return {
-            **data, # 保留原始字段
-            "asin": data.get("Asin") or data.get("asin"),
-            "title": data.get("Title") or data.get("title"),
-            "image": image,
-            "price": data.get("Price") or data.get("price"), # 注意：Sorftime Price 可能是分
-            "ratings": data.get("Ratings") or data.get("ratings"),
-            "ratingsCount": data.get("RatingsCount") or data.get("ratingsCount"),
-            "category": category,
-            "salesRank": data.get("Rank") or data.get("salesRank"),
-            "brand": data.get("Brand") or data.get("brand"),
-            "nodeId": node_id, # 增强后的 nodeId
-        }
+        return flat_data
 
 # 单例
 api_import_service = APIImportService()

@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import FilterForm from './components/FilterForm.vue'
 import ProductTable from './components/ProductTable.vue'
 import ProductDetail from './components/ProductDetail.vue'
@@ -109,8 +109,16 @@ watch(() => [filters.page, filters.pageSize], () => {
   fetchProducts()
 })
 
+const route = useRoute()
+
 onMounted(() => {
   fetchBatches()
+  
+  // 如果 URL 中有 batchId，自动应用筛选
+  if (route.query.batchId) {
+    filters.batchId = String(route.query.batchId)
+  }
+  
   fetchProducts()
 })
 </script>

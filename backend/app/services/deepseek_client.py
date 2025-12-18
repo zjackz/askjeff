@@ -154,14 +154,25 @@ class DeepseekClient:
             logger.exception("DeepSeek 特征提取失败")
             return {}, {}
 
-    async def extract_features_async(self, text: str, fields: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
+    async def extract_features_async(
+        self, 
+        text: str, 
+        fields: list[str],
+        custom_instructions: str | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         if not self.api_key:
             return {}, {}
 
         import json
+        
+        instructions_part = ""
+        if custom_instructions:
+            instructions_part = f"\n\n额外指令：\n{custom_instructions}\n"
+
         system_prompt = (
             "你是一个电商产品专家。请根据用户提供的产品信息，提取指定的特征字段。\n"
-            f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n\n"
+            f"需要提取的字段列表: {json.dumps(fields, ensure_ascii=False)}\n"
+            f"{instructions_part}\n"
             "请以 JSON 格式返回结果，必须严格使用上述字段列表中的字符串作为 key，value 为提取出的内容。如果无法提取，value 请留空。\n"
             "只返回 JSON，不要包含markdown格式或其他文本。"
         )
