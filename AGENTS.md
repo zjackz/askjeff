@@ -11,6 +11,7 @@ AI 代理开发指南 - 快速索引与项目配置
 ## 🤖 AI 使用指南
 
 ### 默认行为
+
 **AI 只需阅读本文件**,其他文档按需加载。
 
 ### 按需加载表
@@ -22,7 +23,7 @@ AI 代理开发指南 - 快速索引与项目配置
 | 遇到问题 | [common-pitfalls.md](AGENTS/common-pitfalls.md) (搜索关键词) |
 | API 失败 | [logging-guidelines.md](AGENTS/logging-guidelines.md) (诊断流程) |
 | 编写测试 | [testing-guidelines.md](AGENTS/testing-guidelines.md) (示例) |
-| UI 开发 | [ui-ux-guidelines.md](AGENTS/ui-ux-guidelines.md) |
+| UI 开发 | [ui-ux-guidelines.md](AGENTS/ui-ux-guidelines.md) + [组件库文档](frontend/src/components/README.md) ⭐ |
 
 ---
 
@@ -75,6 +76,7 @@ git add . && git commit -m "feat(编号): 描述" && git push
 ## 📚 完整规范索引
 
 ### 核心规范
+
 - [编程规范](AGENTS/coding-guidelines.md) - 编码标准、自检清单
 - [开发手册](AGENTS/playbook.md) - 开发流程、验证门禁
 - [日志规范](AGENTS/logging-guidelines.md) - 日志分析、问题诊断
@@ -82,12 +84,14 @@ git add . && git commit -m "feat(编号): 描述" && git push
 - [UI/UX 规范](AGENTS/ui-ux-guidelines.md) - UI 统一规范
 
 ### 实用指南 ⭐
+
 - [快速启动](AGENTS/quick-start.md) - 任务模板、诊断流程
 - [常见陷阱](AGENTS/common-pitfalls.md) - TOP 10 问题、解决方案
 - [优化模式](AGENTS/optimization-patterns.md) ⭐ - 代码优化和重构最佳实践
 - [代码审查模板](AGENTS/code-review-template.md) - 标准审查流程
 
 ### 自动化工具 🛠️
+
 - `scripts/check_code_quality.py` - 后端代码质量自动检查
 - `scripts/check_frontend_quality.py` ⭐ - 前端代码质量自动检查
 
@@ -96,6 +100,7 @@ git add . && git commit -m "feat(编号): 描述" && git push
 ## 🛠️ 项目配置
 
 ### 技术栈
+
 - **前端**: Vue 3 + TypeScript + Vite + Element Plus + Pinia
 - **后端**: FastAPI (Python 3.12+) + Pydantic v2 + SQLAlchemy 2.0
 - **数据库**: PostgreSQL 15
@@ -133,16 +138,19 @@ askjeff/
 为了防止配置漂移和脚本混乱，所有 AI 和开发者必须遵守以下治理规则：
 
 ### 1. 脚本存放规范
+
 - **严禁**在 `backend/` 根目录创建 `.py` 脚本。
 - 所有一次性脚本、初始化脚本必须存放在 `backend/scripts/` 目录下。
 - 脚本必须支持幂等性（重复运行不报错）。
 
 ### 2. 操作入口规范
+
 - **严禁**直接运行 `python xxx.py`。
 - 所有运维操作必须封装在 `Makefile` 中。
 - 如果需要新功能，先在 `Makefile` 中注册命令，再调用脚本。
 
 ### 3. 配置唯一性
+
 - 账号、密码、端口等配置必须在 `backend/app/core/config.py` 或 `.env` 中定义。
 - **严禁**在脚本中硬编码这些值。
 
@@ -159,11 +167,13 @@ askjeff/
 ### 使用规范
 
 ✅ **必须**:
+
 - 所有 Prompt 独立成文件
 - 在业务代码中通过 import 引用
 - 添加详细的注释说明用途
 
 ❌ **禁止**:
+
 - 在业务逻辑中硬编码 Prompt
 - 使用字符串拼接构建 Prompt
 
@@ -191,6 +201,7 @@ git push
 ```
 
 **测试要求**:
+
 - ✅ 新增 API 端点必须有集成测试
 - ✅ 核心业务逻辑必须有单元测试
 - ✅ 所有测试必须通过才能推送
@@ -200,23 +211,43 @@ git push
 ## 🎯 项目特定规范
 
 ### 通用规范
+
 - ✅ 所有代码、注释、文档必须使用中文
 - ✅ 提交信息格式: `feat(编号): 描述` 或 `fix(编号): 描述`
 - ✅ 小步提交,每完成一个小功能就提交
 
 ### 前端规范
+
 - 使用 `<script setup>` + Composition API
 - Element Plus 默认尺寸,禁止随意 `size="small"`
 - 表格分页: `[20, 50, 100, 200]`,默认 50
 - 所有 API 调用必须有 loading 状态
 
+#### 组件库使用规范 ⭐
+
+- ✅ **必须优先使用项目组件库** (`frontend/src/components/common/`)
+  - BaseButton - 按钮组件
+  - BaseTable - 表格组件 (含分页)
+  - BaseDialog - 对话框组件
+  - BaseForm - 表单组件
+  - BaseCard - 卡片组件
+  - BaseUpload - 上传组件
+  - BaseTree - 树形组件
+- ✅ 组件库不满足需求时,才使用 Element Plus 原生组件
+- ✅ 新增通用组件必须放在 `components/common/` 并更新文档
+- ❌ 禁止在业务页面中重复封装已有组件
+- 📚 组件文档: `frontend/src/components/README.md`
+- 🎨 可视化指南: `/style-guide` 路由
+
 ### 后端规范
+
 - 模块拆分: `api/routers` | `services` | `models` | `schemas`
 - 所有外部 API 调用必须有超时(默认 30s)
 - 敏感数据必须脱敏记录
 - 分页查询最大 200 条
 
 ### 权限控制
+
 - `admin`: 管理员,所有权限
 - `shangu`: 运营人员,日常操作权限
 
@@ -225,9 +256,11 @@ git push
 ## 🔍 日志与诊断
 
 ### 核心原则
+
 **问题诊断优先级: 日志 > 猜测**
 
 ### 数据库连接
+
 - 容器: `askjeff-dev-db-1`
 - 用户: `sorftime`
 - 数据库: `askjeff`
