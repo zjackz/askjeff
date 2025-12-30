@@ -5,17 +5,20 @@ from fastapi.responses import JSONResponse
 
 
 class AppError(HTTPException):
-    """统一业务异常，默认返回 400。"""
+    """统一业务异常,默认返回 400。
+    
+    注意: 此类保留用于向后兼容,新代码应使用 app.core.errors.AppException
+    """
 
     def __init__(self, detail: str, status_code: int = 400) -> None:
         super().__init__(status_code=status_code, detail=detail)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    @app.exception_handler(AppError)
-    async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
-        return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
-
-    @app.exception_handler(Exception)
-    async def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
-        return JSONResponse(status_code=500, content={"message": f"系统异常: {exc}"})
+    """注册异常处理器
+    
+    注意: 全局错误处理已由 error_handler_middleware 统一处理,
+    此函数保留用于向后兼容,实际不再注册额外的处理器。
+    所有异常都会被中间件捕获并返回统一格式: {error:{code,message,details}}
+    """
+    pass

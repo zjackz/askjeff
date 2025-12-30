@@ -14,7 +14,7 @@ from app.services.audit_service import AuditService
 from app.models.import_batch import ImportBatch, ProductRecord
 from app.models.extraction_run import ExtractionRun
 
-router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/activities")

@@ -17,7 +17,7 @@ from app.schemas.logs import (
 from app.services.log_analyzer import LogAnalyzer
 from app.services.log_service import LogService
 
-router = APIRouter(prefix="/api/logs", tags=["logs"])
+router = APIRouter(prefix="/logs", tags=["logs"])
 
 
 @router.post("/ingest", response_model=SystemLogOut, status_code=201)

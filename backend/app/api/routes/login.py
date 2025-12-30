@@ -10,7 +10,7 @@ from app.core import security
 from app.models.user import User
 from app.schemas.token import Token
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 
 @router.post("/login/access-token", response_model=Token)
 def login_access_token(

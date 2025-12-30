@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app.models.user import User
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.delete("/data")

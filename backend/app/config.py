@@ -28,6 +28,8 @@ class Settings:
     database_url: str
     storage_dir: Path
     deepseek_api_key: str
+    sorftime_api_key: str
+    secret_key: str
 
     def __init__(self) -> None:
         self.database_url = os.getenv(
@@ -40,18 +42,34 @@ class Settings:
         self.backup_dir = Path(os.getenv("BACKUP_DIR", "backend/backups"))
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
-        # DeepSeek API
+        # DeepSeek API - 必需配置
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        if not self.deepseek_api_key:
+            raise ValueError(
+                "❌ 配置错误: 缺少 DEEPSEEK_API_KEY 环境变量\n"
+                "请在 .env 文件中设置: DEEPSEEK_API_KEY=your_api_key_here"
+            )
         self.deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
         
-        # Sorftime API
+        # Sorftime API - 必需配置
         self.sorftime_api_key = os.getenv("SORFTIME_API_KEY", "")
+        if not self.sorftime_api_key:
+            raise ValueError(
+                "❌ 配置错误: 缺少 SORFTIME_API_KEY 环境变量\n"
+                "请在 .env 文件中设置: SORFTIME_API_KEY=your_api_key_here"
+            )
         
         # 文件上传限制
         self.max_file_size_mb = int(os.getenv("MAX_FILE_SIZE_MB", "50"))  # 最大文件大小 (MB)
 
-        # JWT Settings
+        # JWT Settings - 必需配置
         self.secret_key = os.getenv("SECRET_KEY", "")
+        if not self.secret_key:
+            raise ValueError(
+                "❌ 配置错误: 缺少 SECRET_KEY 环境变量\n"
+                "请在 .env 文件中设置: SECRET_KEY=your_secret_key_here\n"
+                "提示: 可使用命令生成随机密钥: openssl rand -hex 32"
+            )
         self.algorithm = "HS256"
         self.access_token_expire_minutes = 60 * 24 * 8  # 8 days
 

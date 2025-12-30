@@ -2,8 +2,9 @@ import axios, { AxiosError } from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
-// Use relative path to leverage Vite proxy in dev and Nginx in prod
-const API_BASE = '/api'
+// 使用相对路径,在开发环境通过 Vite 代理,生产环境通过 Nginx 转发
+// 统一使用 /api/v1 前缀,与后端路由保持一致
+const API_BASE = '/api/v1'
 
 // 扩展 AxiosRequestConfig 类型以支持自定义配置
 declare module 'axios' {

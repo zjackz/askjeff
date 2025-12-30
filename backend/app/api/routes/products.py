@@ -9,7 +9,7 @@ from app.api.deps import get_db
 from app.schemas.products import ProductListResponse
 from app.services.import_repository import ImportRepository
 
-router = APIRouter(prefix="/api/products", tags=["products"])
+router = APIRouter(prefix="/products", tags=["products"])
 
 
 @router.get("", response_model=ProductListResponse)

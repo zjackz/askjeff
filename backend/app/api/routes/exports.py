@@ -11,7 +11,7 @@ from app.schemas.exports import ExportJobOut, ExportRequest
 # 为便于测试替换，导入模块而不是对象
 from app.services import export_service as service_module
 
-router = APIRouter(prefix="/api/exports", tags=["exports"])
+router = APIRouter(prefix="/exports", tags=["exports"])
 
 
 @router.get("", response_model=list[ExportJobOut])

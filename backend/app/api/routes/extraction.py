@@ -11,7 +11,7 @@ from app.schemas.extraction import ExtractionTaskResponse
 from app.services.deepseek_client import DeepseekClient
 from app.services.extraction_service import ExtractionService
 
-router = APIRouter(prefix="/api/extraction", tags=["extraction"])
+router = APIRouter(prefix="/extraction", tags=["extraction"])
 
 
 def get_service(db: Session = Depends(get_db)) -> ExtractionService:

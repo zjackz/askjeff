@@ -13,7 +13,7 @@ from app.api.deps import get_db
 from app.services.import_service import ImportService
 from app.services.mcp_service import mcp_service
 
-router = APIRouter(prefix="/api/mcp", tags=["mcp"])
+router = APIRouter(prefix="/mcp", tags=["mcp"])
 logger = logging.getLogger(__name__)
 
 

@@ -14,7 +14,7 @@ from app.services.extraction_service import ExtractionService
 from app.services.import_repository import ImportRepository
 from app.services.import_service import import_service
 
-router = APIRouter(prefix="/api/imports", tags=["imports"])
+router = APIRouter(prefix="/imports", tags=["imports"])
 
 
 @router.post("", response_model=ImportBatchOut, status_code=201)
