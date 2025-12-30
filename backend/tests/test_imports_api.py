@@ -46,7 +46,7 @@ class TestImportsAPI:
         db_session.commit()
         
         # 调用 API
-        response = client.get("/api/imports")
+        response = client.get("/api/v1/imports")
         
         assert response.status_code == 200
         data = response.json()
@@ -81,7 +81,7 @@ class TestImportsAPI:
         db_session.add(batch)
         db_session.commit()
         
-        response = client.get("/api/imports")
+        response = client.get("/api/v1/imports")
         
         assert response.status_code == 200
         data = response.json()
@@ -106,7 +106,7 @@ class TestImportsAPI:
         db_session.add(batch)
         db_session.commit()
         
-        response = client.get("/api/imports")
+        response = client.get("/api/v1/imports")
         
         assert response.status_code == 200
         data = response.json()
@@ -134,7 +134,7 @@ class TestImportsAPI:
         db_session.commit()
         
         # 测试第一页
-        response = client.get("/api/imports?page=1&pageSize=10")
+        response = client.get("/api/v1/imports?page=1&pageSize=10")
         assert response.status_code == 200
         data = response.json()
         
@@ -143,7 +143,7 @@ class TestImportsAPI:
 
     def test_empty_imports_list(self, client, db_session):
         """测试空列表响应"""
-        response = client.get("/api/imports")
+        response = client.get("/api/v1/imports")
         
         assert response.status_code == 200
         data = response.json()

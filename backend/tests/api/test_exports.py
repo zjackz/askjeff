@@ -28,7 +28,7 @@ def test_create_export(monkeypatch):
     monkeypatch.setattr(service_module, "export_service", MagicMock(create_job=lambda *args, **kwargs: mock_job, get_job=lambda *args, **kwargs: mock_job))
 
     response = client.post(
-        "/api/exports",
+        "/api/v1/exports",
         json={
             "exportType": "clean-products",
             "filters": {"batch_id": "b1"},

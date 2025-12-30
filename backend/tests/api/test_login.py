@@ -56,7 +56,7 @@ def test_login_inactive_user(db: Session):
 def test_read_users_me(db: Session):
     create_user(db, "me", "admin")
     headers = get_token_headers(client, "me")
-    response = client.get("/api/users/me", headers=headers)
+    response = client.get("/api/v1/users/me", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert data["username"] == "me"
@@ -65,13 +65,13 @@ def test_read_users_me(db: Session):
 def test_admin_delete_data(db: Session):
     create_user(db, "realadmin", "admin")
     headers = get_token_headers(client, "realadmin")
-    response = client.delete("/api/admin/data", headers=headers)
+    response = client.delete("/api/v1/admin/data", headers=headers)
     assert response.status_code == 200
     assert response.json()["message"] == "All data deleted successfully"
 
 def test_shangu_delete_data_forbidden(db: Session):
     create_user(db, "operator", "shangu")
     headers = get_token_headers(client, "operator")
-    response = client.delete("/api/admin/data", headers=headers)
+    response = client.delete("/api/v1/admin/data", headers=headers)
     assert response.status_code == 403
     assert response.json()["detail"] == "Not enough permissions"

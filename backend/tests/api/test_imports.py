@@ -15,7 +15,7 @@ def test_import_file_success() -> None:
     sample_file = DATA_DIR / "吸尘器-sample.xlsx"
     with sample_file.open("rb") as f:
         response = client.post(
-            "/api/imports",
+            "/api/v1/imports",
             files={"file": (sample_file.name, f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
             data={"importStrategy": "append"},
         )
@@ -31,14 +31,14 @@ def test_import_file_with_failure_and_detail() -> None:
     # Python 的 bytes 字面量不支持非 ASCII 字符，这里改为字符串再以 UTF-8 编码
     bad_content = "asin,title,currency\n,缺少asin,USD\nB003,正常行,USD\n".encode("utf-8")
     response = client.post(
-        "/api/imports",
+        "/api/v1/imports",
         files={"file": ("broken.csv", bad_content, "text/csv")},
         data={"importStrategy": "update-only"},
     )
     assert response.status_code == 201
     batch = response.json()
     assert batch["status"] == "failed"
-    detail = client.get(f"/api/imports/{batch['id']}")
+    detail = client.get(f"/api/v1/imports/{batch['id']}")
     assert detail.status_code == 200
     detail_body = detail.json()
     assert detail_body["failedRows"][0]["rowNumber"] == 2
@@ -49,13 +49,13 @@ def test_product_list_after_import() -> None:
     sample_file = DATA_DIR / "吸尘器-sample.xlsx"
     with sample_file.open("rb") as f:
         response = client.post(
-            "/api/imports",
+            "/api/v1/imports",
             files={"file": (sample_file.name, f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
             data={"importStrategy": "append"},
         )
     batch_id = response.json()["id"]
 
-    products = client.get("/api/products", params={"batchId": batch_id, "pageSize": 200})
+    products = client.get("/api/v1/products", params={"batchId": batch_id, "pageSize": 200})
     assert products.status_code == 200
     body = products.json()
     assert body["total"] == 100
@@ -64,7 +64,7 @@ def test_product_list_after_import() -> None:
 
 def test_import_file_validation_error() -> None:
     response = client.post(
-        "/api/imports",
+        "/api/v1/imports",
         files={},
         data={"importStrategy": "append"},
     )

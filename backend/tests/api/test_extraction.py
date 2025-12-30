@@ -40,7 +40,7 @@ def test_extraction_flow(mock_deepseek):
 
     # 2. Upload File
     response = client.post(
-        "/api/extraction/upload",
+        "/api/v1/extraction/upload",
         files={"file": ("test_products.xlsx", file_content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
     )
     assert response.status_code == 200
@@ -56,7 +56,7 @@ def test_extraction_flow(mock_deepseek):
     # Let's just call the endpoint and verify it returns success.
     
     response = client.post(
-        f"/api/extraction/{task_id}/start",
+        f"/api/v1/extraction/{task_id}/start",
         json={"target_fields": ["电池容量", "材质"]}
     )
     assert response.status_code == 200
@@ -76,12 +76,12 @@ def test_extraction_flow(mock_deepseek):
         asyncio.run(service.run_extraction(task_id))
 
     # 4. Check Status (should be COMPLETED now)
-    response = client.get(f"/api/extraction/{task_id}")
+    response = client.get(f"/api/v1/extraction/{task_id}")
     assert response.status_code == 200
     assert response.json()["status"] == "COMPLETED"
 
     # 5. Export Result
-    response = client.get(f"/api/extraction/{task_id}/export")
+    response = client.get(f"/api/v1/extraction/{task_id}/export")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     

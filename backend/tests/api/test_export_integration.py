@@ -19,7 +19,7 @@ def test_export_integration() -> None:
     content = "asin,title,currency,price,validation_status\nB001,Test Product 1,USD,10.00,valid\nB002,Test Product 2,USD,20.00,valid\n".encode("utf-8")
     
     import_response = client.post(
-        "/api/imports",
+        "/api/v1/imports",
         files={"file": ("export_test.csv", content, "text/csv")},
         data={"importStrategy": "append"},
     )
@@ -34,7 +34,7 @@ def test_export_integration() -> None:
         "fileFormat": "csv"
     }
     
-    export_response = client.post("/api/exports", json=export_payload)
+    export_response = client.post("/api/v1/exports", json=export_payload)
     assert export_response.status_code == 202
     job_data = export_response.json()
     job_id = job_data["id"]
@@ -44,13 +44,13 @@ def test_export_integration() -> None:
     # The current implementation in export_service.create_job runs _generate_file immediately inside the try block.
     # So it should be "succeeded" immediately.
     
-    get_job_response = client.get(f"/api/exports/{job_id}")
+    get_job_response = client.get(f"/api/v1/exports/{job_id}")
     assert get_job_response.status_code == 200
     job_status = get_job_response.json()
     assert job_status["status"] == "succeeded"
     
     # 4. Download File
-    download_response = client.get(f"/api/exports/{job_id}/download")
+    download_response = client.get(f"/api/v1/exports/{job_id}/download")
     assert download_response.status_code == 200
     
     # 5. Verify Content

@@ -13,7 +13,7 @@ def client():
 
 def test_health_check(client):
     """测试基础健康检查"""
-    response = client.get("/health")
+    response = client.get("/api/health")
     assert response.status_code == 200
     data = response.json()
     
@@ -29,7 +29,7 @@ def test_health_check(client):
 
 def test_readiness_check(client):
     """测试就绪检查"""
-    response = client.get("/health/ready")
+    response = client.get("/api/health/ready")
     assert response.status_code == 200
     data = response.json()
     
@@ -39,7 +39,7 @@ def test_readiness_check(client):
 
 def test_liveness_check(client):
     """测试存活检查"""
-    response = client.get("/health/live")
+    response = client.get("/api/health/live")
     assert response.status_code == 200
     data = response.json()
     
