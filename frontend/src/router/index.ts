@@ -59,6 +59,11 @@ const routes: RouteRecordRaw[] = [
         path: '/admin/sorftime-test',
         component: () => import('../views/admin/sorftime-test/index.vue'),
         meta: { title: 'Sorftime API 测试', roles: ['admin'] }
+      },
+      {
+        path: '/style-guide',
+        component: () => import('../views/StyleGuide.vue'),
+        meta: { title: '组件样式指南' }
       }
     ]
   },
