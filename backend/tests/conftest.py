@@ -3,6 +3,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# ⚠️ 必须在导入 app 模块之前设置测试环境变量
+os.environ.setdefault("TESTING", "1")
+os.environ.setdefault("STORAGE_DIR", str(Path("backend/storage")))
+os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_only")
+os.environ.setdefault("DEEPSEEK_API_KEY", "test_deepseek_key_for_testing")
+os.environ.setdefault("SORFTIME_API_KEY", "test_sorftime_key_for_testing")
+
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -19,7 +26,6 @@ from app import models as _models  # noqa: F401
 
 def _build_testing_engine() -> tuple[sessionmaker[Session], Engine]:
     """测试统一使用 PostgreSQL `_dev` 库，符合 Speckit 合约先行要求。"""
-    os.environ.setdefault("STORAGE_DIR", str(Path("backend/storage")))
     url = os.environ.get(
         "TEST_DATABASE_URL",
         os.environ.get(
