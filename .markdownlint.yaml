@@ -1,0 +1,31 @@
+# Markdown 检查配置
+# 忽略某些规则以适应项目需求
+
+# 默认规则
+default: true
+
+# 行长度限制
+MD013:
+  line_length: 120
+  code_blocks: false
+  tables: false
+
+# 允许内联 HTML
+MD033: false
+
+# 允许重复标题
+MD024:
+  allow_different_nesting: true
+
+# 允许列表缩进
+MD007:
+  indent: 2
+
+# 允许代码块样式
+MD046: false
+
+# 允许空链接
+MD042: false
+
+# 允许裸 URL
+MD034: false
