@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import logging
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -18,6 +19,8 @@ from app.services.audit_service import AuditService
 from app.services.import_config import ImportConfig, load_import_config
 from app.services.import_repository import ImportRepository
 from app.services.log_service import LogService
+
+logger = logging.getLogger(__name__)
 
 STRATEGY_ALIASES = {
     "overwrite": "overwrite",
@@ -281,7 +284,6 @@ class ImportService:
 
             # 使用统一标准化器
             from app.services.product_normalizer import ProductDataNormalizer
-            from app.core.logger import logger
             
             try:
                 # 1. 标准化数据
