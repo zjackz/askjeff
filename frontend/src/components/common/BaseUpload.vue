@@ -52,8 +52,8 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
 import { Upload, UploadFilled } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import type { UploadProps, UploadUserFile } from 'element-plus'
 
 interface Props {

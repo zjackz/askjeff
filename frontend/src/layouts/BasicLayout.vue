@@ -26,7 +26,7 @@
         <!-- 智能运营 -->
         <el-sub-menu index="/ai">
           <template #title>
-            <el-icon><Cpu /></el-icon>
+            <el-icon><TrendCharts /></el-icon>
             <span v-show="!isCollapse">智能运营</span>
           </template>
           <el-menu-item index="/ai/product-selection">
@@ -48,6 +48,21 @@
             <div class="menu-content" v-show="!isCollapse">
               <span class="menu-title">产品透视</span>
               <span class="menu-desc">深度数据洞察</span>
+            </div>
+          </el-menu-item>
+        </el-sub-menu>
+
+        <!-- 广告管理 -->
+        <el-sub-menu index="/ads">
+          <template #title>
+            <el-icon><DataLine /></el-icon>
+            <span v-show="!isCollapse">广告管理</span>
+          </template>
+          <el-menu-item index="/ads-analysis">
+            <el-icon><TrendCharts /></el-icon>
+            <div class="menu-content" v-show="!isCollapse">
+              <span class="menu-title">广告诊断</span>
+              <span class="menu-desc">库存联动分析</span>
             </div>
           </el-menu-item>
         </el-sub-menu>
@@ -172,7 +187,7 @@ import {
   Odometer, Upload, ChatDotRound, Download, 
   Document, InfoFilled, User, Setting, 
   SwitchButton, Delete, Expand, Fold, Connection,
-  Cpu, DataAnalysis, Key, Monitor
+  Cpu, DataAnalysis, Key, Monitor, DataLine
 } from '@element-plus/icons-vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { ElMessage } from 'element-plus'
@@ -196,6 +211,7 @@ const pageNames: Record<string, string> = {
   '/product': '产品透视',
   '/ai/product-selection': '智能选品',
   '/ai/keyword-optimization': '关键词优化',
+  '/ads-analysis': '广告诊断',
   '/extraction': 'AI 提取',
   '/export': '数据导出',
   '/logs': '日志监控',

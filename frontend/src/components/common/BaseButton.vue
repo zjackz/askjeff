@@ -23,10 +23,10 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
+
 
 interface Props {
-  type?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'text'
+  type?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'text' | 'default'
   size?: 'large' | 'default' | 'small'
   loading?: boolean
   disabled?: boolean

@@ -101,11 +101,15 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        const formData = new FormData()
+        const formData = new URLSearchParams()
         formData.append('username', form.username)
         formData.append('password', form.password)
 
-        const response = await http.post('/login/access-token', formData)
+        const response = await http.post('/login/access-token', formData, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        })
         
         const { access_token } = response.data
         localStorage.setItem('token', access_token)
@@ -117,7 +121,14 @@ const handleLogin = async () => {
         ElMessage.success('Welcome back!')
         router.push('/')
       } catch (error: any) {
-        console.error(error)
+        console.error('Login error:', error)
+        // If the error was not handled by the global interceptor (e.g. network error not returning response)
+        if (!error.response) {
+             ElMessage.error('Login failed: No response from server. Please check your network connection.')
+        } else if (error.response.status !== 400) {
+             // 400 is usually handled by global interceptor as "Incorrect password", but others might slip through
+             ElMessage.error(`Login failed: ${error.message || 'Unknown error'}`)
+        }
       } finally {
         loading.value = false
       }

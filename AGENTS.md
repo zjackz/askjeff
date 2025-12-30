@@ -105,6 +105,7 @@ git add . && git commit -m "feat(编号): 描述" && git push
 - **后端**: FastAPI (Python 3.12+) + Pydantic v2 + SQLAlchemy 2.0
 - **数据库**: PostgreSQL 15
 - **DevOps**: Docker + Docker Compose (必须在容器中开发)
+- **开发环境**: 必须在 Docker 容器中进行测试和验证，禁止依赖本地环境配置。前端开发应使用 `make up` 启动服务，并通过 Docker 内部网络连接后端。
 
 ### 版本约束
 

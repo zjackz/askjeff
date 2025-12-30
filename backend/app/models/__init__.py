@@ -10,6 +10,7 @@ from .extraction import ExtractionTask, ExtractionItem
 from .extraction_run import ExtractionRun
 
 from .ai import ProductSelectionReport, KeywordOptimization, AIAnalysisCache
+from .amazon_ads import AmazonStore, ProductCost, InventorySnapshot, AdsMetricSnapshot, BusinessMetricSnapshot
 
 __all__ = [
     "AuditLog", 
@@ -24,5 +25,10 @@ __all__ = [
     "ExtractionRun",
     "ProductSelectionReport",
     "KeywordOptimization",
-    "AIAnalysisCache"
+    "AIAnalysisCache",
+    "AmazonStore",
+    "ProductCost",
+    "InventorySnapshot",
+    "AdsMetricSnapshot",
+    "BusinessMetricSnapshot"
 ]
