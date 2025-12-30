@@ -89,6 +89,11 @@ class Settings:
                 )
         self.algorithm = "HS256"
         self.access_token_expire_minutes = 60 * 24 * 8  # 8 days
+        
+        # Amazon API Settings
+        self.amazon_client_id = os.getenv("AMAZON_CLIENT_ID", "")
+        self.amazon_client_secret = os.getenv("AMAZON_CLIENT_SECRET", "")
+        self.amazon_refresh_token = os.getenv("AMAZON_REFRESH_TOKEN", "")
 
 
 settings = Settings()

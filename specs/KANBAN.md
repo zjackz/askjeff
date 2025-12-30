@@ -54,6 +54,13 @@
   - ✅ 悬浮 Chat 入口
   - ✅ 导出当前筛选
 
+### 本周完成
+- **009**: Amazon Ads Analysis (广告分析与诊断)
+  - ✅ 四象限诊断矩阵 (Stock Weeks vs TACOS)
+  - ✅ 多维数据聚合 (Ads + Business + Inventory)
+  - ✅ AI 智能诊断 (DeepSeek 集成)
+  - ✅ 全店健康度评分模型
+
 ### 本周改进
 - ✅ 导入功能增强:GBK/GB18030 编码支持
 - ✅ 导入功能增强:Excel 单 sheet 自动回退

@@ -1,4 +1,4 @@
-from . import imports, chat, exports, products, logs, extraction, health, login, backups, mcp
+from . import imports, chat, exports, products, logs, extraction, health, login, backups, mcp, amazon
 
 __all__ = [
     "imports",
@@ -11,4 +11,5 @@ __all__ = [
     "login",
     "backups",
     "mcp",
+    "amazon",
 ]

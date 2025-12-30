@@ -4,7 +4,7 @@ import MatrixView from './MatrixView.vue'
 import OverviewView from './OverviewView.vue'
 import ActionsView from './ActionsView.vue'
 import StoreSelector from './components/StoreSelector.vue'
-import { Shop, Calendar } from '@element-plus/icons-vue'
+import { Shop, Calendar, Refresh } from '@element-plus/icons-vue'
 
 interface Store {
   id: string
@@ -15,8 +15,31 @@ interface Store {
 const currentStore = ref<Store | null>(null)
 const activeTab = ref('overview')
 
+import { http } from '@/utils/http'
+import { ElMessage } from 'element-plus'
+
 const handleStoreSelected = (store: Store) => {
   currentStore.value = store
+}
+
+const syncing = ref(false)
+
+const handleSync = async () => {
+  if (!currentStore.value?.id) {
+    ElMessage.warning('请先选择店铺')
+    return
+  }
+  
+  syncing.value = true
+  try {
+    await http.post(`amazon/stores/${currentStore.value.id}/sync`)
+    ElMessage.success('已触发后台同步，请稍后刷新查看最新数据')
+  } catch (error) {
+    console.error('Sync failed:', error)
+    ElMessage.error('同步触发导致，请检查网络或授权')
+  } finally {
+    syncing.value = false
+  }
 }
 </script>
 
@@ -41,6 +64,15 @@ const handleStoreSelected = (store: Store) => {
             class="custom-date-picker"
           />
         </div>
+        <el-button 
+          type="primary" 
+          :icon="Refresh" 
+          :loading="syncing"
+          @click="handleSync"
+          class="sync-btn"
+        >
+          同步数据
+        </el-button>
       </div>
     </div>
 
