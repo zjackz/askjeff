@@ -92,3 +92,7 @@ docs/*.json
 
 .pnpm-store-user/
 api_import_*.xlsx
+
+# 知识库参考资料 (大文件不入库)
+docs/knowledge/references/
+*.pdf
