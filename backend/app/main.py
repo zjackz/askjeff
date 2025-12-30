@@ -31,6 +31,7 @@ app = FastAPI(title="AskJeff API", version="0.1.0")
 async def request_logging(request: Request, call_next):
     """记录请求耗时与状态，方便排障。"""
     trace_id = request.headers.get("X-Trace-Id", str(uuid4()))
+    request.state.trace_id = trace_id
     start = time.perf_counter()
     
     # 记录查询参数

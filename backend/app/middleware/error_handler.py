@@ -85,9 +85,13 @@ async def error_handler_middleware(request: Request, call_next: Callable) -> Res
                 "traceback": traceback.format_exc()
             }
         )
+        trace_id = getattr(request.state, "trace_id", None)
+        details = {"trace_id": trace_id} if trace_id else None
+        
         return create_error_response(
             code=ErrorCode.INTERNAL_SERVER_ERROR,
             message=ERROR_MESSAGES[ErrorCode.INTERNAL_SERVER_ERROR],
+            details=details,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
