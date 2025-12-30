@@ -27,6 +27,15 @@ dist/
 build/
 .venv/
 venv/
+*.py[cod]
+*$py.class
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # IDE/editor files
 .vscode/
@@ -56,8 +65,11 @@ backend/migrations/versions/*.pyc
 
 # 本地虚拟环境
 backend/.venv-user/
-backend/venv_*/
+backend/venv*/
+backend/.venv*/
 tmp_venv/
+.venv*/
+venv*/
 
 # 临时/附属文件（Excel 暂存、Windows ADS）
 ~$*
@@ -72,6 +84,7 @@ frontend/tests/e2e/screenshots/
 backend/debug_*.py
 backend/debug_*.txt
 backend/test_*.py
+backend/test.xlsx
 backend/query_*.py
 backend/scripts/test_*.py
 test_*.sh
