@@ -67,7 +67,7 @@ def test_admin_delete_data(db: Session):
     headers = get_token_headers(client, "realadmin")
     response = client.delete("/api/v1/admin/data", headers=headers)
     assert response.status_code == 200
-    assert response.json()["message"] == "All data deleted successfully"
+    assert response.json()["message"] == "已删除所有业务数据并重置自增序列"
 
 def test_shangu_delete_data_forbidden(db: Session):
     create_user(db, "operator", "shangu")
