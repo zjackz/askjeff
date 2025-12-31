@@ -79,9 +79,77 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${ASKJEFF_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  celery-worker:
+    build:
+      context: ../../
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    command: celery -A app.celery_app worker --loglevel=info
+    volumes:
+      - ../../backend:/app
+      - backend-venv:/app/.venv
+      - backend-storage:/app/storage
+    environment:
+      DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime_dev
+      STORAGE_DIR: /app/storage
+      PYTHONPATH: /app
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      SORFTIME_API_KEY: ${SORFTIME_API_KEY}
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: ../../
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    command: celery -A app.celery_app beat --loglevel=info
+    volumes:
+      - ../../backend:/app
+      - backend-venv:/app/.venv
+      - backend-storage:/app/storage
+    environment:
+      DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime_dev
+      STORAGE_DIR: /app/storage
+      PYTHONPATH: /app
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      SORFTIME_API_KEY: ${SORFTIME_API_KEY}
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   db-data:
   backend-venv:
   backend-storage:
   frontend-node-modules:
   pnpm-store:
+  redis-data:

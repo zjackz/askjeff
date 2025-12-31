@@ -19,7 +19,7 @@ from app.api.routes import (
     mcp as mcp_router,
     products as products_router,
     users as users_router,
-    amazon as amazon_router,
+    # amazon as amazon_router,  # 暂时注释,缺少 requests 依赖
 )
 from app.api.v1.endpoints import sorftime_test, ai, ads_analysis
 from app.db import SessionLocal
@@ -49,4 +49,4 @@ app.include_router(ads_analysis.router, prefix="/api/v1/ads-analysis", tags=["Ad
 app.include_router(health_router.router, prefix="/api", tags=["health"])
 app.include_router(login_router.router, prefix="/api/v1", tags=["login"])
 app.include_router(backups_router.router, prefix="/api/v1/backups", tags=["backups"])
-app.include_router(amazon_router.router, prefix="/api/v1/amazon", tags=["Amazon"])
+# app.include_router(amazon_router.router, prefix="/api/v1/amazon", tags=["Amazon"])

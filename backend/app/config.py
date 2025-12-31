@@ -94,6 +94,13 @@ class Settings:
         self.amazon_client_id = os.getenv("AMAZON_CLIENT_ID", "")
         self.amazon_client_secret = os.getenv("AMAZON_CLIENT_SECRET", "")
         self.amazon_refresh_token = os.getenv("AMAZON_REFRESH_TOKEN", "")
+        
+        # Celery Settings
+        redis_host = os.getenv("REDIS_HOST", "localhost")
+        redis_port = os.getenv("REDIS_PORT", "6379")
+        redis_db = os.getenv("REDIS_DB", "0")
+        self.CELERY_BROKER_URL = f"redis://{redis_host}:{redis_port}/{redis_db}"
+        self.CELERY_RESULT_BACKEND = f"redis://{redis_host}:{redis_port}/{redis_db}"
 
 
 settings = Settings()
