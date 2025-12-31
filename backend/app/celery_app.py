@@ -7,7 +7,7 @@ Celery 应用配置
 from celery import Celery
 from celery.schedules import crontab
 
-from app.core.config import settings
+from app.config import settings
 
 # 创建 Celery 应用
 celery_app = Celery(
