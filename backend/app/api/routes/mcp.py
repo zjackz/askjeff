@@ -4,7 +4,10 @@ import io
 import logging
 from typing import Any
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -49,6 +52,8 @@ async def fetch_mcp_data(
             )
 
         # 转为 DataFrame 以复用导入逻辑
+        if pd is None:
+            raise HTTPException(status_code=500, detail="Pandas is not installed.")
         df = pd.DataFrame(items)
 
         # 内存中生成 CSV，复用 ImportService 的 handle_upload

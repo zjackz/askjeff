@@ -14,7 +14,7 @@ celery_app = Celery(
     "askjeff",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks.sync_tasks"]
+    include=["app.tasks.sync_tasks", "app.tasks.data_sync_tasks"]
 )
 
 # Celery 配置
@@ -49,7 +49,17 @@ celery_app.conf.update(
         "sync-inventory-daily": {
             "task": "app.tasks.sync_tasks.sync_inventory_task",
             "schedule": crontab(hour=2, minute=0),
-            "args": (),
+        },
+        # 每日凌晨 3:00 同步广告数据 (旧版)
+        "sync-ads-daily": {
+            "task": "app.tasks.sync_tasks.sync_ads_task",
+            "schedule": crontab(hour=3, minute=0),
+        },
+        # 每日凌晨 4:00 同步 Search Term Reports (JDC)
+        "sync-search-terms-daily": {
+            "task": "tasks.sync_all_stores_search_terms",
+            "schedule": crontab(hour=4, minute=0),
+            "kwargs": {"days": 7}
         },
         # 每日凌晨 2:30 同步业务报告
         "sync-business-reports-daily": {

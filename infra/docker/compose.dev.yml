@@ -1,39 +1,44 @@
 services:
   db:
+    container_name: askjeff-db
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_USER: sorftime
-      POSTGRES_PASSWORD: sorftime
-      POSTGRES_DB: sorftime_dev
+      POSTGRES_USER: askjeff
+      POSTGRES_PASSWORD: askjeff_password
+      POSTGRES_DB: askjeff_dev
     ports:
       - "${ASKJEFF_DB_PORT:-5433}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U sorftime -d sorftime_dev" ]
+      test: [ "CMD-SHELL", "pg_isready -U askjeff -d askjeff_dev" ]
       interval: 5s
       timeout: 3s
       retries: 20
 
   backend:
-    build:
-      context: ../../
-      dockerfile: infra/docker/backend.Dockerfile
-      args:
-        INSTALL_DEV: "true"
-    # 移除冗余的 command，直接使用镜像自带的 entrypoint
+    container_name: askjeff-backend
+    image: askjeff-backend:latest
+    # build:
+    #   context: ../../
+    #   dockerfile: infra/docker/backend.Dockerfile
+    #   args:
+    #     INSTALL_DEV: "true"
+    # 在启动前安装缺失的依赖
+    command: >
+      bash -c "pip install --no-cache-dir pandas psutil openpyxl tenacity 2>/dev/null || true && uvicorn app.main:app --host 0.0.0.0 --port 8001"
     volumes:
       - ../../backend:/app
       - backend-venv:/app/.venv
       - backend-storage:/app/storage
     environment:
-      DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime_dev
+      DATABASE_URL: postgresql+psycopg://askjeff:askjeff_password@db:5432/askjeff_dev
       STORAGE_DIR: /app/storage
-      PYTHONPATH: /app
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
-      SORFTIME_API_KEY: ${SORFTIME_API_KEY}
-      SECRET_KEY: ${SECRET_KEY}
+      PYTHONPATH: /app:/app/packages/jeff-data-core
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-mock_deepseek_key}
+      SORFTIME_API_KEY: ${SORFTIME_API_KEY:-mock_sorftime_key}
+      SECRET_KEY: ${SECRET_KEY:-mock_secret_key}
       BACKEND_PORT: 8001
     depends_on:
       db:
@@ -57,6 +62,7 @@ services:
       retries: 10
 
   frontend:
+    container_name: askjeff-frontend
     image: mcr.microsoft.com/playwright:v1.56.1-jammy
     working_dir: /app
     environment:
@@ -80,7 +86,8 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    container_name: askjeff-redis
+    image: redis:6-alpine
     restart: unless-stopped
     ports:
       - "${ASKJEFF_REDIS_PORT:-6379}:6379"
@@ -93,23 +100,26 @@ services:
       retries: 20
 
   celery-worker:
-    build:
-      context: ../../
-      dockerfile: infra/docker/backend.Dockerfile
-      args:
-        INSTALL_DEV: "true"
-    command: celery -A app.celery_app worker --loglevel=info
+    container_name: askjeff-worker
+    image: askjeff-backend:latest
+    # build:
+    #   context: ../../
+    #   dockerfile: infra/docker/backend.Dockerfile
+    #   args:
+    #     INSTALL_DEV: "true"
+    command: >
+      bash -c "pip install --no-cache-dir pandas psutil tenacity 2>/dev/null || true && celery -A app.celery_app worker --loglevel=info"
     volumes:
       - ../../backend:/app
       - backend-venv:/app/.venv
       - backend-storage:/app/storage
     environment:
-      DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime_dev
+      DATABASE_URL: postgresql+psycopg://askjeff:askjeff_password@db:5432/askjeff_dev
       STORAGE_DIR: /app/storage
-      PYTHONPATH: /app
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
-      SORFTIME_API_KEY: ${SORFTIME_API_KEY}
-      SECRET_KEY: ${SECRET_KEY}
+      PYTHONPATH: /app:/app/packages/jeff-data-core
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-mock_deepseek_key}
+      SORFTIME_API_KEY: ${SORFTIME_API_KEY:-mock_sorftime_key}
+      SECRET_KEY: ${SECRET_KEY:-mock_secret_key}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
@@ -120,23 +130,26 @@ services:
         condition: service_healthy
 
   celery-beat:
-    build:
-      context: ../../
-      dockerfile: infra/docker/backend.Dockerfile
-      args:
-        INSTALL_DEV: "true"
-    command: celery -A app.celery_app beat --loglevel=info
+    container_name: askjeff-beat
+    image: askjeff-backend:latest
+    # build:
+    #   context: ../../
+    #   dockerfile: infra/docker/backend.Dockerfile
+    #   args:
+    #     INSTALL_DEV: "true"
+    command: >
+      bash -c "pip install --no-cache-dir pandas psutil tenacity 2>/dev/null || true && celery -A app.celery_app beat --loglevel=info"
     volumes:
       - ../../backend:/app
       - backend-venv:/app/.venv
       - backend-storage:/app/storage
     environment:
-      DATABASE_URL: postgresql+psycopg://sorftime:sorftime@db:5432/sorftime_dev
+      DATABASE_URL: postgresql+psycopg://askjeff:askjeff_password@db:5432/askjeff_dev
       STORAGE_DIR: /app/storage
-      PYTHONPATH: /app
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
-      SORFTIME_API_KEY: ${SORFTIME_API_KEY}
-      SECRET_KEY: ${SECRET_KEY}
+      PYTHONPATH: /app:/app/packages/jeff-data-core
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-mock_deepseek_key}
+      SORFTIME_API_KEY: ${SORFTIME_API_KEY:-mock_sorftime_key}
+      SECRET_KEY: ${SECRET_KEY:-mock_secret_key}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0

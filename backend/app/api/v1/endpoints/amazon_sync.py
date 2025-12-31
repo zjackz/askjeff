@@ -10,7 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from app.db import get_db
+from app.api.deps import get_db, get_current_user
 from app.models.amazon_ads import AmazonStore, SyncTask
 from app.tasks.sync_tasks import (
     sync_inventory_task,
@@ -18,7 +18,6 @@ from app.tasks.sync_tasks import (
     sync_advertising_task,
     sync_all_stores_task
 )
-from app.api.deps import get_current_user
 
 router = APIRouter()
 
