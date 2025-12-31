@@ -131,3 +131,38 @@ class BusinessMetricSnapshot(Base):
         UniqueConstraint('store_id', 'date', 'sku', name='uix_store_biz_date_sku'),
     )
 
+
+class SyncTask(Base):
+    """同步任务记录表 - 追踪数据同步状态"""
+    __tablename__ = "sync_tasks"
+    
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(ForeignKey('amazon_stores.id', ondelete='CASCADE'), index=True)
+    
+    # 同步类型
+    sync_type: Mapped[str] = mapped_column(String(50), index=True)  # inventory, business, advertising
+    
+    # 任务状态
+    status: Mapped[str] = mapped_column(String(20), index=True)  # pending, running, success, failed
+    
+    # 时间信息
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # 同步统计
+    records_synced: Mapped[int] = mapped_column(Integer, default=0)
+    records_failed: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # 错误信息
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # 重试计数
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    
+    __table_args__ = (
+        # 索引优化查询
+        # Index('idx_store_sync_type', 'store_id', 'sync_type'),
+        # Index('idx_status_created', 'status', 'created_at'),
+    )
