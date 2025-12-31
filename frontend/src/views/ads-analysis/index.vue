@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import MatrixView from './MatrixView.vue'
 import OverviewView from './OverviewView.vue'
 import ActionsView from './ActionsView.vue'
 import SyncStatus from './components/SyncStatus.vue'
+import CampaignManager from './components/CampaignManager.vue'
 import StoreSelector from './components/StoreSelector.vue'
-import { Shop, Calendar } from '@element-plus/icons-vue'
+import { Calendar } from '@element-plus/icons-vue'
 
 interface Store {
   id: string
@@ -15,8 +16,6 @@ interface Store {
 
 const currentStore = ref<Store | null>(null)
 const activeTab = ref('overview')
-
-import { ElMessage } from 'element-plus'
 
 const handleStoreSelected = (store: Store) => {
   currentStore.value = store
@@ -58,6 +57,13 @@ const handleStoreSelected = (store: Store) => {
       </div>
       <div 
         class="tab-item" 
+        :class="{ active: activeTab === 'campaigns' }"
+        @click="activeTab = 'campaigns'"
+      >
+        广告管理
+      </div>
+      <div 
+        class="tab-item" 
         :class="{ active: activeTab === 'matrix' }"
         @click="activeTab = 'matrix'"
       >
@@ -82,6 +88,7 @@ const handleStoreSelected = (store: Store) => {
     <!-- Main Content Area -->
     <div class="tab-content">
       <OverviewView v-if="activeTab === 'overview'" :store-id="currentStore?.id" />
+      <CampaignManager v-if="activeTab === 'campaigns'" :store-id="currentStore?.id" />
       <MatrixView v-if="activeTab === 'matrix'" :store-id="currentStore?.id" />
       <ActionsView v-if="activeTab === 'actions'" :store-id="currentStore?.id" />
       <SyncStatus v-if="activeTab === 'sync'" :store-id="currentStore?.id" />

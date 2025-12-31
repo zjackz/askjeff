@@ -125,10 +125,83 @@ class BusinessMetricSnapshot(Base):
     page_views: Mapped[int] = mapped_column(Integer, default=0)
     unit_session_percentage: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
+    # 退款数据 (新增)
+    refunds: Mapped[float] = mapped_column(Float, default=0.0)
+    refunded_units: Mapped[int] = mapped_column(Integer, default=0)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     
     __table_args__ = (
         UniqueConstraint('store_id', 'date', 'sku', name='uix_store_biz_date_sku'),
+    )
+
+
+class AdvertisingCampaign(Base):
+    """广告活动表"""
+    __tablename__ = "advertising_campaigns"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(ForeignKey('amazon_stores.id'), index=True)
+    
+    campaign_id: Mapped[str] = mapped_column(String(50), index=True) # Amazon Campaign ID
+    name: Mapped[str] = mapped_column(String(255))
+    campaign_type: Mapped[str] = mapped_column(String(50)) # sponsoredProducts, sponsoredBrands, etc.
+    targeting_type: Mapped[str] = mapped_column(String(50)) # manual, auto
+    daily_budget: Mapped[float] = mapped_column(Float)
+    state: Mapped[str] = mapped_column(String(20)) # enabled, paused, archived
+    
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('store_id', 'campaign_id', name='uix_store_campaign'),
+    )
+
+class AdvertisingAdGroup(Base):
+    """广告组表"""
+    __tablename__ = "advertising_ad_groups"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(ForeignKey('amazon_stores.id'), index=True)
+    campaign_id: Mapped[UUID] = mapped_column(ForeignKey('advertising_campaigns.id'), index=True) # 关联内部 UUID
+    
+    ad_group_id: Mapped[str] = mapped_column(String(50), index=True) # Amazon AdGroup ID
+    name: Mapped[str] = mapped_column(String(255))
+    default_bid: Mapped[float] = mapped_column(Float)
+    state: Mapped[str] = mapped_column(String(20)) # enabled, paused, archived
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('store_id', 'ad_group_id', name='uix_store_adgroup'),
+    )
+
+class CampaignPerformanceSnapshot(Base):
+    """广告活动每日表现快照"""
+    __tablename__ = "campaign_performance_snapshots"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(ForeignKey('amazon_stores.id'), index=True)
+    campaign_id: Mapped[UUID] = mapped_column(ForeignKey('advertising_campaigns.id'), index=True) # 关联内部 UUID
+    
+    date: Mapped[date] = mapped_column(Date, index=True)
+    
+    # 表现数据
+    impressions: Mapped[int] = mapped_column(Integer, default=0)
+    clicks: Mapped[int] = mapped_column(Integer, default=0)
+    spend: Mapped[float] = mapped_column(Float, default=0.0)
+    sales: Mapped[float] = mapped_column(Float, default=0.0)
+    orders: Mapped[int] = mapped_column(Integer, default=0)
+    units: Mapped[int] = mapped_column(Integer, default=0)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('store_id', 'date', 'campaign_id', name='uix_store_date_campaign'),
     )
 
 

@@ -8,7 +8,7 @@ from app.models.user import User
 from app.api.deps import get_current_user
 from app.services.ads_analysis_service import AdsAnalysisService
 from app.services.ads_import_service import ads_import_service
-from app.schemas.amazon_ads import AdsMatrixPoint, AdsDiagnosis, AmazonStoreSchema
+from app.schemas.amazon_ads import AdsMatrixPoint, AdsDiagnosis, AmazonStoreSchema, WastedSpendResponse, HighAcosResponse
 
 router = APIRouter()
 
@@ -138,3 +138,32 @@ async def get_sku_diagnosis(
             "margin": sku_data.margin
         }
     )
+
+@router.get("/diagnosis/wasted-spend", response_model=WastedSpendResponse)
+def get_wasted_spend(
+    store_id: UUID = Query(..., description="店铺 ID"),
+    days: int = Query(7, ge=1, le=30, description="检查天数"),
+    threshold: float = Query(50.0, ge=0, description="花费阈值"),
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    检查无效花费：找出花费高但无转化的广告活动
+    """
+    from app.services.ads_diagnosis_service import ads_diagnosis_service
+    return ads_diagnosis_service.check_wasted_spend(db, store_id, days, threshold)
+
+@router.get("/diagnosis/high-acos", response_model=HighAcosResponse)
+def get_high_acos(
+    store_id: UUID = Query(..., description="店铺 ID"),
+    days: int = Query(7, ge=1, le=30, description="检查天数"),
+    acos_threshold: float = Query(30.0, ge=0, description="ACOS 阈值"),
+    min_spend: float = Query(50.0, ge=0, description="最小花费"),
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    检查高 ACOS：找出 ACOS 过高的广告活动
+    """
+    from app.services.ads_diagnosis_service import ads_diagnosis_service
+    return ads_diagnosis_service.check_high_acos(db, store_id, days, acos_threshold, min_spend)
