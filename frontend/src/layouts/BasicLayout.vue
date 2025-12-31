@@ -260,26 +260,6 @@ const handleLogout = () => {
   }
 }
 
-.logo-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 64px;
-  position: relative;
-  z-index: 1;
-}
-
-.logo-image {
-  height: 40px;
-  width: auto;
-  object-fit: contain;
-}
-
-.logo-image-small {
-  height: 32px;
-  width: auto;
-  object-fit: contain;
-}
 
 .sidebar-menu {
   flex: 1;
@@ -394,16 +374,67 @@ const handleLogout = () => {
   
   // 折叠状态下的特定样式
   &.el-menu--collapse {
+    width: 64px;
+    
     :deep(.el-menu-item) {
-      height: 56px; // 折叠时恢复正常高度
+      height: 48px; // 折叠时高度适中
       padding: 0 !important;
       justify-content: center;
-      margin-bottom: 8px;
+      margin: 8px auto; // 上下间距，水平居中
+      width: 48px; // 固定宽度
+      border-radius: 8px; // 圆角
+      
+      .el-icon {
+        margin-right: 0;
+        font-size: 20px;
+      }
+      
+      // 折叠状态下的激活样式
+      &.is-active {
+        background: var(--primary-gradient);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); // 更柔和的阴影
+        
+        .el-icon {
+          color: #fff;
+        }
+      }
+    }
+    
+    :deep(.el-sub-menu__title) {
+      padding: 0 !important;
+      justify-content: center;
+      margin: 8px auto;
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
       
       .el-icon {
         margin-right: 0;
       }
     }
+  }
+}
+
+.logo-wrapper {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center; // 始终居中
+  padding: 0 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden; // 防止溢出
+  
+  .logo-image {
+    height: 32px;
+    width: auto;
+    max-width: 100%;
+  }
+  
+  .logo-image-small {
+    height: 32px;
+    width: 32px;
+    object-fit: contain;
   }
 }
 
