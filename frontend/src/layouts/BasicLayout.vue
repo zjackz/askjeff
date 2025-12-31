@@ -17,7 +17,7 @@
       >
         <el-menu-item index="/dashboard">
           <el-icon><Odometer /></el-icon>
-          <div class="menu-content" v-show="!isCollapse">
+          <div class="menu-content">
             <span class="menu-title">数据总览</span>
             <span class="menu-desc">核心指标监控</span>
           </div>
@@ -27,25 +27,25 @@
         <el-sub-menu index="/ai">
           <template #title>
             <el-icon><TrendCharts /></el-icon>
-            <span v-show="!isCollapse">智能运营</span>
+            <span>智能运营</span>
           </template>
           <el-menu-item index="/ai/product-selection">
             <el-icon><DataAnalysis /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">智能选品</span>
               <span class="menu-desc">AI 辅助市场分析</span>
             </div>
           </el-menu-item>
           <el-menu-item index="/ai/keyword-optimization">
             <el-icon><Key /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">关键词优化</span>
               <span class="menu-desc">Listing 排名提升</span>
             </div>
           </el-menu-item>
           <el-menu-item index="/product">
             <el-icon><ChatDotRound /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">产品透视</span>
               <span class="menu-desc">深度数据洞察</span>
             </div>
@@ -56,11 +56,11 @@
         <el-sub-menu index="/ads">
           <template #title>
             <el-icon><DataLine /></el-icon>
-            <span v-show="!isCollapse">广告管理</span>
+            <span>广告管理</span>
           </template>
           <el-menu-item index="/ads-analysis">
             <el-icon><TrendCharts /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">广告诊断</span>
               <span class="menu-desc">库存联动分析</span>
             </div>
@@ -71,18 +71,18 @@
         <el-sub-menu index="/data">
           <template #title>
             <el-icon><Document /></el-icon>
-            <span v-show="!isCollapse">数据中心</span>
+            <span>数据中心</span>
           </template>
           <el-menu-item index="/import">
             <el-icon><Upload /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">数据导入</span>
               <span class="menu-desc">批量数据上传</span>
             </div>
           </el-menu-item>
           <el-menu-item index="/export">
             <el-icon><Download /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">数据导出</span>
               <span class="menu-desc">报表下载中心</span>
             </div>
@@ -93,25 +93,25 @@
         <el-sub-menu index="/system" v-if="userStore.role === 'admin'">
           <template #title>
             <el-icon><Setting /></el-icon>
-            <span v-show="!isCollapse">系统管理</span>
+            <span>系统管理</span>
           </template>
           <el-menu-item index="/admin">
             <el-icon><Delete /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">数据清理</span>
               <span class="menu-desc">系统数据维护</span>
             </div>
           </el-menu-item>
           <el-menu-item index="/logs">
             <el-icon><Monitor /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">日志监控</span>
               <span class="menu-desc">系统运行状态</span>
             </div>
           </el-menu-item>
           <el-menu-item index="/admin/sorftime-test">
             <el-icon><Connection /></el-icon>
-            <div class="menu-content" v-show="!isCollapse">
+            <div class="menu-content">
               <span class="menu-title">API 测试</span>
               <span class="menu-desc">接口调试工具</span>
             </div>
@@ -376,6 +376,12 @@ const handleLogout = () => {
   &.el-menu--collapse {
     width: 64px;
     
+    // 隐藏文字内容
+    .menu-content,
+    .el-sub-menu__title span {
+      display: none;
+    }
+    
     :deep(.el-menu-item) {
       height: 48px; // 折叠时高度适中
       padding: 0 !important;
@@ -421,7 +427,7 @@ const handleLogout = () => {
   align-items: center;
   justify-content: center; // 始终居中
   padding: 0 16px;
-  background: var(--bg-secondary);
+  background: transparent; // 透明背景，透出侧边栏渐变
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   overflow: hidden; // 防止溢出
   
