@@ -7,7 +7,6 @@
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from app.services.api_import_service import APIImportService
-from app.config import settings
 
 class TestAPIImportService:
     """测试 API 导入服务"""

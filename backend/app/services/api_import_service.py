@@ -97,7 +97,7 @@ class APIImportService:
                 logger.info(f"[{batch_id}] 使用已有批次,已更新 category_id")
             else:
                 # 创建新批次 (这个分支不应该在后台任务中执行)
-                logger.warning(f"[DEBUG] batch_id is None, creating new batch!")
+                logger.warning("[DEBUG] batch_id is None, creating new batch!")
                 batch = self._create_batch(
                     db,
                     parsed=parsed,

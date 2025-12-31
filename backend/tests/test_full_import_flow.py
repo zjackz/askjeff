@@ -1,16 +1,13 @@
 
 import pytest
 import os
-import json
 from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime
 from pathlib import Path
 from sqlalchemy.orm import Session
 
 from app.services.api_import_service import api_import_service
 from app.services.extraction_service import ExtractionService
 from app.models.import_batch import ImportBatch, ProductRecord
-from app.models.extraction_run import ExtractionRun
 from app.services.sorftime.models import SorftimeResponse
 
 @pytest.mark.asyncio
@@ -118,7 +115,7 @@ async def test_full_import_to_extraction_flow(db: Session):
     assert product.raw_payload == raw_api_data, "AI 提取过程导致原始数据丢失"
     assert product.price == Decimal('39.99'), "AI 提取过程导致标准化数据丢失"
 
-    print(f"\n[VERIFIED] Data integrity check passed. No data loss detected in the entire flow.")
+    print("\n[VERIFIED] Data integrity check passed. No data loss detected in the entire flow.")
     
     if excel_path.exists():
         excel_path.unlink()
