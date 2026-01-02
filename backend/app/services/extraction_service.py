@@ -4,7 +4,10 @@ import logging
 import uuid
 from typing import List
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
@@ -20,6 +23,8 @@ class ExtractionService:
         self.client = client
 
     async def create_task(self, file: UploadFile, target_fields: List[str] | None = None) -> ExtractionTask:
+        if pd is None:
+            raise ImportError("Pandas is not installed.")
         content = await file.read()
         filename = file.filename or "unknown.xlsx"
         target_fields = target_fields or []
@@ -287,6 +292,8 @@ class ExtractionService:
         return self.db.get(ExtractionTask, task_id)
 
     def export_task(self, task_id: uuid.UUID) -> io.BytesIO:
+        if pd is None:
+            raise ImportError("Pandas is not installed.")
         task = self.get_task(task_id)
         if not task:
             raise ValueError("Task not found")

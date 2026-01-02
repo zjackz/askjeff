@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import MatrixView from './MatrixView.vue'
 import OverviewView from './OverviewView.vue'
 import ActionsView from './ActionsView.vue'
+import SyncStatus from './components/SyncStatus.vue'
+import CampaignManager from './components/CampaignManager.vue'
 import StoreSelector from './components/StoreSelector.vue'
-import { Shop, Calendar, Refresh } from '@element-plus/icons-vue'
+import { Calendar } from '@element-plus/icons-vue'
 
 interface Store {
   id: string
@@ -15,31 +17,8 @@ interface Store {
 const currentStore = ref<Store | null>(null)
 const activeTab = ref('overview')
 
-import { http } from '@/utils/http'
-import { ElMessage } from 'element-plus'
-
 const handleStoreSelected = (store: Store) => {
   currentStore.value = store
-}
-
-const syncing = ref(false)
-
-const handleSync = async () => {
-  if (!currentStore.value?.id) {
-    ElMessage.warning('请先选择店铺')
-    return
-  }
-  
-  syncing.value = true
-  try {
-    await http.post(`amazon/stores/${currentStore.value.id}/sync`)
-    ElMessage.success('已触发后台同步，请稍后刷新查看最新数据')
-  } catch (error) {
-    console.error('Sync failed:', error)
-    ElMessage.error('同步触发导致，请检查网络或授权')
-  } finally {
-    syncing.value = false
-  }
 }
 </script>
 
@@ -64,15 +43,6 @@ const handleSync = async () => {
             class="custom-date-picker"
           />
         </div>
-        <el-button 
-          type="primary" 
-          :icon="Refresh" 
-          :loading="syncing"
-          @click="handleSync"
-          class="sync-btn"
-        >
-          同步数据
-        </el-button>
       </div>
     </div>
 
@@ -84,6 +54,13 @@ const handleSync = async () => {
         @click="activeTab = 'overview'"
       >
         全店概览
+      </div>
+      <div 
+        class="tab-item" 
+        :class="{ active: activeTab === 'campaigns' }"
+        @click="activeTab = 'campaigns'"
+      >
+        广告管理
       </div>
       <div 
         class="tab-item" 
@@ -99,13 +76,22 @@ const handleSync = async () => {
       >
         智能决策
       </div>
+      <div 
+        class="tab-item" 
+        :class="{ active: activeTab === 'sync' }"
+        @click="activeTab = 'sync'"
+      >
+        数据同步
+      </div>
     </div>
 
     <!-- Main Content Area -->
     <div class="tab-content">
       <OverviewView v-if="activeTab === 'overview'" :store-id="currentStore?.id" />
+      <CampaignManager v-if="activeTab === 'campaigns'" :store-id="currentStore?.id" />
       <MatrixView v-if="activeTab === 'matrix'" :store-id="currentStore?.id" />
       <ActionsView v-if="activeTab === 'actions'" :store-id="currentStore?.id" />
+      <SyncStatus v-if="activeTab === 'sync'" :store-id="currentStore?.id" />
     </div>
   </div>
 </template>

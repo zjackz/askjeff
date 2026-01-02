@@ -12,7 +12,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -779,6 +782,8 @@ class APIImportService:
             })
         
         # 创建 DataFrame
+        if pd is None:
+            raise ImportError("Pandas is not installed. Cannot generate Excel.")
         df = pd.DataFrame(data)
         
         # 生成文件名

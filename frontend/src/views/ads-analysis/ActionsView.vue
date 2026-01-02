@@ -4,11 +4,11 @@ import { http } from '@/utils/http'
 import { ElMessage } from 'element-plus'
 import { 
   MagicStick, 
-  Warning, 
   CircleCheck,
-  ArrowRight,
-  Histogram
+  ArrowRight
 } from '@element-plus/icons-vue'
+import WastedSpendBlocker from './components/WastedSpendBlocker.vue'
+import HighAcosWarning from './components/HighAcosWarning.vue'
 
 const props = defineProps<{
   storeId: string | undefined
@@ -96,51 +96,60 @@ const handleApply = (action: any) => {
       <p>AI 正在扫描全店 SKU...</p>
     </div>
 
-    <div v-else class="actions-list">
-      <div v-for="action in actions" :key="action.id" class="action-card" :class="action.type">
-        <div class="card-side-indicator"></div>
-        
-        <div class="card-main">
-          <div class="card-top">
-            <div class="sku-info">
-              <span class="priority-tag">{{ action.priority }}</span>
-              <span class="sku-name">{{ action.sku }}</span>
-              <span class="asin-name">{{ action.asin }}</span>
-            </div>
-            <div class="type-tag">{{ action.type }}</div>
-          </div>
+    <div v-else class="actions-content">
+      <!-- 诊断卡片区域 -->
+      <div class="diagnosis-grid">
+        <WastedSpendBlocker :store-id="storeId" />
+        <HighAcosWarning :store-id="storeId" />
+      </div>
 
-          <div class="card-body">
-            <div class="suggestion-box">
-              <el-icon class="magic-icon"><MagicStick /></el-icon>
-              <p class="suggestion-text">{{ action.suggestion }}</p>
+      <!-- 建议列表 -->
+      <div class="actions-list">
+        <div v-for="action in actions" :key="action.id" class="action-card" :class="action.type">
+          <div class="card-side-indicator"></div>
+          
+          <div class="card-main">
+            <div class="card-top">
+              <div class="sku-info">
+                <span class="priority-tag">{{ action.priority }}</span>
+                <span class="sku-name">{{ action.sku }}</span>
+                <span class="asin-name">{{ action.asin }}</span>
+              </div>
+              <div class="type-tag">{{ action.type }}</div>
             </div>
-            
-            <div class="metrics-row">
-              <div class="m-item">
-                <span class="l">TACOS</span>
-                <span class="v">{{ action.metrics.tacos }}%</span>
-              </div>
-              <div class="m-item">
-                <span class="l">Margin</span>
-                <span class="v" :class="action.metrics.margin > 0 ? 'pos' : 'neg'">{{ action.metrics.margin }}%</span>
-              </div>
-              <div class="m-item">
-                <span class="l">Stock</span>
-                <span class="v">{{ action.metrics.stock_weeks }}w</span>
-              </div>
-            </div>
-          </div>
 
-          <div class="card-footer">
-            <button class="apply-btn" @click="handleApply(action)">
-              <el-icon><CircleCheck /></el-icon>
-              立即执行
-            </button>
-            <button class="detail-btn">
-              查看详情
-              <el-icon><ArrowRight /></el-icon>
-            </button>
+            <div class="card-body">
+              <div class="suggestion-box">
+                <el-icon class="magic-icon"><MagicStick /></el-icon>
+                <p class="suggestion-text">{{ action.suggestion }}</p>
+              </div>
+              
+              <div class="metrics-row">
+                <div class="m-item">
+                  <span class="l">TACOS</span>
+                  <span class="v">{{ action.metrics.tacos }}%</span>
+                </div>
+                <div class="m-item">
+                  <span class="l">Margin</span>
+                  <span class="v" :class="action.metrics.margin > 0 ? 'pos' : 'neg'">{{ action.metrics.margin }}%</span>
+                </div>
+                <div class="m-item">
+                  <span class="l">Stock</span>
+                  <span class="v">{{ action.metrics.stock_weeks }}w</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <button class="apply-btn" @click="handleApply(action)">
+                <el-icon><CircleCheck /></el-icon>
+                立即执行
+              </button>
+              <button class="detail-btn">
+                查看详情
+                <el-icon><ArrowRight /></el-icon>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -193,6 +202,13 @@ const handleApply = (action: any) => {
   justify-content: center;
   color: var(--text-secondary);
   gap: 16px;
+}
+
+.diagnosis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .actions-list {

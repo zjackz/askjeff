@@ -1,22 +1,7 @@
 # Amazon Ads Analysis - 开发进度总结
 
-**最后更新**: 2025-12-30 19:06  
-**当前状态**: 多店铺架构已完成，前端集成进行中  
+**最后更新**: 2025-12-31 10:00  
 
----
-
-## ✅ 已完成功能
-
-### 1. 数据库层 (100%)
-
-- [x] 设计完整的数据库方案文档
-- [x] 创建 5 张核心表
-  - `amazon_stores` - 店铺管理
-  - `product_costs` - 产品成本
-  - `inventory_snapshots` - 库存快照
-  - `ads_metric_snapshots` - 广告快照
-  - `business_metric_snapshots` - 业务快照
-- [x] 实现多租户隔离
 - [x] 生成 Mock 数据 (3 店铺, 78 SKU, 7254 快照)
 
 ### 2. 后端 API (100%)
@@ -35,14 +20,15 @@
   - `AdsMatrixPoint`
   - `AdsDiagnosis`
 
-### 3. 前端组件 (80%)
+### 3. 前端组件 (90%)
 
 - [x] `StoreSelector.vue` - 店铺选择器
-- [x] `AdsMatrixChart.vue` - 四象限矩阵图
-- [x] `DiagnosisPanel.vue` - 诊断面板
+- [x] `AdsMatrixChart.vue` - 四象限矩阵图  
+- [x] `DiagnosisPanel.vue` - 诊断面板 (已集成 AI 调用)
 - [x] 主页面集成店铺选择器
 - [x] 添加店铺信息横幅
 - [x] 加载状态显示
+- [x] AI 诊断结果展示
 
 ---
 
@@ -50,17 +36,19 @@
 
 ### Phase 1: 核心功能完善 (优先级: P0)
 
+- [x] **AI 诊断集成**: DeepSeek LLM 已接入 ✅
 - [ ] **前端调试**: 验证店铺选择器和 API 调用
 - [ ] **错误处理**: 完善前端错误提示
 - [ ] **空状态**: 无店铺/无数据时的友好提示
 - [ ] **单元测试**: 后端 Service 层测试
 
-### Phase 2: AI 诊断增强 (优先级: P1)
+### Phase 2: AI 诊断优化 (优先级: P1)
 
-- [ ] **接入 Gemini**: 替换规则引擎为 LLM
-- [ ] **Prompt 优化**: 设计专业的诊断 Prompt
+- [x] **接入 LLM**: DeepSeek 已集成 ✅
+- [x] **Prompt 设计**: 专业诊断 Prompt 已完成 ✅
 - [ ] **诊断缓存**: 避免重复调用 LLM
 - [ ] **诊断历史**: 保存历史诊断记录
+- [ ] **多模型支持**: 可选 Gemini/Claude
 
 ### Phase 3: COGS 输入功能 (优先级: P1)
 
@@ -86,7 +74,7 @@
 
 ## 📊 数据流架构
 
-```
+```text
 ┌─────────────┐
 │   Frontend  │
 │  (Vue 3)    │
@@ -102,6 +90,11 @@
 │  │  - get_matrix       │    │
 │  │  - generate_diag    │    │
 │  └──────────┬──────────┘    │
+│             │                │
+│  ┌──────────▼──────────┐    │
+│  │   AdsAIService      │    │
+│  │  - DeepSeek LLM     │    │
+│  └─────────────────────┘    │
 └─────────────┼────────────────┘
               │
               ▼
@@ -123,19 +116,19 @@
 
 ### TACOS (Total ACOS)
 
-```
+```python
 TACOS = 总广告花费 / 总销售额 × 100%
 ```
 
 ### 库存周转 (Weeks of Cover)
 
-```
+```python
 Weeks of Cover = 当前库存 / (日均销量 × 7)
 ```
 
 ### 四象限分类
 
-```
+```python
 Q1 (Critical): stock_weeks > 24 && tacos > 20%
 Q2 (Star):     stock_weeks > 24 && tacos <= 20%
 Q3 (Potential): stock_weeks <= 24 && tacos <= 20%
@@ -170,14 +163,16 @@ Q4 (Drop):     stock_weeks <= 24 && tacos > 20%
 1. ✅ 在 Docker 中测试前端
 2. ✅ 验证店铺选择器功能
 3. ✅ 验证矩阵数据加载
-4. ⏳ 修复任何 UI/UX 问题
+4. ✅ AI 诊断集成完成
+5. ⏳ 前端完整功能测试
 
 ### 本周计划
 
-1. 接入 Gemini AI 生成诊断
+1. ✅ 接入 AI 生成诊断 (DeepSeek)
 2. 实现 COGS 输入功能
 3. 添加日期范围筛选
 4. 编写单元测试
+5. 优化 AI Prompt 质量
 
 ### 下周计划
 
@@ -190,10 +185,10 @@ Q4 (Drop):     stock_weeks <= 24 && tacos > 20%
 
 ## 🐛 已知问题
 
-1. **前端未在 Docker 中测试**: 当前用户仍在本地运行 `pnpm dev`
+1. ✅ ~~诊断建议是硬编码~~ → 已接入 DeepSeek LLM
 2. **API Token 未加密**: 需要实现 Fernet 加密
 3. **无单元测试**: Service 层缺少测试覆盖
-4. **诊断建议是硬编码**: 需要接入 LLM
+4. **诊断缓存**: AI 调用未缓存,可能产生重复费用
 
 ---
 

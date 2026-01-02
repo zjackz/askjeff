@@ -219,8 +219,11 @@ class ExportService:
     
     def _generate_xlsx(self, filename: Path, fields: list[str], rows: list[dict], job: ExportJob, ai_columns: set[str] = None) -> None:
         """Generate XLSX file with styling for AI columns."""
-        from openpyxl import Workbook
-        from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+        except ImportError:
+            raise ImportError("OpenPyXL is not installed. Cannot generate XLSX files.")
         
         wb = Workbook()
         ws = wb.active

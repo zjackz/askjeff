@@ -10,7 +10,10 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import UploadFile
-from openpyxl import load_workbook
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    load_workbook = None
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -356,6 +359,8 @@ class ImportService:
     def _read_rows(self, path: Path, *, sheet_name: str) -> list[list[Any]]:
         suffix = path.suffix.lower()
         if suffix in {".xlsx", ".xlsm"}:
+            if load_workbook is None:
+                raise ImportError("OpenPyXL is not installed. Cannot read Excel files.")
             wb = load_workbook(filename=path, read_only=True, data_only=True)
             if sheet_name not in wb.sheetnames:
                 # Fallback: if only one sheet, use it
