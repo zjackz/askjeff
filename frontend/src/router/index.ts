@@ -54,6 +54,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/ads-analysis/index.vue'),
         meta: { title: '广告诊断' }
       },
+      {
+        path: '/data-source',
+        component: () => import('../views/data-source/index.vue'),
+        meta: { title: '数据源管理' }
+      },
 
       {
         path: '/admin',

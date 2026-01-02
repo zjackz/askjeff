@@ -32,7 +32,7 @@ from app.api.routes import (
     users as users_router,
     # amazon as amazon_router,  # 暂时注释,缺少 requests 依赖
 )
-from app.api.v1.endpoints import sorftime_test, ai, ads_analysis, amazon_sync, amazon_ads, data_engine
+from app.api.v1.endpoints import sorftime_test, ai, ads_analysis, amazon_sync, amazon_ads, data_engine, stores
 from app.db import SessionLocal
 from app.services.log_service import LogService
 from app.middleware.error_handler import error_handler_middleware
@@ -66,6 +66,7 @@ app.include_router(ads_analysis.router, prefix="/api/v1/ads-analysis", tags=["Ad
 app.include_router(amazon_sync.router, prefix="/api/v1/amazon", tags=["Amazon Sync"])
 app.include_router(amazon_ads.router, prefix="/api/v1/amazon", tags=["Amazon Ads"])
 app.include_router(data_engine.router, prefix="/api/v1/data", tags=["Data Engine"])
+app.include_router(stores.router, prefix="/api/v1/stores", tags=["Store Management"])
 
 # 健康检查和登录路由 (使用 /api 前缀,但不使用 /v1)
 app.include_router(health_router.router, prefix="/api", tags=["health"])
