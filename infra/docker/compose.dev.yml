@@ -19,12 +19,11 @@ services:
 
   backend:
     container_name: askjeff-backend
-    image: askjeff-backend:latest
-    # build:
-    #   context: ../../
-    #   dockerfile: infra/docker/backend.Dockerfile
-    #   args:
-    #     INSTALL_DEV: "true"
+    build:
+      context: ../../
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        INSTALL_DEV: "true"
     # 在启动前安装缺失的依赖
     command: >
       bash -c "pip install --no-cache-dir pandas psutil openpyxl tenacity 2>/dev/null || true && uvicorn app.main:app --host 0.0.0.0 --port 8001"
@@ -101,12 +100,11 @@ services:
 
   celery-worker:
     container_name: askjeff-worker
-    image: askjeff-backend:latest
-    # build:
-    #   context: ../../
-    #   dockerfile: infra/docker/backend.Dockerfile
-    #   args:
-    #     INSTALL_DEV: "true"
+    build:
+      context: ../../
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        INSTALL_DEV: "true"
     command: >
       bash -c "pip install --no-cache-dir pandas psutil tenacity 2>/dev/null || true && celery -A app.celery_app worker --loglevel=info"
     volumes:
@@ -131,12 +129,11 @@ services:
 
   celery-beat:
     container_name: askjeff-beat
-    image: askjeff-backend:latest
-    # build:
-    #   context: ../../
-    #   dockerfile: infra/docker/backend.Dockerfile
-    #   args:
-    #     INSTALL_DEV: "true"
+    build:
+      context: ../../
+      dockerfile: infra/docker/backend.Dockerfile
+      args:
+        INSTALL_DEV: "true"
     command: >
       bash -c "pip install --no-cache-dir pandas psutil tenacity 2>/dev/null || true && celery -A app.celery_app beat --loglevel=info"
     volumes:
