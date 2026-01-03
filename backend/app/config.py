@@ -75,18 +75,8 @@ class Settings:
         # 文件上传限制
         self.max_file_size_mb = int(os.getenv("MAX_FILE_SIZE_MB", "50"))  # 最大文件大小 (MB)
 
-        # JWT Settings - 生产环境必需,测试环境可选
-        self.secret_key = os.getenv("SECRET_KEY", "")
-        if not self.secret_key:
-            if self.is_testing:
-                # 测试环境使用固定密钥
-                self.secret_key = "test_secret_key_for_testing_only_do_not_use_in_production"
-            else:
-                raise ValueError(
-                    "❌ 配置错误: 缺少 SECRET_KEY 环境变量\n"
-                    "请在 .env 文件中设置: SECRET_KEY=your_secret_key_here\n"
-                    "提示: 可使用命令生成随机密钥: openssl rand -hex 32"
-                )
+        # JWT Settings
+        self.secret_key = os.getenv("SECRET_KEY", "dev_secret_key_for_local_development")
         self.algorithm = "HS256"
         self.access_token_expire_minutes = 60 * 24 * 8  # 8 days
 

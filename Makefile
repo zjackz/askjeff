@@ -17,6 +17,15 @@ COMPOSE := $(COMPOSE_BIN) $(ENV_FILE) -p $(PROJECT) -f $(COMPOSE_FILE)
 
 up:
 	$(COMPOSE) up -d --build
+	@echo "\n=================================================="
+	@echo "🚀 ASKJeff 服务正在启动..."
+	@echo "--------------------------------------------------"
+	@echo "前端访问地址: http://localhost:5174"
+	@echo "后端接口地址: http://localhost:8001/api/v1"
+	@echo "健康检查地址: http://localhost:8001/api/health"
+	@echo "--------------------------------------------------"
+	@echo "提示: 可运行 'make logs' 或 'make ps' 查看状态"
+	@echo "==================================================\n"
 
 down:
 	$(COMPOSE) down -v
