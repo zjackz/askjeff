@@ -1,14 +1,3 @@
-import sys
-import os
-from pathlib import Path
-
-# Add jeff-data-core to python path
-# This allows importing 'jeff_data_core' as a standalone package
-BASE_DIR = Path(__file__).resolve().parent.parent
-JDC_PATH = BASE_DIR / "packages" / "jeff-data-core"
-if str(JDC_PATH) not in sys.path:
-    sys.path.append(str(JDC_PATH))
-
 import time
 from uuid import uuid4
 

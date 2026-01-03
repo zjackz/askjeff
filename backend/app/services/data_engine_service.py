@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.amazon_ads import AmazonStore
 from app.config import settings
-
+from app.db import engine
 # Import from our standalone package
 from jeff_data_core.core.engine import JeffDataEngine
 from jeff_data_core.connectors.amazon_ads import AmazonAdsConnector, AmazonAdsConfig
@@ -22,13 +22,8 @@ class DataEngineService:
     
     def __init__(self, db: Session):
         self.db = db
-        # Initialize Storage with AskJeff's DB connection
-        # We need to adapt the connection string for psycopg 3 if necessary
-        db_url = str(settings.database_url)
-        if db_url.startswith("postgresql://"):
-             db_url = db_url.replace("postgresql://", "postgresql+psycopg://")
-             
-        self.storage = PostgresStorage(connection_string=db_url)
+        # Initialize Storage with AskJeff's existing DB engine
+        self.storage = PostgresStorage(engine=engine)
         self.engine = JeffDataEngine(storage_backend=self.storage)
 
     def sync_search_term_report(self, store_id: UUID, days: int = 7) -> Dict[str, Any]:

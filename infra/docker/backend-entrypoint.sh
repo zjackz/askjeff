@@ -25,16 +25,16 @@ else:
 PY
 
 # 运行 Alembic 迁移
-poetry run alembic upgrade head
+if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+    poetry run alembic upgrade head
 
-# 自动创建默认用户（如果脚本存在）
-if [ -f "scripts/init_admin.py" ]; then
-    echo "Initializing admin users..."
-    poetry run python scripts/init_admin.py || echo "Admin initialization skipped or failed."
+    # 自动创建默认用户（如果脚本存在）
+    if [ -f "scripts/init_admin.py" ]; then
+        echo "Initializing admin users..."
+        poetry run python scripts/init_admin.py || echo "Admin initialization skipped or failed."
+    fi
 fi
 
-# 启动 Uvicorn
-PORT=${BACKEND_PORT:-8000}
-echo "Starting backend on port $PORT..."
-exec poetry run uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
+# 执行传入的命令
+exec "$@"
 

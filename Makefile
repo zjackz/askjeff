@@ -17,6 +17,16 @@ COMPOSE := $(COMPOSE_BIN) $(ENV_FILE) -p $(PROJECT) -f $(COMPOSE_FILE)
 
 up:
 	$(COMPOSE) up -d --build
+	@echo ""
+	@echo "======================================================================"
+	@echo "AskJeff Dev Environment is RUNNING"
+	@echo ""
+	@echo "  Frontend: http://localhost:$${ASKJEFF_FRONTEND_PORT:-5174}"
+	@echo "  Backend:  http://localhost:$${ASKJEFF_BACKEND_PORT:-8001}"
+	@echo "  API Docs: http://localhost:$${ASKJEFF_BACKEND_PORT:-8001}/docs"
+	@echo "  DB Port:  $${ASKJEFF_DB_PORT:-5433}"
+	@echo "======================================================================"
+	@echo ""
 
 down:
 	$(COMPOSE) down -v

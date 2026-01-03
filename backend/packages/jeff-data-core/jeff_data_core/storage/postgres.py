@@ -37,13 +37,17 @@ class PostgresStorage(BaseStorage):
     PostgreSQL implementation of Raw Data Storage.
     """
     
-    def __init__(self, connection_string: str):
-        self.engine = create_engine(connection_string, pool_pre_ping=True)
+    def __init__(self, connection_string: Optional[str] = None, engine: Optional[Any] = None):
+        if engine:
+            self.engine = engine
+        elif connection_string:
+            self.engine = create_engine(connection_string, pool_pre_ping=True)
+        else:
+            raise ValueError("Either connection_string or engine must be provided")
+            
         self.Session = sessionmaker(bind=self.engine)
         
         # Auto-create table if it doesn't exist
-        # In production, you might want to use Alembic, but for a standalone lib, 
-        # this ensures it works out-of-the-box.
         Base.metadata.create_all(self.engine)
 
     def save_raw(self, source: str, data_type: str, payload: Dict[str, Any], meta: Optional[Dict[str, Any]] = None) -> str:

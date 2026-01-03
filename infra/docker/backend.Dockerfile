@@ -16,8 +16,10 @@ RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 # 是否安装开发依赖，默认不安装
 ARG INSTALL_DEV=false
 
-# 先复制依赖声明并安装依赖（不安装本项目本身）
+# 先复制依赖声明和本地包
 COPY backend/pyproject.toml backend/poetry.lock ./
+COPY backend/packages/ ./packages/
+
 RUN if [ "$INSTALL_DEV" = "true" ]; then \
     poetry install --with dev --no-interaction --no-ansi --no-root; \
     else \
